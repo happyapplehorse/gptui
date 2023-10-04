@@ -1,0 +1,5 @@
+{{$input}}
+
+******************** FILE CONTENT BEGIN ********************
+{{$file_content}}
+******************** FILE CONTENT FINISH *******************

@@ -1,0 +1,228 @@
+/* styles for layout */
+
+Screen {
+  background: $boost;
+  layers: below above top;
+  align: center middle;
+}
+
+Widget {
+  layer: below;
+}
+
+.top_layer {
+  layer: top;
+}
+
+#no_text_region {
+  width: 25%;
+  height: 100%;
+}
+
+.folded#no_text_region {
+  width: 0;
+  height: 100%;
+}
+
+#no_text_region_content_switcher {
+  height: 5fr;
+}
+
+#status_region {
+  height: 1;
+  border: none;
+  content-align: center middle;
+}
+
+#chat_region {
+  border: none;
+  width: 1fr;
+  height: 1fr;
+  scrollbar-size-vertical: 1;
+  content-align: left top;
+}
+
+#input_switcher {
+  height: 1fr;
+  border: none;
+}
+
+#message_region {
+  height: 1fr;
+  border: round white;
+}
+
+#line_between_chat_status {
+  border: none;
+  height: 1;
+}
+
+#chat_region_scroll_bar {
+  width: 1;
+  height: 1fr;
+  content-align: left top;
+  border: none;
+}
+
+#chat_window {
+  height: 3fr;
+}
+
+#middle_bar {
+  width: 3;
+  border: none;
+}
+
+#tool_bar {
+  height: 2fr;
+  border: none;
+}
+
+#dash_board {
+  height: 1fr;
+  border: none;
+  padding: 0;
+}
+
+.arrow_button {
+  border: none;
+  height: 1;
+  width: 3;
+  min-width: 3;
+}
+
+.tab_arrow {
+  border: none;
+  height: 1;
+  width: 1;
+  min-width: 1;
+}
+
+#tabs_region {
+  height: 2;
+}
+
+.dot_display {
+  width: 1;
+}
+
+#chat_tabs {
+  border: none;
+  height: 2;
+  width: 1fr;
+}
+
+Tab {
+  height: 1;
+  padding: 0 1 0 2;
+}
+
+Tabs #tabs-list {
+  min-height: 1;
+}
+
+#control_panel {
+  width: 1fr;
+  height: 1fr;
+  border: round $accent-darken-1;
+}
+
+#middle_switch {
+  border: none;
+  width: 3;
+}
+
+#control_switch {
+  border: none;
+  width: 3;
+}
+
+#assistant_tube {
+  border: round $accent-darken-1;
+}
+
+#directory_tree {
+  height: 2fr;
+}
+
+#direct_control {
+  height: 1;
+}
+
+#command_input {
+  height: 1fr;
+}
+
+#control_region {
+  height: 2fr;
+}
+
+#exit {
+  border: none;
+  min-width: 6;
+  width: 6;
+  height: 1;
+  padding: 0;
+  margin: 0;
+  text-style: reverse;
+}
+
+#plugin_refresh {
+  border: none;
+  min-width: 9;
+  width: 9;
+  height: 1;
+  padding: 0;
+  margin: 0;
+  text-style: reverse;
+}
+
+#plugin_label {
+  width: 1fr;
+  background: rgb(30, 35, 50);
+}
+
+.min_switch {
+  border: none;
+  height: 1;
+  min_height: 1;
+  padding: 0;
+}
+
+ProgressBar Bar {
+  width: 1fr;
+  height: 1;
+}
+
+ProgressBar PercentageStatus {
+  text-style: reverse;
+  color: $secondary;
+  width: 4;
+}
+
+ProgressBar Bar > .bar--indeterminate {
+  color: $primary;
+  background: $secondary;
+}
+
+ProgressBar Bar > .bar--bar {
+  color: $success;
+  background: $primary 40%;
+}
+
+ProgressBar Bar > .bar--complete {
+  color: $error;
+}
+
+Voice #control_region {
+  height: 3;
+}
+
+.switch_label {
+  width: 2;
+  height: 1;
+}
+
+#direct_control_switch {
+  width: 1fr;
+}

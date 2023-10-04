@@ -1,0 +1,3 @@
+[app.GPTUI]
+command = "python main.py"
+#command = "python3 main.py"
