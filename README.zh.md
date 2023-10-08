@@ -1,14 +1,14 @@
 # GPTUI
-[English readme](https://github.com/happyapplehorse/gptui/main/README.md) • [简体中文 readme](https://github.com/happyapplehorse/gptui/main/README.zh.md)
 
- 
+[English readme](README.md) • [简体中文 readme](README.zh.md)
+
 ![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 GPTUI是一个在终端中运行的GPT对话TUI工具。
 你可以使用快捷键高效掌控你的节奏。
 
 GPTUI使用Textual构建TUI界面，使用Semantic Kernel提供的插件框架；您可以快速灵活地为自己的需求自定义插件。
-GPTUI提供了一个轻量级的[Kernel](# GPTUI Kernel)，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
+GPTUI提供了一个轻量级的[Kernel](#gptui-kernel)，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
 
 目前仅支持OpenAI的GPT模型，后续会增加对其它大语言模型接口的支持。
 
@@ -29,16 +29,19 @@ GPTUI提供了一个轻量级的[Kernel](# GPTUI Kernel)，驱动AI应用。上�
 GPTUI在命令行环境下运行，可以在Linux，macOS，Android，当然还有Windows上运行（但我还没测试！）。
 使用textual-web提供的功能，您还可以在浏览器中运行GPTUI，并分享给远方的好友，不需要对方做任何的提前准备，也不需要对方具有API Key，只要有网络和浏览器即可。
 
+<a name="gptui_kernel"></a>
 ## ⚙️ GPTUI Kernel
+
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
 ![gptui-framework](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png)
 **kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
 GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
-详请参考[开发文档](#开发文档)
+详请参考[开发文档](#文档)
 
 # 安装
 
 正常使用需要确保网络畅通，可以连接OpenAI。
+如果遇到安装问题，请参考[troubleshooting](docs/troubleshooting.md)。
 
 ## 使用pip安装
 
@@ -46,7 +49,7 @@ GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻
 ```
 pip install xxx
 ```
-[配置API](# API keys 的配置)。
+[配置API](#api-keys的配置)。
 运行：
 ```
 gptui
@@ -65,7 +68,7 @@ gptui --config your_config_file_path
 ```
 git clone ...
 ```
-[配置API](# API keys 的配置)。
+[配置API](#api-keys的配置)。
 ```
 cd gptui
 pip install -r requirements.txt
@@ -80,7 +83,7 @@ python main.py
 
 ## 配置
 
-### API keys 的配置
+### API keys的配置
 
 在`~/.gptui/.env_gptui`中配置相应的API Keys。参考[.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example)文件。当使用“WebServe”插件时，需提供`GOOGLE_KEY`和`GOOGLE_CX`，它们可免费地从谷歌获取。
 
@@ -127,12 +130,12 @@ python main.py
   - `|Exit|`: **_退出程序_**。
 - **dashboard**：聊天的上下文窗口的大小。
 - **others**:
-- `<`: **_前一个聊天_**。
-- `>`: **_后一个聊天_**。
-- `1`: **_聊天的数量_**。
-- `☌`: **_[运行状态](#运行状态提示)_**。
-- `↣`: **_折叠右侧非聊天区_**。
-- `?`: **_帮助文档_**。
+  - `<`: **_前一个聊天_**。
+  - `>`: **_后一个聊天_**。
+  - `1`: **_聊天的数量_**。
+  - `☌`: **_[运行状态](#运行状态提示)_**。
+  - `↣`: **_折叠右侧非聊天区_**。
+  - `?`: **_帮助文档_**。
 
 ## 运行状态提示
 <span style="color:green">☌</span>: 就绪状态。  
