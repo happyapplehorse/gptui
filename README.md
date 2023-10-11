@@ -160,7 +160,7 @@ GPTUI provides hotkeys for commonly used features, see [Help](https://github.com
 
 # Documentation
 
-For detailed instructions, see [here](https://github.com/happyapplehorse/gptui/blob/main/docs/man.md), for in-program help documentation see [here](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md), for further development, see [here](https://github.com/happyapplehorse/gptui/blob/main/docs/development.md).
+For detailed instructions, see [here](docs/man.md), for in-program help documentation see [here](src/gptui/help.md), for further development, see [here](docs/development.md).
 
 # Contribution
 

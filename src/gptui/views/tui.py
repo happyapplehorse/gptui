@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import importlib
 import itertools
 import json
 import logging
@@ -82,15 +83,17 @@ def preprocess_config_path(config: dict) -> dict:
     config["directory_tree_path"] = os.path.expanduser(config["directory_tree_path"])
     config["vector_memory_path"] = os.path.expanduser(config["vector_memory_path"])
     config["log_path"] = os.path.expanduser(config["log_path"])
-    current_tui_path = os.path.dirname(__file__)
-    config["GPTUI_BASIC_SERVICES_PATH"] = os.path.expanduser(config["GPTUI_BASIC_SERVICES_PATH"] or os.path.join(current_tui_path, "../models/gptui_basic_services"))
-    config["PLUGIN_PATH"] = os.path.expanduser(config["PLUGIN_PATH"] or os.path.join(current_tui_path, "../plugins"))
-    config["DEFAULT_PLUGIN_PATH"] = os.path.expanduser(config["DEFAULT_PLUGIN_PATH"] or os.path.join(current_tui_path, "../plugins/DEFAULT_PLUGINS"))
+    gptui_path = importlib.resources.files("gptui")
+    config["GPTUI_BASIC_SERVICES_PATH"] = os.path.expanduser(config["GPTUI_BASIC_SERVICES_PATH"] or gptui_path / "models" / "gptui_basic_services")
+    config["PLUGIN_PATH"] = os.path.expanduser(config["PLUGIN_PATH"] or gptui_path / "plugins")
+    config["DEFAULT_PLUGIN_PATH"] = os.path.expanduser(config["DEFAULT_PLUGIN_PATH"] or gptui_path / "plugins" / "DEFAULT_PLUGINS")
     return config
 
 
 class MainApp(App[str]):
+
     CSS_PATH="layout.tcss"
+
     BINDINGS = [
         Binding("escape", "hot_key", "active hot key"),
         Binding("ctrl+q", "exit_main_app", "exit the app"),
@@ -113,7 +116,7 @@ class MainApp(App[str]):
         self.unique_id = itertools.count(1)                 # start from 1 to avoid possible 0 = False trouble
         # Import config
         try:
-            with open(os.path.join(os.path.dirname(__file__), '../../.default_config.yml'), "r") as default_config_file:
+            with open(os.path.join(os.path.dirname(__file__), '../.default_config.yml'), "r") as default_config_file:
                 self.config = yaml.safe_load(default_config_file)
         except FileNotFoundError:
             self.exit(f"Default config file '.default_config.yml' is not found.")
@@ -328,7 +331,9 @@ class MainApp(App[str]):
             self.plugin_refresh()
 
         elif event.button.id == "help":
-            help_document = document_loader("./docs/help.md")
+            gptui_package_dir = importlib.resources.files("gptui")
+            help_path = gptui_package_dir / "help.md"
+            help_document = document_loader(help_path)
             self.push_screen(MarkdownPreview(markdown=help_document[0].page_content, previewer_title="Help"))
 
     async def on_input_submitted(self, message) -> None:
@@ -1151,8 +1156,12 @@ class MainApp(App[str]):
     
     def manager_init(self, manager: Manager) -> None:
         manager.load_services(where=ConversationService(manager), skill_name="conversation_service")
-        manager.register_jobs(module_name="gptui.models.jobs")
-        manager.register_handlers(module_name="gptui.models.handlers")
+        # The purpose of using the following manually constructed relative import is to 
+        # avoid duplicate imports and errors in package identity determination caused by inconsistent package names.
+        current_package = __package__
+        parent_package = ".".join(current_package.split(".")[:-1])
+        manager.register_jobs(module_name=f"{parent_package}.models.jobs")
+        manager.register_handlers(module_name=f"{parent_package}.models.handlers")
 
     def service_init(self) -> None:
         self.animation_manager = AnimationManager(
@@ -1205,7 +1214,7 @@ class MainApp(App[str]):
                 app=self,
                 manager=self.manager,
                 openai_chat=OpenaiChat(self.manager),
-                workpath = self.config["conversation_path"],
+                workpath=self.config["conversation_path"],
                 conversations_recover=self.query_one("#conversations_recover").value,
             )
         except Exception as e:
