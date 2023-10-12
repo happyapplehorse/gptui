@@ -24,9 +24,11 @@ class ConfigManager:
     @staticmethod
     def copy_default_config_to_user_home():
         default_config_path = importlib.resources.files("gptui") / "config.yml"
-        user_config_path = os.path.expanduser('~/.gptui_config.yml')
+        user_config_path = os.path.expanduser('~/.gptui/.config.yml')
         
         if not os.path.exists(user_config_path):
+            target_dir = os.path.dirname(user_config_path)
+            os.makedirs(target_dir, exist_ok=True)
             shutil.copy(default_config_path, user_config_path)
         return user_config_path
 
@@ -41,7 +43,7 @@ class ConfigManager:
                 print(f"Config file '{config_path}' dose not exist.")
                 sys.exit(1)
 
-        user_config_path = os.path.expanduser('~/.gptui_config.yml')
+        user_config_path = os.path.expanduser('~/.gptui/.config.yml')
         if os.path.exists(user_config_path):
             return user_config_path
 

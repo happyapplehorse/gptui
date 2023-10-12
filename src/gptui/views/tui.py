@@ -79,6 +79,7 @@ gptui_logger = logging.getLogger("gptui_logger")
 def preprocess_config_path(config: dict) -> dict:
     """Given a config, normalize its paths and return the config with the normalized paths replaced."""
     config["workpath"] = os.path.expanduser(config["workpath"])
+    config["dot_env_path"] = os.path.expanduser(config["dot_env_path"])
     config["conversation_path"] = os.path.expanduser(config["conversation_path"])
     config["directory_tree_path"] = os.path.expanduser(config["directory_tree_path"])
     config["vector_memory_path"] = os.path.expanduser(config["vector_memory_path"])
@@ -110,8 +111,6 @@ class MainApp(App[str]):
         super().__init__()
         self.app_version = app_version
         self.stream_openai = True
-        self.manager = Manager(self, dot_env_config_path=os.path.expanduser("~/.gptui/.env_gptui"), logger=gptui_logger)
-        self.manager_init(self.manager)
         self.common_resources = {}
         self.unique_id = itertools.count(1)                 # start from 1 to avoid possible 0 = False trouble
         # Import config
@@ -130,7 +129,11 @@ class MainApp(App[str]):
         
         self.config["tui_config"]["status_region_default"] = self.config["tui_config"]["status_region_default"] or f"GPTUI {app_version}"
         self.config = preprocess_config_path(self.config)
+
         self.workpath = self.config["workpath"]
+
+        self.manager = Manager(self, dot_env_config_path=self.config["dot_env_path"], logger=gptui_logger)
+        self.manager_init(self.manager)
 
         try:
             with open(os.path.join(self.workpath, "_last_app_state.json"), "r") as app_state:

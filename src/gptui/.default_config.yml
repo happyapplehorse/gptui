@@ -7,6 +7,10 @@ GPTUI_BASIC_SERVICES_PATH:
 PLUGIN_PATH:
 DEFAULT_PLUGIN_PATH:
 
+# API keys
+dot_env_path:
+  ~/.gptui/.env_gptui
+
 default_openai_parameters:
   model: gpt-3.5-turbo
   stream: true
