@@ -1,4 +1,6 @@
+import importlib
 import logging
+import os
 from abc import ABCMeta, abstractmethod
 
 import semantic_kernel as sk
@@ -31,7 +33,7 @@ class Skills:
 
 class UploadFile(UploadFileInterface):
     
-    UPLOAD_FILE_PROMPT_PATH = "./gptui/models/gptui_basic_services/templates/upload_file_prompt.txt"
+    UPLOAD_FILE_PROMPT_PATH = os.path.join(os.path.dirname(__file__), "gptui_basic_services", "templates", "upload_file_prompt.txt")
     
     def __init__(self):
         self.prompt_template_engine = PromptTemplateEngine()

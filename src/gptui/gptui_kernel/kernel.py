@@ -3,7 +3,6 @@ import asyncio
 import itertools
 import json
 import logging
-import os
 import sys
 import weakref
 from abc import ABCMeta, abstractmethod
@@ -970,30 +969,31 @@ def register_plugins_to_sk_kernel(
             functions_link_in_kernel: dict
         )
     """
-    
-    # register plugin
-    for plugin_info in plugins_list:
-        if len(plugin_info) == 2:
-            sk_kernel.import_semantic_skill_from_directory(plugin_info[0], plugin_info[1])
-        elif len(plugin_info) >= 3:
-            if plugin_info[0] not in sys.path:
-                sys.path.append(plugin_info[0])
-            plugin_file = import_module(plugin_info[1])
-            plugin = getattr(plugin_file, plugin_info[2])
-            args = ()
-            kwargs = {}
-            if len(plugin_info) >= 4:
-                params = plugin_info[3:5]
-                for param in params:
-                    if isinstance(param, tuple):
-                        args = param
-                    elif isinstance(param, dict):
-                        kwargs = param
-                    else:
-                        raise PluginInfoError(plugin_info)
-            sk_kernel.import_skill(plugin(*args, **kwargs), plugin_info[2])
-        else:
-            raise PluginInfoError(plugin_info)
+
+    with TemporarySysPath():
+        # register plugin
+        for plugin_info in plugins_list:
+            if len(plugin_info) == 2:
+                sk_kernel.import_semantic_skill_from_directory(plugin_info[0], plugin_info[1])
+            elif len(plugin_info) >= 3:
+                if plugin_info[0] not in sys.path:
+                    sys.path.append(plugin_info[0])
+                plugin_file = import_module(plugin_info[1])
+                plugin = getattr(plugin_file, plugin_info[2])
+                args = ()
+                kwargs = {}
+                if len(plugin_info) >= 4:
+                    params = plugin_info[3:5]
+                    for param in params:
+                        if isinstance(param, tuple):
+                            args = param
+                        elif isinstance(param, dict):
+                            kwargs = param
+                        else:
+                            raise PluginInfoError(plugin_info)
+                sk_kernel.import_skill(plugin(*args, **kwargs), plugin_info[2])
+            else:
+                raise PluginInfoError(plugin_info)
     
     functions_meta_in_sk_kernel = get_functions_meta_in_sk_kernel(sk_kernel=sk_kernel)
     functions_link_in_sk_kernel = get_functions_link_in_sk_kernel(sk_kernel=sk_kernel)
@@ -1182,3 +1182,12 @@ def pretty_dict(dict_object: dict|None) -> str:
     if dict_object is None:
         return ""
     return json.dumps(dict_object, ensure_ascii = False, sort_keys = True, indent = 4, separators = (',',':'))
+
+
+class TemporarySysPath:
+    def __enter__(self):
+        self.original_sys_path = sys.path[:]
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.path = self.original_sys_path

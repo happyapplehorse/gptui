@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from importlib import import_module
 from typing import Type
 
-from .kernel import KernelInterface, Kernel, PluginMeta, Job
+from .kernel import KernelInterface, Kernel, PluginMeta, Job, TemporarySysPath
 from .manager_error import HandlerNotRegisterError, JobNotRegisterError
 from .null_logger import get_null_logger
 
@@ -237,19 +237,20 @@ class Manager(ManagerInterface):
 
         semantic_plugins_info_list = [(path, plugin_name) for plugin_name in dirs if check_semantic_plugin(os.path.join(path, plugin_name))]
         semantic_plugins_list = [PluginMeta(plugin_info) for plugin_info in semantic_plugins_info_list]
-        
-        if path not in sys.path:
-            sys.path.append(path)
-        native_plugins_list = []
-        for file in files:
-            module = import_module(file)
-            for name, obj in inspect.getmembers(module):
-                if inspect.isclass(obj) and obj.__module__ == module.__name__:
-                    params = self._check_auto_init_params(obj)
-                    if params is None:
-                        native_plugins_list.append(PluginMeta((path, file, name)))
-                    else:
-                        native_plugins_list.append(PluginMeta((path, file, name, params)))
+
+        with TemporarySysPath():
+            if path not in sys.path:
+                sys.path.append(path)
+            native_plugins_list = []
+            for file in files:
+                module = import_module(file)
+                for name, obj in inspect.getmembers(module):
+                    if inspect.isclass(obj) and obj.__module__ == module.__name__:
+                        params = self._check_auto_init_params(obj)
+                        if params is None:
+                            native_plugins_list.append(PluginMeta((path, file, name)))
+                        else:
+                            native_plugins_list.append(PluginMeta((path, file, name, params)))
         
         return semantic_plugins_list, native_plugins_list
 

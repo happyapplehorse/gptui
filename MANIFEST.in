@@ -1,0 +1,6 @@
+include src/gptui/.default_config.yml
+include src/gptui/config.yml
+include src/gptui/help.md
+
+recursive-include src/gptui *.txt
+recursive-include src/gptui *.tcss

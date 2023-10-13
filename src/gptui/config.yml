@@ -1,0 +1,127 @@
+###################################################################################################
+##        Note: A list is configured as a whole.                                                 ##
+##        For instance, to modify 'status_region_default' to 'Configuration Example',            ##
+##        one should written it as:                                                              ##
+##          tui_config:                                                                          ##
+##            conversations_recover: true                                                        ##
+##            voice_switch: false                                                                ##
+##            speak_switch: false                                                                ##
+##            file_wrap_display: true                                                            ##
+##            status_region_default: Configuration Example                                       ##
+##        not:                                                                                   ##
+##          tui_config:                                                                          ##
+##          #  conversations_recover: true                                                       ##
+##          #  voice_switch: false                                                               ##
+##          #  speak_switch: false                                                               ##
+##          #  file_wrap_display: true                                                           ##
+##            status_region_default: Configuration Example                                       ##
+###################################################################################################
+
+
+#GPTUI_BASIC_SERVICES_PATH:
+#PLUGIN_PATH:
+#DEFAULT_PLUGIN_PATH:
+
+# API keys
+#dot_env_path:
+#  ~/.gptui/.env_gptui
+
+#default_openai_parameters:
+#  model: gpt-3.5-turbo
+#  stream: true
+
+#default_conversation_parameters:
+#  max_sent_tokens_raito: 0.6
+
+#tui_config:
+#  conversations_recover: true
+#  voice_switch: false
+#  speak_switch: false
+#  file_wrap_display: true
+#  status_region_default:
+
+#log_path:
+#  ~/.gptui/logs.log
+
+# Program working path, storing vector database, temporary files, etc.
+#workpath:
+#  ~/.gptui/user
+
+# Scope of files discoverable by the program
+#directory_tree_path:
+#  ~/
+
+# Conversation history save and import path
+#conversation_path:
+#  ~/.gptui/user/conversations
+
+#vector_memory_path:
+#  ~/.gptui/user/vector_memory_database
+
+terminal:
+  # Tested terminals: {termux, wezterm}
+  termux
+
+os:
+  termux
+  # linux
+  # macos
+  # windows
+
+default_plugins_used:
+  # List of plugin's name of default used
+  - WebServe
+
+# Set your geographic location. When LLM needs to know yoour position, it will return this location. It's optional to set.
+location_city: "Hangzhou, China"
+
+log_level:
+  DEBUG
+
+user_plugins_up:
+  - WriteFile
+  - SnoozeReminder
+  - WebServe
+
+openai_model_info:
+  gpt-3.5-turbo:
+    tokens_window: 4096
+
+  gpt-3.5-turbo-0613:
+    tokens_window: 4096
+  
+  gpt-3.5-turbo-16k:
+    tokens_window: 16384
+  
+  gpt-3.5-turbo-16k-0613:
+    tokens_window: 16384
+  
+  gpt-3.5-turbo-0301:
+    tokens_window: 4096
+  
+  gpt-4:
+    tokens_window: 8192
+  
+  gpt-4-0613:
+    tokens_window: 8192
+  
+  gpt-4-0314:
+    tokens_window: 8192
+  
+  gpt-4-32k:
+    tokens_window: 32768
+  
+  gpt-4-32k-0613:
+    tokens_window: 32768
+  
+  gpt-4-32k-0314:
+    tokens_window: 32768
+
+  text_davinci-003:
+    tokens_window: 4097
+
+  text_davinci-002:
+    tokens_window: 4097
+
+  code_davinci-002:
+    tokens_window: 8001
