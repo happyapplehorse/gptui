@@ -1,13 +1,16 @@
 # GPTUI
+![PyPI - Version](https://img.shields.io/pypi/v/gptui)
+![GitHub](https://img.shields.io/github/license/happyapplehorse/gptui)
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
 <img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI is a GPT conversational TUI (Textual User Interface) tool that runs within the terminal.
 Using the Textual framework for its TUI interface and equipping the plugin framework provided by Semantic Kernel.
-GPTUI offers a lightweight [Kernel](#⚙️-gptui-kernel) to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
+GPTUI offers a lightweight <a href="#gptui_kernel">Kernel</a> to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
 
+&nbsp;
 ![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI Features
@@ -26,10 +29,13 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 GPTUI runs in a command line environment and is compatible with Linux, macOS, Android, and of course Windows (I haven't tested it yet!). 
 Using the functionality provided by textual-web, you can also run GPTUI in the browser and share it with remote friends.
 
+<a name="gptui_kernel"> </a>
 ## ⚙️ GPTUI Kernel
 
 GPTUI offers a lightweight Kernel for building AI applications, allowing you to easily expand GPTUI's capabilities or construct your own AI application.
-![gptui-framework](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png)
+
+<p align="center"><img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+
 The **kernel** relies on **jobs** and **handlers** to perform specific functions. To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
 The **manager** and **kernel** of GPTUI are entirely independent of the **client** application, enabling you to effortlessly relocate the **manager** or **kernel** for use elsewhere. The application layer of GPTUI (**client**) employs the CVM architecture, where the model layer provides foundational, reusable modules for interaction with LLM, independent of specific views and controllers implementations. If you wish to build your own AI application, you can start here, fully utilizing the **kernel**, **manager**, and models. To alter or expand UI functionalities, typically, only modifications to the controllers and views are needed.
 
@@ -48,7 +54,7 @@ pip install gptui
 
 [Config your API keys](#config-api-keys) before running.
 
-Run：
+To run：
 ```
 gptui
 ```
