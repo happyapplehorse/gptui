@@ -2,6 +2,8 @@ Due to the fact that the original development platform (Termux) could not instal
 
 Langchain tools that have already been integrated:
 - TextLoader
+- UnstructuredHTMLLoader
+- BSHTMLLoader
 
 Required dependencies:
 - pydantic
