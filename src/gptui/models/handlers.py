@@ -218,7 +218,7 @@ class OpenaiHandler:
                                         "role": "assistant",
                                         "content": (
                                             f"<log />Call function: {function_call_display_str}\n"
-                                            "This is just a brief history record of the function you have previously invoked."
+                                            "This is just a brief history record of the function you have previously invoked. "
                                             "You should not call functions in this manner, nor should you use the <log /> tag."
                                         )
                                     },
@@ -234,7 +234,7 @@ class OpenaiHandler:
                             "role": "assistant",
                             "content": (
                                 f"<log />Call function: {function_call_display_str}\n"
-                                "This is just a brief history record of the function you have previously invoked."
+                                "This is just a brief history record of the function you have previously invoked. "
                                 "You should not call functions in this manner, nor should you use the <log /> tag."
                             )
                         }
