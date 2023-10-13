@@ -29,8 +29,7 @@ GPTUI提供了一个轻量级的[Kernel](#gptui-kernel)，驱动AI应用。上�
 GPTUI在命令行环境下运行，可以在Linux，macOS，Android，当然还有Windows上运行（但我还没测试！）。
 使用textual-web提供的功能，您还可以在浏览器中运行GPTUI，并分享给远方的好友，不需要对方做任何的提前准备，也不需要对方具有API Key，只要有网络和浏览器即可。
 
-<a name="gptui_kernel"></a>
-## ⚙️ GPTUI Kernel
+## <span id="gptui_kernel">⚙️ GPTUI Kernel</span>
 
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
 ![gptui-framework](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png)
@@ -45,41 +44,49 @@ GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻
 
 ## 使用pip安装
 
-=1↓
 ```
-pip install xxx
+pip install gptui
 ```
-[配置API](#api-keys的配置)。
+在运行之前您需要[配置API](#api-keys的配置)。
 运行：
 ```
 gptui
 ```
 指定配置文件：
 ```
-gptui --config your_config_file_path
+gptui --config <your_config_file_path>
 ```
 本程序通过以下步骤加载文件：
 1. 从`--config`中读取配置文件，如果没有指定，则进行下一步。
-2. 从用户目录寻找`~/.gitui_config.yml`，如果没有，则进行下一步。
-3. 拷贝默认的配置文件`./config.yml`到`~/.gitui_config.yml`并使用。
+2. 从用户目录寻找`~/.gitui/.config.yml`，如果没有，则进行下一步。
+3. 拷贝默认的配置文件`gptui/config.yml`到`~/.gitui/.config.yml`并使用。
 
-## 使用源码运行
+## 从源码安装
 
 ```
-git clone ...
-```
-[配置API](#api-keys的配置)。
-```
+git clone https://github.com/happyapplehorse/gptui.git
 cd gptui
+pip install .
+```
+在运行之前需要[配置API](#api-keys的配置)。
+运行：
+```
+gptui
+# 或者您也可以
+# python -m gptui
+```
+
+您还可以直接运行启动脚本（这样允许您修改源代码并即刻运行）：
+首先，安装依赖：
+```
 pip install -r requirements.txt
 ```
-在Linux或macOS系统下，如果要使用语音和TTS（TextToSpeak）功能，还需要分别安装pyaudio和espeak（暂时只提供了此中方式，效果不是很好）。
-
-运行：
+然后，运行启动脚本：
 ```
 python main.py
 ```
-当直接从脚本运行该程序时，使用`./config.yml`作为配置文件。
+当使用`python main.py`或`python -m gptui`来运行本程序时，使用`gptui/config.yml`作为配置文件。
+在Linux或macOS系统下，如果要使用语音和TTS（TextToSpeak）功能，还需要分别安装pyaudio和espeak（暂时只提供了此中方式，效果不是很好）。
 
 ## 配置
 

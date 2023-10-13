@@ -6,7 +6,7 @@
 
 GPTUI is a GPT conversational TUI (Textual User Interface) tool that runs within the terminal.
 Using the Textual framework for its TUI interface and equipping the plugin framework provided by Semantic Kernel.
-GPTUI offers a lightweight [Kernel](# GPTUI Kernel) to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
+GPTUI offers a lightweight [Kernel](#-gptui-kernel) to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
 
 ## TUI Features
@@ -25,7 +25,6 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 GPTUI runs in a command line environment and is compatible with Linux, macOS, Android, and of course Windows (I haven't tested it yet!). 
 Using the functionality provided by textual-web, you can also run GPTUI in the browser and share it with remote friends.
 
-<a name="gptui_kernel"></a>
 ## ⚙️ GPTUI Kernel
 
 GPTUI offers a lightweight Kernel for building AI applications, allowing you to easily expand GPTUI's capabilities or construct your own AI application.
@@ -42,13 +41,11 @@ If you encounter any issues, please refer to [troubleshooting](docs/troubleshoot
 
 ## Install with pip
 
-(Will be uploaded to pypi soon!)
-
 ```
-pip install xxx
+pip install gptui
 ```
 
-[Config your API keys](#config-api-keys).
+[Config your API keys](#config-api-keys) before running.
 
 Run：
 ```
@@ -56,30 +53,44 @@ gptui
 ```
 Specify config file：
 ```
-gptui --config your_config_file_path
+gptui --config <your_config_file_path>
 ```
 This program loads files through the following steps:
 1. Read the configuration file from --config. If not specified, proceed to the next step.
-2. Search for ~/.gitui_config.yml in the user directory. If not found, move to the next step.
-3. Copy the default configuration file ./config.yml to ~/.gitui_config.yml and use it.
+2. Search for ~/.gitui/.config.yml in the user directory. If not found, move to the next step.
+3. Copy the default configuration file gptui/config.yml to ~/.gitui/.config.yml and use it.
 
-
-## Run from source
+## Install from source
 
 ```
-git clone ...
+git clone https://github.com/happyapplehorse/gptui.git
 cd gptui
+pip install .
+```
+API configuration is required before running.
+
+To run:
+
+```bash
+gptui
+# Or you can also use
+# python -m gptui
+```
+
+You can also directly run the startup script (this allows you to modify the source code and run it immediately):
+First, install the dependencies:
+
+```
 pip install -r requirements.txt
 ```
-On Linux or macOS systems, if you want to use voice and TTS (TextToSpeak) features, you'll also need to install pyaudio and espeak separately (currently, this is the only method provided, and the performance is not optimal).
-
-[Config your API keys](#config-api-keys).
-
-Run：
+Then, run the startup script:
 ```
 python main.py
 ```
-When running the program directly from the script, use ./config.yml as the config file.
+
+When running the program with `python main.py` or `python -m gptui`, use `gptui/config.yml` as the configuration file.
+
+On Linux or macOS systems, if you want to use voice and TTS (TextToSpeak) functionalities, you'll need to install pyaudio and espeak separately (only this method is provided for now, and the performance is not very good).
 
 ## Configuration
 
