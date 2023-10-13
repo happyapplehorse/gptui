@@ -2,15 +2,14 @@
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
-![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
-
+<img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI是一个在终端中运行的GPT对话TUI工具。
 你可以使用快捷键高效掌控你的节奏。
-
 GPTUI使用Textual构建TUI界面，使用Semantic Kernel提供的插件框架；您可以快速灵活地为自己的需求自定义插件。
-GPTUI提供了一个轻量级的[Kernel](#gptui-kernel)，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
-
+GPTUI提供了一个轻量级的<a href="#gptui_kernel">Kernel</a>，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
 目前仅支持OpenAI的GPT模型，后续会增加对其它大语言模型接口的支持。
+
+![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI功能
 - 创建并管理与GPT的对话。
@@ -29,7 +28,8 @@ GPTUI提供了一个轻量级的[Kernel](#gptui-kernel)，驱动AI应用。上�
 GPTUI在命令行环境下运行，可以在Linux，macOS，Android，当然还有Windows上运行（但我还没测试！）。
 使用textual-web提供的功能，您还可以在浏览器中运行GPTUI，并分享给远方的好友，不需要对方做任何的提前准备，也不需要对方具有API Key，只要有网络和浏览器即可。
 
-## <span id="gptui_kernel">⚙️ GPTUI Kernel</span>
+<a name="gptui_kernel"> </a>
+## ⚙️ GPTUI Kernel
 
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
 ![gptui-framework](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png)

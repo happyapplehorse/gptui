@@ -2,12 +2,13 @@
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
-![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
-
+<img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI is a GPT conversational TUI (Textual User Interface) tool that runs within the terminal.
 Using the Textual framework for its TUI interface and equipping the plugin framework provided by Semantic Kernel.
-GPTUI offers a lightweight [Kernel](#-gptui-kernel) to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
+GPTUI offers a lightweight [Kernel](#⚙️-gptui-kernel) to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
+
+![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI Features
 -  Create and manage conversations with GPT.
