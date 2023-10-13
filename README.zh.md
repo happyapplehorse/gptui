@@ -1,16 +1,18 @@
 # GPTUI
-[English readme](https://github.com/happyapplehorse/gptui/main/README.md) • [简体中文 readme](https://github.com/happyapplehorse/gptui/main/README.zh.md)
+![PyPI - Version](https://img.shields.io/pypi/v/gptui)
+![GitHub](https://img.shields.io/github/license/happyapplehorse/gptui)
 
- 
-![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
+[English readme](README.md) • [简体中文 readme](README.zh.md)
 
+<img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI是一个在终端中运行的GPT对话TUI工具。
 你可以使用快捷键高效掌控你的节奏。
-
 GPTUI使用Textual构建TUI界面，使用Semantic Kernel提供的插件框架；您可以快速灵活地为自己的需求自定义插件。
-GPTUI提供了一个轻量级的[Kernel](# GPTUI Kernel)，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
-
+GPTUI提供了一个轻量级的<a href="#gptui_kernel">Kernel</a>，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
 目前仅支持OpenAI的GPT模型，后续会增加对其它大语言模型接口的支持。
+
+&nbsp;
+![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI功能
 - 创建并管理与GPT的对话。
@@ -29,58 +31,71 @@ GPTUI提供了一个轻量级的[Kernel](# GPTUI Kernel)，驱动AI应用。上�
 GPTUI在命令行环境下运行，可以在Linux，macOS，Android，当然还有Windows上运行（但我还没测试！）。
 使用textual-web提供的功能，您还可以在浏览器中运行GPTUI，并分享给远方的好友，不需要对方做任何的提前准备，也不需要对方具有API Key，只要有网络和浏览器即可。
 
+<a name="gptui_kernel"> </a>
 ## ⚙️ GPTUI Kernel
+
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
-![gptui-framework](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png)
+
+<p align="center"><img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+
 **kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
 GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
-详请参考[开发文档](#开发文档)
+详请参考[开发文档](#文档)
 
 # 安装
 
 正常使用需要确保网络畅通，可以连接OpenAI。
+如果遇到安装问题，请参考[troubleshooting](docs/troubleshooting.md)。
 
 ## 使用pip安装
 
-=1↓
 ```
-pip install xxx
+pip install gptui
 ```
-[配置API](# API keys 的配置)。
+在运行之前您需要[配置API](#api-keys的配置)。
 运行：
 ```
 gptui
 ```
 指定配置文件：
 ```
-gptui --config your_config_file_path
+gptui --config <your_config_file_path>
 ```
 本程序通过以下步骤加载文件：
 1. 从`--config`中读取配置文件，如果没有指定，则进行下一步。
-2. 从用户目录寻找`~/.gitui_config.yml`，如果没有，则进行下一步。
-3. 拷贝默认的配置文件`./config.yml`到`~/.gitui_config.yml`并使用。
+2. 从用户目录寻找`~/.gitui/.config.yml`，如果没有，则进行下一步。
+3. 拷贝默认的配置文件`gptui/config.yml`到`~/.gitui/.config.yml`并使用。
 
-## 使用源码运行
+## 从源码安装
 
 ```
-git clone ...
-```
-[配置API](# API keys 的配置)。
-```
+git clone https://github.com/happyapplehorse/gptui.git
 cd gptui
+pip install .
+```
+在运行之前需要[配置API](#api-keys的配置)。
+运行：
+```
+gptui
+# 或者您也可以
+# python -m gptui
+```
+
+您还可以直接运行启动脚本（这样允许您修改源代码并即刻运行）：
+首先，安装依赖：
+```
 pip install -r requirements.txt
 ```
-在Linux或macOS系统下，如果要使用语音和TTS（TextToSpeak）功能，还需要分别安装pyaudio和espeak（暂时只提供了此中方式，效果不是很好）。
-
-运行：
+然后，运行启动脚本：
 ```
 python main.py
 ```
-当直接从脚本运行该程序时，使用`./config.yml`作为配置文件。
+当使用`python main.py`或`python -m gptui`来运行本程序时，使用`gptui/config.yml`作为配置文件。
+在Linux或macOS系统下，如果要使用语音和TTS（TextToSpeak）功能，还需要分别安装pyaudio和espeak（暂时只提供了此中方式，效果不是很好）。
 
 ## 配置
 
-### API keys 的配置
+### API keys的配置
 
 在`~/.gptui/.env_gptui`中配置相应的API Keys。参考[.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example)文件。当使用“WebServe”插件时，需提供`GOOGLE_KEY`和`GOOGLE_CX`，它们可免费地从谷歌获取。
 
@@ -127,12 +142,12 @@ python main.py
   - `|Exit|`: **_退出程序_**。
 - **dashboard**：聊天的上下文窗口的大小。
 - **others**:
-- `<`: **_前一个聊天_**。
-- `>`: **_后一个聊天_**。
-- `1`: **_聊天的数量_**。
-- `☌`: **_[运行状态](#运行状态提示)_**。
-- `↣`: **_折叠右侧非聊天区_**。
-- `?`: **_帮助文档_**。
+  - `<`: **_前一个聊天_**。
+  - `>`: **_后一个聊天_**。
+  - `1`: **_聊天的数量_**。
+  - `☌`: **_[运行状态](#运行状态提示)_**。
+  - `↣`: **_折叠右侧非聊天区_**。
+  - `?`: **_帮助文档_**。
 
 ## 运行状态提示
 <span style="color:green">☌</span>: 就绪状态。  
@@ -156,7 +171,7 @@ GPTUI为常用功能提供了快捷键，参考[帮助](https://github.com/happy
 
 # 文档
 
-详细使用说明请看[这里](https://github.com/happyapplehorse/gptui/blob/main/docs/man.md)，程序内的帮助文档看[这里](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md)，若要进一步开发，请看[这里](https://github.com/happyapplehorse/gptui/blob/main/docs/development.md)。
+详细使用说明请看[这里](docs/man.md)，程序内的帮助文档看[这里](src/gptui/help.md)，若要进一步开发，请看[这里](docs/development.md)。
 
 # 贡献
 

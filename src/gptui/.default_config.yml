@@ -1,0 +1,47 @@
+#############################################################################
+##The configurations in this document are the program's default settings,  ##
+##ensuring the presence of essential configuration items.                  ##
+#############################################################################
+
+GPTUI_BASIC_SERVICES_PATH:
+PLUGIN_PATH:
+DEFAULT_PLUGIN_PATH:
+
+# API keys
+dot_env_path:
+  ~/.gptui/.env_gptui
+
+default_openai_parameters:
+  model: gpt-3.5-turbo
+  stream: true
+
+default_conversation_parameters:
+  max_sending_tokens_ratio: 0.6
+
+log_path:
+  ~/.gptui/logs.log
+
+tui_config:
+  conversations_recover: true
+  voice_switch: false
+  speak_switch: false
+  file_wrap_display: true
+  status_region_default:
+
+# List of plugin's name of default used
+default_plugins_used: []
+
+# Program working path, storing vector database, temporary files, etc.
+workpath:
+  ~/.gptui/user
+
+# Scope of files discoverable by the program
+directory_tree_path:
+  ~/
+
+# Conversation history save and import path
+conversation_path:
+  ~/.gptui/user/conversations
+
+vector_memory_path:
+  ~/.gptui/user/vector_memory_database

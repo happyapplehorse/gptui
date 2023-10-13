@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gptui"
+authors = [
+  { name="Xueao Chao", email="chaoxueao@gmail.com" },
+]
+description = "A GPT conversational TUI tool that runs within the terminal."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+dynamic = ["version"]
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Environment :: Console',
+    'Intended Audience :: Developers',
+    'Topic :: Software Development',
+    'Topic :: Terminals',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.11',
+    'Operating System :: OS Independent',
+    'Operating System :: POSIX :: Linux',
+    'Operating System :: MacOS :: MacOS X',
+    'Operating System :: Microsoft :: Windows',
+]
+keywords = ["TUI", "terminal", "GPT", "CLI", "textual user interface"]
+dependencies = [
+    'aiofiles>=23.1.0,<24',
+    'beautifulsoup4>=4.12.2,<5',
+    'blinker>=1.6.2,<2',
+    'chardet>=5.1.0,<6',
+    'geocoder>=1.38.1,<2',
+    'httpx>=0.24.1,<1',
+    'lxml>=4.9.3,<5',
+    'open-interpreter==0.1.4',
+    'openai>=0.27.8,<1',
+    'Pygments>=2.15.1,<3',
+    'pyperclip>=1.8.2,<2',
+    'pytest>=7.4.0,<8',
+    'python-dotenv>=1.0.0,<2',
+    'PyYAML>=6.0.1,<7',
+    'qdrant-client>=1.4.0,<2',
+    'semantic-kernel>=0.3.11.dev0,<1',
+    'textual>=0.37.1,<1',
+    'tiktoken>=0.4.0,<1',
+    'unstructured>=0.10.18,<1'
+]
+
+
+[project.urls]
+"Homepage" = "https://github.com/happyapplehorse/gptui"
+"Bug Tracker" = "https://github.com/happyapplehorse/gptui/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "gptui.__version__"}
