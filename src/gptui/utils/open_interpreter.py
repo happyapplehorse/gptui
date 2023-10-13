@@ -623,6 +623,11 @@ def response_render(message: dict):
         language = command.get("language")
         code = command.get("code")
     if language and code:
-        out += f"I will execute \"{code}\" in \"{language}\"" + "\n\nWould you like to run this code? (y/n)\n"
+        out += (
+            f"I will execute \"{code}\" in \"{language}\""
+            "\n\nWould you like to run this code? (y/n)\n"
+            "You should inform the user about the code I intend to run, "
+            "ask for his/her consent, and then precisely reply to me with either 'y' or 'n'."
+        )
     return out
 

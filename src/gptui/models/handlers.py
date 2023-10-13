@@ -213,14 +213,32 @@ class OpenaiHandler:
                         _sync_wrapper=sync_wrapper,
                         message={
                             "content":{
-                                "messages": [{"role": "assistant", "content": f"<log/>Call function: {function_call_display_str}"}],
+                                "messages": [
+                                    {
+                                        "role": "assistant",
+                                        "content": (
+                                            f"<log />Call function: {function_call_display_str}\n"
+                                            "This is just a brief history record of the function you have previously invoked. "
+                                            "You should not call functions in this manner, nor should you use the <log /> tag."
+                                        )
+                                    },
+                                ],
                                 "context": self.context
                             },
                             "flag": "",
                         }
                     )
                 else:
-                    self.context.chat_context_append({"role": "assistant", "content": f"Call function: {function_call_display_str}"})
+                    self.context.chat_context_append(
+                        {
+                            "role": "assistant",
+                            "content": (
+                                f"<log />Call function: {function_call_display_str}\n"
+                                "This is just a brief history record of the function you have previously invoked. "
+                                "You should not call functions in this manner, nor should you use the <log /> tag."
+                            )
+                        }
+                    )
                 response = await asyncio.to_thread(chat_service_for_inner, **paras)
             except Exception as e:
                 OpenaiErrorHandler().openai_error_handle(error=e, context=self.context)

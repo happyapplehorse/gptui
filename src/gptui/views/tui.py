@@ -1035,7 +1035,7 @@ class MainApp(App[str]):
         if role == "user":
             return piece
         elif role == "assistant":
-            if not piece["content"].startswith("<log/>"):
+            if not piece["content"].startswith("<log />"):
                 return piece
             else:
                 return None
