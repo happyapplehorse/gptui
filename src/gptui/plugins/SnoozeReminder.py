@@ -65,7 +65,8 @@ class SnoozeReminder:
         return "The reminder has been set."
 
     def reminder_after(self, content: str, conversation_id: int | str, delay: int) -> None:
-        content = f"You set a reminder {str(delay)} seconds ago, and the {str(delay)} seconds have elapsed. The time is up.\nReminder:\n" + content
+        content = f"You(!not the user!) set a reminder {str(delay)} seconds ago, and the {str(delay)} seconds have elapsed. The time is up.\n==========REMINDER CONTENT BEGIN==========\n" + content
+        content += "\n==========REMINDER CONTENT END==========\nThis message is a reminder for you, not for the user. You should handle this message appropriately based on the conversation history."
         openai_chat_manager = self.manager.client.openai
         conversation = openai_chat_manager.conversation_dict.get(conversation_id)
         if conversation is None:
@@ -74,18 +75,6 @@ class SnoozeReminder:
         openai_context = conversation["openai_context"]
         self.manager.client.query_one("#chat_tabs").active = "lqt" + str(conversation_id)
         time.sleep(1)
-        """
-        openai_chat_manager.openai_chat.chat(
-            context=openai_context,
-            message=[
-                {
-                    "role": "function",
-                    "name": "snooze_reminder",
-                    "content": content,
-                }
-            ]
-        )
-        """
         functions = self.manager.available_functions_meta
         messages_list=[
             {
@@ -105,7 +94,7 @@ class SnoozeReminder:
                 "flag": "function_call",
             }
         )
-        openai_chat_manager.openai_chat.chat_messages_extend(messages_list=messages_list, context=openai_context)
+
         try:
             response = chat_service_for_inner(
                 messages_list=messages_list,
@@ -115,6 +104,9 @@ class SnoozeReminder:
             )
         except Exception as e:
             OpenaiErrorHandler().openai_error_handle(error=e, context=openai_context)
+        
+        openai_chat_manager.openai_chat.chat_messages_extend(messages_list=messages_list, context=openai_context)
+        
         ResponseJob = self.manager.get_job("ResponseJob")
         callback = Callback(
             at_job_start=[
