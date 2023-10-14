@@ -22,10 +22,13 @@ GPTUI提供了一个轻量级的<a href="#gptui_kernel">Kernel</a>，驱动AI应
 - 提供一个文件通道，您可以通过此通道给GPT上传文件或下载文件。
 - 可自选的插件功能，包括（可自定义，持续增加与优化中，部分插件的prompt还不完善）：
   - 搜索互联网。
-  - open interpreter。
-  - 提醒。
+  - open interpreter[^open_interpreter]。
+  - 提醒[^reminder]。
   - 从矢量化的对话历史记录中回想记忆。
-  
+
+[^open_interpreter]: 本插件使用了[open-interpreter](https://github.com/KillianLucas/open-interpreter) ，需要先按open-interpreter的说明配置好open-interpreter的环境和API，推荐在GPT-4模型下使用。
+[^reminder]: 推荐在GPT-4模型下使用。
+
 # 兼容性
 
 GPTUI在命令行环境下运行，可以在Linux，macOS，Android，当然还有Windows上运行（但我还没测试！）。
@@ -167,7 +170,8 @@ python main.py
 
 ## 快捷键
 
-GPTUI为常用功能提供了快捷键，参考[帮助](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md)。另外，您还可以按`ESC`或者`ctrl+[`来呼出快捷快捷键菜单（此种方式的快捷键与直接的快捷键键位并不完全一致！）。
+GPTUI为常用功能提供了快捷键，参考[帮助](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md)。
+另外，您还可以按`ESC`，`ctrl+[`或者`ctrl+/`来呼出快捷键菜单（此种方式的快捷键功能更全，但与直接的快捷键键位并不完全一致.）。
 
 # 文档
 

@@ -5,20 +5,17 @@ import os
 from collections import deque
 from time import monotonic
 
-import openai
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Button, ProgressBar, Static
 
+from ..models.utils.openai_api import openai_api
 from ..utils.my_text import MyText as Text
-from ..utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 
 
 gptui_logger = logging.getLogger("gptui_logger")
-openai_key, org_id = openai_settings_from_dot_env()
-openai.api_key = openai_key
 
 
 class TimeDisplay(Static):
@@ -61,7 +58,7 @@ class TimeDisplay(Static):
 class Voice(Static, can_focus=True):
     """A stopwatch widget."""
 
-    def __init__(self, app, max_record_time: int = 60):
+    def __init__(self, app, dot_env_path: str, max_record_time: int = 60):
         super().__init__()
         self.myapp = app
         self.max_record_time = max_record_time
@@ -70,6 +67,7 @@ class Voice(Static, can_focus=True):
         self.progress_timer = self.set_interval(1, self.progress_drive, pause=True)
         self.key_time_deque = deque(maxlen=2)
         self.voice_record_start_handle = None
+        self.openai_api = openai_api(dot_env_path)
 
     BINDINGS = [
         ("space", "record", "start or end record"),
@@ -154,11 +152,11 @@ class Voice(Static, can_focus=True):
             def blocking_transcribe():
                 try:
                     with open("./temp/voice_temp.wav", "rb") as audio_file:
-                        transcript = openai.Audio.transcribe("whisper-1", audio_file)
+                        transcript = self.openai_api.Audio.transcribe("whisper-1", audio_file)
                 except FileNotFoundError:
                     self.query_one("#voice_status_region").update(Text("Have no voice file", "red"))
                     return
-                except openai.error.APIConnectionError as e:
+                except self.openai_api.error.APIConnectionError as e:
                     self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", "red"))
                     return
                 except Exception as e:

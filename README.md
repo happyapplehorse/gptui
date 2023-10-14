@@ -7,7 +7,8 @@
 <img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI is a GPT conversational TUI (Textual User Interface) tool that runs within the terminal.
 Using the Textual framework for its TUI interface and equipping the plugin framework provided by Semantic Kernel.
-GPTUI offers a lightweight <a href="#gptui_kernel">Kernel</a> to power AI applications. The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
+GPTUI offers a lightweight <a href="#gptui_kernel">Kernel</a> to power AI applications.
+The top-level TUI application is decoupled from the underlying Kernel, allowing you to easily replace the TUI interface or expand its functionalities.
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
 
 &nbsp;
@@ -21,12 +22,16 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 -  Offers a file channel through which you can upload to or download from GPT.
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
   -  Internet search.
-  -  Open interpreter.
-  -  Reminders.
+  -  Open interpreter[^open_interpreter].
+  -  Reminders[^reminder].
   -  Recollecting memories from vectorized conversation history.
 
+[^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to first follow the instructions provided by open-interpreter to properly set up the environment and API.
+It is recommended to use this under the GPT-4 model.
+[^reminder]: Recommended for use with the GPT-4 model.
+
 # Compatibility
-GPTUI runs in a command line environment and is compatible with Linux, macOS, Android, and of course Windows (I haven't tested it yet!). 
+GPTUI runs in a command line environment and is compatible with Linux, macOS, Android, and of course Windows.
 Using the functionality provided by textual-web, you can also run GPTUI in the browser and share it with remote friends.
 
 <a name="gptui_kernel"> </a>
@@ -36,8 +41,12 @@ GPTUI offers a lightweight Kernel for building AI applications, allowing you to 
 
 <p align="center"><img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
 
-The **kernel** relies on **jobs** and **handlers** to perform specific functions. To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
-The **manager** and **kernel** of GPTUI are entirely independent of the **client** application, enabling you to effortlessly relocate the **manager** or **kernel** for use elsewhere. The application layer of GPTUI (**client**) employs the CVM architecture, where the model layer provides foundational, reusable modules for interaction with LLM, independent of specific views and controllers implementations. If you wish to build your own AI application, you can start here, fully utilizing the **kernel**, **manager**, and models. To alter or expand UI functionalities, typically, only modifications to the controllers and views are needed.
+The **kernel** relies on **jobs** and **handlers** to perform specific functions.
+To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
+The **manager** and **kernel** of GPTUI are entirely independent of the **client** application, enabling you to effortlessly relocate the **manager** or **kernel** for use elsewhere.
+The application layer of GPTUI (**client**) employs the CVM architecture, where the model layer provides foundational, reusable modules for interaction with LLM, independent of specific views and controllers implementations.
+If you wish to build your own AI application, you can start here, fully utilizing the **kernel**, **manager**, and models.
+To alter or expand UI functionalities, typically, only modifications to the controllers and views are needed.
 
 See Development Documentation for details. [Documentation](#documentation).
 
@@ -102,7 +111,9 @@ On Linux or macOS systems, if you want to use voice and TTS (TextToSpeak) functi
 ## Configuration
 
 ### Config API keys
-Configure the corresponding API Keys in `~/.gptui/.env_gptui`. Refer to the [.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example) file. When using the "WebServe" plugin, `GOOGLE_KEY` and `GOOGLE_CX` need to be provided, which can be obtained free of charge from Google.
+Configure the corresponding API Keys in `~/.gptui/.env_gptui`.
+Refer to the [.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example) file.
+When using the "WebServe" plugin, `GOOGLE_KEY` and `GOOGLE_CX` need to be provided, which can be obtained free of charge from Google.
 
 ## Config File
 See `./config.yml` for a config file example that lists all configurable options.
@@ -173,8 +184,8 @@ Example: `set_max_sending_tokens_ratio(0.5)`
 
 ## Hotkeys
 
-GPTUI provides hotkeys for commonly used features, see [Help](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md). In addition, you can also press `ESC` or `ctrl+[` to bring up the hotkey menu (this type of shortcut keys is not completely consistent with the direct hotkeys!).
-
+GPTUI provides hotkeys for commonly used features, see [Help](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md).
+In addition, you can also press `ESC`, `ctrl+[`, or `ctrl+/` to bring up the hotkey menu (this mode offers more comprehensive hotkey functionalities, but they are not exactly the same as the direct hotkeys.).
 
 # Documentation
 
@@ -182,10 +193,12 @@ For detailed instructions, see [here](docs/man.md), for in-program help document
 
 # Contribution
 
-Some of GPTUI's plugin features rely on prompt, you can continue to help me improve these prompt. And I'd like to have appropriate animation cues during certain state changes. If you have any creative ideas, I'd appreciate your help in implementing them.
+Some of GPTUI's plugin features rely on prompt, you can continue to help me improve these prompt.
+And I'd like to have appropriate animation cues during certain state changes.
+If you have any creative ideas, I'd appreciate your help in implementing them.
 P.S.: Each contributor can leave a quote in the program.
-
 
 # License
 
-GPTUI is built upon a multitude of outstanding open-source components and adheres to the [MIT License](https://github.com/happyapplehorse/gptui/blob/main/LICENSE) open-source agreement. You are free to use it.
+GPTUI is built upon a multitude of outstanding open-source components and adheres to the [MIT License](https://github.com/happyapplehorse/gptui/blob/main/LICENSE) open-source agreement.
+You are free to use it.

@@ -3,23 +3,19 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Literal
 
-import openai
-
 from .blinker_wrapper import async_wrapper_without_loop, async_wrapper_with_loop, sync_wrapper
 from .context import OpenaiContext
 from .jobs import ResponseJob
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .signals import notification_signal, chat_context_extend_for_sending_signal
+from .utils.openai_api import openai_api
 from .utils.tokens_num import tokens_num_for_functions_call
 from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
-from ..utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 
 
 gptui_logger = logging.getLogger("gptui_logger")
-openai_key, org_id = openai_settings_from_dot_env()
-openai.api_key = openai_key
 
 
 class OpenaiChatInterface(metaclass=ABCMeta):
@@ -47,6 +43,7 @@ class OpenaiChatInterface(metaclass=ABCMeta):
 class OpenaiChat(OpenaiChatInterface):
     def __init__(self, manager: ManagerInterface):
         self.manager = manager
+        self.openai_api = openai_api(manager.dot_env_config_path)
 
     def chat_message_append(self, context: OpenaiContext, message: dict | list[dict], tokens_num_update: bool = True) -> None:
         "Append chat message to the end of the chat_context of the context"
@@ -111,7 +108,7 @@ class OpenaiChat(OpenaiChatInterface):
             offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = openai.ChatCompletion.create(
+            response = self.openai_api.ChatCompletion.create(
                 messages=trim_messages,
                 **function_para,
                 **context.parameters,
@@ -234,7 +231,7 @@ class OpenaiChat(OpenaiChatInterface):
             offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = openai.ChatCompletion.create(
+            response = self.openai_api.ChatCompletion.create(
                 messages = trim_messages,
                 **function_para,
                 **context.parameters,
