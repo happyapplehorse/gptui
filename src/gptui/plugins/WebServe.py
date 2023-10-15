@@ -8,13 +8,21 @@ from lxml import html
 from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.skill_definition import sk_function, sk_function_context_parameter
 
-from gptui.utils.config_from_dot_env import config_from_dot_env
+from gptui.gptui_kernel.manager import auto_init_params
+from gptui.models.utils.config_from_dot_env import config_from_dot_env
 
 
 gptui_logger = logging.getLogger("gptui_logger")
 
 
 class WebServe:
+    def __init__(self, manager):
+        self.manager = manager
+
+    @auto_init_params("0")
+    @classmethod
+    def get_init_params(cls, manager) -> tuple:
+        return (manager,)
 
     @sk_function(
         description="Searching for information on the Internet through Google",
@@ -41,7 +49,7 @@ class WebServe:
             902: search empty
             903: input parameters error
         """
-        config = config_from_dot_env()
+        config = config_from_dot_env(self.manager.dot_env_config_path)
         google_key = config.get("GOOGLE_KEY")
         cx = config.get("GOOGLE_CX")
         assert google_key is not None and cx is not None

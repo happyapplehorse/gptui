@@ -19,7 +19,7 @@ class ConfigManager:
         parser = argparse.ArgumentParser(description="gptui cli")
         parser.add_argument('--config', type=str, help='Path to the configuration file.')
         args = parser.parse_args()
-        return args.config
+        return os.path.expanduser(args.config) if args.config else None
 
     @staticmethod
     def copy_default_config_to_user_home():

@@ -15,6 +15,7 @@ from .signals import (
 )
 from .openai_chat_inner_service import chat_service_for_inner
 from .openai_error import OpenaiErrorHandler
+from .utils.openai_api import openai_api
 from ..gptui_kernel.dispatcher import(
     async_iterable_from_gpt,
     async_dispatcher_function_call,
@@ -58,6 +59,7 @@ class OpenaiHandler:
         self.manager = manager
         self.context = context
         self.chat_context_saver = context.chat_context_saver
+        self.openai_api = openai_api(manager.dot_env_config_path)
 
     @handler
     async def user_handler(self, self_handler, user_gen) -> None:
@@ -201,9 +203,9 @@ class OpenaiHandler:
                 }
             )
             if functions:
-                paras = {"messages_list": message, "context": self.context, "functions": functions, "function_call": "auto"}
+                paras = {"messages_list": message, "context": self.context, "openai_api": self.openai_api, "functions": functions, "function_call": "auto"}
             else:
-                paras = {"messages_list": message, "context": self.context}
+                paras = {"messages_list": message, "context": self.context, "openai_api": self.openai_api}
             try:
                 await response_auxiliary_message_signal.send_async(self, _sync_wrapper=sync_wrapper, message={"content":message[0], "flag":"function_response"})
                 # add response to context

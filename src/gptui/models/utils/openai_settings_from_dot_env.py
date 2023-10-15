@@ -1,16 +1,15 @@
-import os
 from dotenv import dotenv_values
 
 
-def openai_settings_from_dot_env() -> tuple[str, str | None]:
+def openai_settings_from_dot_env(dot_env_path: str) -> tuple[str, str | None]:
     """
-    Reads the OpenAI API key and organization ID from the .env_gptui file.
+    Reads the OpenAI API key and organization ID from the dot_env_path.
 
     Returns:
         Tuple[str, str]: The OpenAI API key, the OpenAI organization ID
     """
 
-    config = dotenv_values(os.path.expanduser("~/.gptui/.env_gptui"))
+    config = dotenv_values(dot_env_path)
     api_key = config.get("OPENAI_API_KEY", None)
     org_id = config.get("OPENAI_ORG_ID", None)
 

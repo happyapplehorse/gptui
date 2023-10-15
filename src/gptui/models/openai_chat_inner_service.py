@@ -2,23 +2,19 @@ import copy
 import logging
 from typing import Iterable
 
-import openai
-
 from .context import OpenaiContext
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .utils.tokens_num import tokens_num_for_functions_call
-from ..utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 
 
 gptui_logger = logging.getLogger("gptui_logger")
-openai_key, org_id = openai_settings_from_dot_env()
-openai.api_key = openai_key
 
 
 def chat_service_for_inner(
         messages_list: list, 
         context: OpenaiContext,
+        openai_api,
         **kwargs,
     ) -> Iterable:
     
@@ -36,7 +32,7 @@ def chat_service_for_inner(
     trim_messages = trim_excess_tokens(inner_context, offset=offset_tokens_num)
     
     try:
-        response = openai.ChatCompletion.create(
+        response = openai_api.ChatCompletion.create(
             messages=trim_messages,
             **parameters,
             )

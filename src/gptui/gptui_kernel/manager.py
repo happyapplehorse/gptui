@@ -103,6 +103,11 @@ class ManagerInterface(metaclass=ABCMeta):
     def scan_plugins(self, path) -> tuple[list, list]:
         ...
 
+    @property
+    @abstractmethod
+    def dot_env_config_path(self) -> str | None:
+        ...
+
 
 class Manager(ManagerInterface):
     def __init__(
@@ -113,13 +118,17 @@ class Manager(ManagerInterface):
         dot_env_config_path: str | None = None,
         logger: logging.Logger | None = None
     ):
-        self.dot_env_config_path = dot_env_config_path
+        self._dot_env_config_path = dot_env_config_path
         self.logger = logger or get_null_logger()
         self._gk_kernel = kernel or Kernel(dot_env_config_path=dot_env_config_path, logger=self.logger)
         self._services = service_kernel or Kernel(dot_env_config_path=dot_env_config_path, logger=self.logger)
         self._client = client
         self._jobs = {}
         self._handlers = {}
+
+    @property
+    def dot_env_config_path(self) -> str | None:
+        return self._dot_env_config_path
 
     @property
     def gk_kernel(self) -> KernelInterface:
