@@ -7,20 +7,21 @@ from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.skill_definition import sk_function, sk_function_context_parameter
 
 from gptui.gptui_kernel.kernel import Callback
-from gptui.gptui_kernel.manager import auto_init_params
-from gptui.models.openai_chat_inner_service import chat_service_for_inner
-from gptui.models.signals import response_auxiliary_message_signal, notification_signal
-from gptui.models.openai_error import OpenaiErrorHandler
+from gptui.gptui_kernel.manager import ManagerInterface, auto_init_params
 from gptui.models.blinker_wrapper import async_wrapper_with_loop, sync_wrapper
+from gptui.models.openai_chat_inner_service import chat_service_for_inner
+from gptui.models.openai_error import OpenaiErrorHandler
+from gptui.models.signals import response_auxiliary_message_signal, notification_signal
+from gptui.models.utils.openai_api import openai_api
 from gptui.utils.my_text import MyText as Text
-
 
 gptui_logger = logging.getLogger("gptui_logger")
 
 
 class SnoozeReminder:
-    def __init__(self, manager):
+    def __init__(self, manager: ManagerInterface):
         self.manager = manager
+        self.openai_api = openai_api(manager.dot_env_config_path)
     
     @auto_init_params("0")
     @classmethod
@@ -99,6 +100,7 @@ class SnoozeReminder:
             response = chat_service_for_inner(
                 messages_list=messages_list,
                 context=openai_context,
+                openai_api=self.openai_api,
                 functions=functions,
                 function_call="auto",
             )

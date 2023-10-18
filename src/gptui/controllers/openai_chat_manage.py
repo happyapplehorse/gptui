@@ -6,21 +6,18 @@ import os
 import time
 from dataclasses import asdict
 
-import openai
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
 from ..gptui_kernel.manager import ManagerInterface
 from ..models.context import OpenaiContext
 from ..models.openai_chat import OpenaiChatInterface
+from ..models.utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 from ..models.utils.tokens_num import tokens_num_from_chat_context
 from ..utils.my_text import MyText as Text
-from ..utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 from ..views.animation import AnimationRequest
 from ..views.screens import InputDialog
 
 
-openai_key, org_id = openai_settings_from_dot_env()
-openai.api_key = openai_key
 gptui_logger = logging.getLogger("gptui_logger")
 
 
@@ -50,6 +47,7 @@ class OpenaiChatManage:
         conversations_recover: bool = False,
         vector_memory: bool = True,
     ) -> None:
+        self.openai_api_key, self.openai_org_id = openai_settings_from_dot_env(manager.dot_env_config_path)
         # check if workpath is a valid directory
         if not os.path.isdir(workpath):
             if os.path.exists(workpath):
@@ -76,13 +74,12 @@ class OpenaiChatManage:
                     for key, value in old_conversation_dict.items():
                         # rebuild OpenaiContext
                         openai_context_build = value["openai_context"]
-                        # retrieve plugins set
+                        # retrieve plugins list
                         openai_context_build["plugins"] = plugins_from_name(
                             manager=manager,
                             plugin_path=app.config["PLUGIN_PATH"],
                             plugins_name_list=conversation_plugins_dict[key],
                         )
-                        #openai_context_build["plugins"] = set(openai_context_build["plugins"])
                         value["openai_context"] = OpenaiContext(**openai_context_build)
                         # convert id to int
                         new_conversation_dict[int(key)] = value
@@ -112,7 +109,7 @@ class OpenaiChatManage:
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
-        kernel.add_text_embedding_generation_service("ada", OpenAITextEmbedding("text-embedding-ada-002", openai_key, org_id or ""))
+        kernel.add_text_embedding_generation_service("ada", OpenAITextEmbedding("text-embedding-ada-002", self.openai_api_key, self.openai_org_id or ""))
         kernel.register_memory_store(memory_store=self.app.qdrant_vector)
 
     def bead_insert(self, conversation_id: int | None = None) -> OpenaiContext:
@@ -371,6 +368,3 @@ def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_
     # retrieve plugin_info
     default_plugins_used_ready = [d[k] for d in [semantic_plugins_dict, native_plugins_dict] for k in plugins_name_list if k in d]
     return default_plugins_used_ready
-
-def openai_api():
-    return openai

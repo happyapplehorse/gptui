@@ -255,7 +255,7 @@ class HotKey(ModalScreen[str]):
     """
 
     BINDINGS = [
-        ("escape", "quit", "Quit"),
+        ("escape,ctrl+underscore", "quit", "Quit"),
     ]
 
     def __init__(self, display_content: str | Text, *args, **kwargs):

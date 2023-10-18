@@ -39,7 +39,7 @@ class LocationSkill:
     def city(self) -> str:
         config = self.manager.client.config
         city = config.get("location_city")
-        if city is None:
+        if not city:
             city = geocoder.ip('me').city
         return str(city)
 

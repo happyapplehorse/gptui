@@ -59,15 +59,16 @@ from ..controllers.chat_response_control import ChatResponse
 from ..controllers.dash_board_control import DashBoard
 from ..controllers.decorate_display_control import DecorateDisplay
 from ..controllers.notification_control import Notification
-from ..controllers.openai_chat_manage import OpenaiChatManage, openai_api
+from ..controllers.openai_chat_manage import OpenaiChatManage
 from ..controllers.tube_files_control import TubeFiles
 from ..controllers.voice_control import VoiceService
 from ..data.vector_memory.qdrant_memory import QdrantVector
 from ..drivers.driver_manager import DriverManager
 from ..models.context import OpenaiContext
 from ..models.doc import Doc, document_loader
-from ..models.openai_chat import OpenaiChat
 from ..models.gptui_basic_services.plugins.conversation_service import ConversationService
+from ..models.openai_chat import OpenaiChat
+from ..models.utils.openai_api import openai_api
 from ..gptui_kernel.manager import Manager
 from ..utils.my_text import MyText as Text
 from ..utils.my_text import MyLines as Lines
@@ -96,7 +97,7 @@ class MainApp(App[str]):
     CSS_PATH="layout.tcss"
 
     BINDINGS = [
-        Binding("escape", "hot_key", "active hot key"),
+        Binding("escape,ctrl+underscore", "hot_key", "active hot key"),
         Binding("ctrl+q", "exit_main_app", "exit the app"),
         Binding("ctrl+n", "add_conversation", "add a conversation"),
         Binding("ctrl+s", "save_conversation", "save a conversation"),
@@ -439,7 +440,7 @@ class MainApp(App[str]):
     async def on_switch_changed(self, event) -> None:
         if event.switch.id == "voice_switch":
             if event.value:
-                voice = Voice(self)
+                voice = Voice(self, dot_env_path=self.config["dot_env_path"], max_record_time=60)
                 self.query_one("#voice_input").mount(voice)
                 self.query_one("#input_switcher").current = "voice_input"
                 self.query_one("#speak_switch").value = True
@@ -1451,8 +1452,9 @@ class NoContextChat:
     no context chat manager
     {no_context_chat_id:[{"role":role,"content":content}]}
     """
-    def __init__(self, app) -> None:
+    def __init__(self, app: MainApp) -> None:
         self.app = app
+        self.openai_api = openai_api(app.config["dot_env_path"])
         self.count = 0
         self.no_context_chat_active = 0
         self.no_context_chat_dict = {}
@@ -1477,7 +1479,7 @@ class NoContextChat:
         ani_id = str(uuid.uuid4())
         app.post_message(AnimationRequest(ani_id=ani_id, action="start"))
         try:
-            response = openai_api().ChatCompletion.create(
+            response = self.openai_api.ChatCompletion.create(
                 model = app.config["default_openai_parameters"]["model"] or "gpt-4",
                 messages = [message],
                 stream = app.config["default_openai_parameters"]["stream"],
