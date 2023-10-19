@@ -395,6 +395,17 @@ class TaskNode(metaclass=ABCMeta):
     def children_num(self) -> int:
         return len(self._children)
 
+    @property
+    def ancestor_chain(self) -> list[TaskNode]:
+        chain = []
+        if self.parent == "Null":
+            return [self]
+        current = self
+        while current != "Null":
+            chain.append(current)
+            current = current.parent
+        return chain
+
 
 class CommanderAsyncInterface(TaskNode):
     @abstractmethod
@@ -468,7 +479,7 @@ class CommanderAsync(CommanderAsyncInterface):
     async def _callback_handle(
         self,
         callback: Callback,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
         task_node: TaskNode | None = None,
     ) -> None:
         try:
@@ -478,11 +489,11 @@ class CommanderAsync(CommanderAsyncInterface):
         for callback_job in callbact_list:
             function = callback_job["function"]
             params = callback_job.get("params")
-            inject_job = callback_job.get("inject_task_node", False)
+            inject_task_node = callback_job.get("inject_task_node", False)
             if task_node is None:
                 task_node = callback._task_node
             if params is None:
-                if inject_job:
+                if inject_task_node:
                     if iscoroutinefunction(function):
                         await function(task_node)
                     else:
@@ -495,7 +506,7 @@ class CommanderAsync(CommanderAsyncInterface):
             else:
                 args = params.get("args", ())
                 kwargs = params.get("kwargs", {})
-                if inject_job:
+                if inject_task_node:
                     if iscoroutinefunction(function):
                         await function(task_node, *args, **kwargs)
                     else:
@@ -551,6 +562,7 @@ def tasker(password):
                     result = func(self_job)
             except Exception as e:
                 self_job.commander.logger.error(f"Encountered an error in the job task. Error: {e}, job: {self_job}")
+                self_job.commander._callback_handle(callback=self_job._callback, which="at_exception", task_node=self_job)
             else:
                 if result is not None:
                     assert isinstance(result, HandlerCoroutine)
@@ -585,6 +597,7 @@ class HandlerCoroutine(TaskNode):
             result = await coro
         except Exception as e:
             self.commander.logger.error(f"Encountered an error in the handler. Error: {e}, handler: {self}")
+            self.commander._callback_handle(callback=self._callback, which="at_exception", task_node=self)
         else:
             return result
         finally:
@@ -607,7 +620,7 @@ class HandlerCoroutine(TaskNode):
 
     def add_callback_functions(
         self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
         functions_info: dict | list[dict],
     ) -> None:
         if self._callback is None:
@@ -691,6 +704,7 @@ class Callback:
         at_handler_start: list | None = None,
         at_receiving_start: list | None = None,
         at_receiving_end: list | None = None,
+        at_exception: list | None = None,
         at_handler_end: list | None = None,
         at_job_end: list | None = None,
         at_commander_end: list | None = None,
@@ -743,6 +757,17 @@ class Callback:
                     "inject_task_node": bool, whether pass back task node into callback function automatically
                 },
             ]
+            at_exception: [
+                # callback when an exception occurs
+                {
+                    "function": callback_function,
+                    "params": {
+                        "args": tuple, position arguments of callback function
+                        "kwargs": dict, key-values arguments of callback function
+                    },
+                    "inject_task_node": bool, whether pass back task node into callback function automatically
+                },
+            ]
             at_handler_end: [
                 # callback when this handler is finished
                 {
@@ -781,6 +806,7 @@ class Callback:
         self.at_handler_start = at_handler_start or []
         self.at_receiving_start = at_receiving_start or []
         self.at_receiving_end = at_receiving_end or []
+        self.at_exception = at_exception or []
         self.at_handler_end = at_handler_end or []
         self.at_job_end = at_job_end or []
         self.at_commander_end = at_commander_end or []
@@ -821,7 +847,7 @@ class Callback:
         self.__task_node = value
 
     def update(self, callbacks: Callback | None | list[Callback | None]) -> Callback:
-        fields = ["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"]
+        fields = ["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"]
         if callbacks is None:
             return self
         elif isinstance(callbacks, Callback):
@@ -868,7 +894,7 @@ class Job(TaskNode):
 
     def add_callback_functions(
         self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
         functions_info: dict | list[dict],
     ) -> None:
         if self._callback is None:

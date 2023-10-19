@@ -100,7 +100,7 @@ python main.py
 
 ### API keys的配置
 
-在`~/.gptui/.env_gptui`中配置相应的API Keys。参考[.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example)文件。当使用“WebServe”插件时，需提供`GOOGLE_KEY`和`GOOGLE_CX`，它们可免费地从谷歌获取。
+在`~/.gptui/.env_gptui`中配置相应的API Keys。参考[.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example)文件。当使用“WebServe”插件时，需提供`GOOGLE_KEY`和`GOOGLE_CX`，它们可免费地从谷歌[获取](https://developers.google.com/custom-search/v1/introduction)。
 
 ## 配置文件
 
