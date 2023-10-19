@@ -113,7 +113,7 @@ On Linux or macOS systems, if you want to use voice and TTS (TextToSpeak) functi
 ### Config API keys
 Configure the corresponding API Keys in `~/.gptui/.env_gptui`.
 Refer to the [.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example) file.
-When using the "WebServe" plugin, `GOOGLE_KEY` and `GOOGLE_CX` need to be provided, which can be obtained free of charge from Google.
+When using the "WebServe" plugin, `GOOGLE_KEY` and `GOOGLE_CX` need to be provided, which can be [obtained](https://developers.google.com/custom-search/v1/introduction) free of charge from Google.
 
 ## Config File
 See `./config.yml` for a config file example that lists all configurable options.
