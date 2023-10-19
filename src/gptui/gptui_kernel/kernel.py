@@ -562,7 +562,7 @@ def tasker(password):
                     result = func(self_job)
             except Exception as e:
                 self_job.commander.logger.error(f"Encountered an error in the job task. Error: {e}, job: {self_job}")
-                self_job.commander._callback_handle(callback=self_job._callback, which="at_exception", task_node=self_job)
+                await self_job.commander._callback_handle(callback=self_job._callback, which="at_exception", task_node=self_job)
             else:
                 if result is not None:
                     assert isinstance(result, HandlerCoroutine)
@@ -597,7 +597,7 @@ class HandlerCoroutine(TaskNode):
             result = await coro
         except Exception as e:
             self.commander.logger.error(f"Encountered an error in the handler. Error: {e}, handler: {self}")
-            self.commander._callback_handle(callback=self._callback, which="at_exception", task_node=self)
+            await self.commander._callback_handle(callback=self._callback, which="at_exception", task_node=self)
         else:
             return result
         finally:
