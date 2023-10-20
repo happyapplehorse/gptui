@@ -478,10 +478,12 @@ class CommanderAsync(CommanderAsyncInterface):
 
     async def _callback_handle(
         self,
-        callback: Callback,
+        callback: Callback | None,
         which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
         task_node: TaskNode | None = None,
     ) -> None:
+        if callback is None:
+            return
         try:
             callbact_list = getattr(callback, which)
         except AttributeError:
