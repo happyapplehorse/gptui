@@ -57,7 +57,7 @@ class ChatResponse:
             if context_id == tab_id:
                 self.stream_display(message={"content": {"content": "", "context_id": context_id}, "flag": "content"}, stream=False, copy_code=True)
                 self.chat_region.write_lines([Text()])
-            chat_stream_content = {"role": "assistant", "content": ""}
+            chat_stream_content["content"] = ""
             buffer_context["decorate_chat_stream_content_lines"] = Lines()
         buffer_context["last_tab_id"] = tab_id
 
@@ -97,6 +97,6 @@ class ChatResponse:
             if group_talk_manager_id == tab_id:
                 self.group_talk_stream_display(message={"content": {"role": "assistant", "name": message_dict["name"], "content": "", "group_talk_manager_id": group_talk_manager_id}, "flag": "content"}, stream=False, copy_code=True)
                 self.chat_region.write_lines([Text()])
-            group_talk_chat_stream_content = {"role": "assistant", "name": "", "content": ""}
+            group_talk_chat_stream_content["content"] = ""
             buffer_context["group_talk_decorate_chat_stream_content_lines"] = Lines()
         buffer_context["last_tab_id"] = tab_id

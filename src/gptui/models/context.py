@@ -123,7 +123,7 @@ class BeadOpenaiContext(OpenaiContext):
             self.bead_info["lengths"] = []
         else:
             self.bead_info["positions"].append(len(self.chat_context))
-        for one_message in bead_content:
+        for one_message in copy.deepcopy(bead_content):
             self.chat_context_append(message=one_message, tokens_num_update=True)
         self.bead_info["lengths"].append(tokens_num_from_chat_context(chat_context=bead_content, model=self.parameters["model"]))
 
