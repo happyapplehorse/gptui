@@ -50,7 +50,7 @@ class DashBoard:
         tokens_num_list = openai_context.tokens_num_list
         bead_index_list = conversation["bead"]["positions"]
         bead_tokens_list = [sum(tokens_num_list[:index]) for index in bead_index_list]
-        bead_length_list = conversation["bead"]["length"]
+        bead_length_list = conversation["bead"]["lengths"]
 
         tokens_proportion = tokens_num / tokens_num_window
         bead_positions_ratio_list_start = [num / tokens_num for num in bead_tokens_list]

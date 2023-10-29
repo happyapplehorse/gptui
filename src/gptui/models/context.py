@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from typing import Literal
@@ -106,3 +107,34 @@ class OpenaiContext(Context):
         memo[id(self)] = new_instance
 
         return new_instance
+
+
+@dataclass
+class BeadOpenaiContext(OpenaiContext):
+    bead: dict[str, list] = field(default_factory=lambda: {"content": [], "positions": [], "lengths": []})
+
+    def insert_bead(self):
+        """Insert the bead into the chat_context."""
+        bead_content = self.bead["content"]
+        if self.chat_context is None:
+            self.bead["positions"] = [0]
+            # The length would be added below, so it is not added here.
+            self.bead["lengths"] = []
+        else:
+            self.bead["positions"].append(len(self.chat_context))
+        for one_message in bead_content:
+            self.chat_context_append(message=one_message, tokens_num_update=True)
+        self.bead["lengths"].append(tokens_num_from_chat_context(chat_context=bead_content, model=self.parameters["model"]))
+
+    def auto_insert_bead(self) -> bool:
+        """Automatically determine whether the bead needs to be inserted.
+        If so, insert the bead and return True;
+        otherwise, return False.
+        """
+        last_bead_position = self.bead["positions"][-1] if self.bead["positions"] else 0
+        tokens_num_without_bead = sum(self.tokens_num_list[last_bead_position:])
+        assert self.max_sending_tokens_num is not None
+        if tokens_num_without_bead >= self.max_sending_tokens_num * 0.95:
+            self.insert_bead()
+            return True
+        return False

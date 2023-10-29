@@ -1,7 +1,7 @@
 import logging
 from typing import Iterable
 
-from .context import OpenaiContext
+from .context import BeadOpenaiContext, OpenaiContext
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .utils.openai_api import openai_api
@@ -12,18 +12,23 @@ gptui_logger = logging.getLogger("gptui_logger")
 
 
 class Role:
-    def __init__(self, name: str, system_message: str, manager: ManagerInterface, openai_context_parent: OpenaiContext):
-        """Role use the same openai parameters as in the parent conversation."""
+    def __init__(self, name: str, manager: ManagerInterface, openai_context_parent: OpenaiContext):
+        """Role use the same openai parameters as in the parent conversation.
+        """
         self.name = name
-        self.context = OpenaiContext()
+        self.context = BeadOpenaiContext()
         self.manager = manager
         self.openai_api = openai_api(manager.dot_env_config_path)
-        self.context.chat_context_append({"role": "system", "content": system_message})
         self.context.max_sending_tokens_num = openai_context_parent.max_sending_tokens_num
         self.openai_context_parent = openai_context_parent
         self.context.chat_context_saver = "inner"
 
+    def set_role_prompt(self, prompt: str):
+        self.context.bead["content"] = [{"role": "system", "content": prompt}]
+        self.context.insert_bead()
+
     def chat(self, message: dict | list[dict]) -> Iterable:
+        self.context.auto_insert_bead()
         if isinstance(message, dict):
             self.context.chat_context_append(message=message)
         else:

@@ -25,29 +25,31 @@ gptui_logger = logging.getLogger("gptui_logger")
 class OpenaiChatManage:
     """
     Schema for conversations:
-    {conversation_id:{
-        "tab_name": tab_name,
-        "file_id": file_id,
-        "openai_context": OpenaiContext,
-        "bead": {
+    {
+        conversation_id: {
+            "tab_name": tab_name,
+            "file_id": file_id,
+            "openai_context": OpenaiContext,
+            "bead": {
                 "positions": index list of beads,
                 "content": dict or list[dict], openai message or list of message which express the bead content,
-                "length": list of bead's tokens num,
+                "lengths": list of bead's tokens num,
             },
-        "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
+            "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
         }
     }
     Schema for group talk conversations:
-    {conversation_id:{
-        "tab_name": tab_name,
-        "file_id": file_id,
-        "group_talk_manager": GroupTalkManager,
-        "bead": {
+    {
+        conversation_id: {
+            "tab_name": tab_name,
+            "file_id": file_id,
+            "group_talk_manager": GroupTalkManager,
+            "bead": {
                 "positions": [],
                 "content": [],
-                "length": [],
+                "lengths": [],
             },
-        "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
+            "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
         }
     }
     """
@@ -141,15 +143,16 @@ class OpenaiChatManage:
         bead_content = bead["content"]
         if openai_context.chat_context is None:
             bead["positions"] = [0]
-            bead["length"] = []
+            # The length would be added below, so it is not added here.
+            bead["lengths"] = []
         else:
             bead["positions"].append(len(openai_context.chat_context))
         if isinstance(bead_content, dict):
             self.openai_chat.chat_message_append(context=openai_context, message=bead_content)
-            bead["length"].append(tokens_num_from_chat_context(chat_context=[bead_content], model=openai_context.parameters["model"]))
+            bead["lengths"].append(tokens_num_from_chat_context(chat_context=[bead_content], model=openai_context.parameters["model"]))
         else:
             self.openai_chat.chat_messages_extend(context=openai_context, messages_list=bead_content)
-            bead["length"].append(tokens_num_from_chat_context(chat_context=bead_content, model=openai_context.parameters["model"]))
+            bead["lengths"].append(tokens_num_from_chat_context(chat_context=bead_content, model=openai_context.parameters["model"]))
         return openai_context
 
     def auto_bead_insert(self, conversation_id: int | None = None) -> tuple[OpenaiContext, bool]:
@@ -163,9 +166,6 @@ class OpenaiChatManage:
             last_position = 0
         
         tokens_num_without_bead = sum(conversation["openai_context"].tokens_num_list[last_position:])
-        max_sending_tokens_ratio = conversation["max_sending_tokens_ratio"]
-        model = conversation["openai_context"].parameters["model"]
-        tokens_window = self.app.config["openai_model_info"][model]["tokens_window"]
         max_sending_tokens_num = conversation["openai_context"].max_sending_tokens_num
         
         if tokens_num_without_bead >= max_sending_tokens_num * 0.95:
@@ -225,7 +225,7 @@ class OpenaiChatManage:
             "tab_name": "New",
             "file_id": None,
             "openai_context": openai_context,
-            "bead":{"content":bead_init, "positions": [], "length": []},
+            "bead":{"content":bead_init, "positions": [], "lengths": []},
             "max_sending_tokens_ratio": max_sending_tokens_ratio,
         }
         
@@ -408,7 +408,7 @@ class OpenaiChatManage:
             "bead": {
                     "positions": [],
                     "content": [],
-                    "length": [],
+                    "lengths": [],
                 },
             "max_sending_tokens_ratio": max_sending_tokens_ratio or self.app.config["default_conversation_parameters"]["max_sending_tokens_ratio"],
         }

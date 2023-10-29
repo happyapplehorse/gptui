@@ -91,6 +91,7 @@ class GroupTalk:
         )
         openai_context_parent = self.manager.client.openai.conversation_dict[self.manager.client.openai.conversation_active]["openai_context"]
         role = Role(name=role_name, system_message=prompt, manager=self.manager, openai_context_parent=openai_context_parent)
+        role.set_role_prompt(prompt)
         group_talk_manager.create_role(role=role, role_name=role_name)
 
         return f"The role of {role_name} has been created."
