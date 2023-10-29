@@ -2,12 +2,15 @@ import asyncio
 import copy
 import json
 import logging
+import random
 from dataclasses import asdict
+from typing import Iterable, AsyncIterable
 
 from .blinker_wrapper import sync_wrapper, async_wrapper_with_loop
 from .context import OpenaiContext
 from .signals import (
     chat_context_extend_signal,
+    common_message_signal,
     notification_signal,
     response_auxiliary_message_signal,
     response_to_user_message_stream_signal,
@@ -22,6 +25,7 @@ from ..gptui_kernel.dispatcher import(
 )
 from ..gptui_kernel.manager import ManagerInterface
 from ..gptui_kernel.kernel import BasicJob, handler, Callback
+from ..gptui_kernel.dispatcher import async_iterable_from_gpt
 
 
 gptui_logger = logging.getLogger("gptui_logger")
@@ -81,7 +85,7 @@ class OpenaiHandler:
             await response_to_user_message_stream_signal.send_async(
                 self,
                 _sync_wrapper=sync_wrapper,
-                message={"content": char, "flag": "content"},
+                message={"content": {"content": char, "context_id": self.context.id}, "flag": "content"},
             )
             
             # Send voice signal
@@ -108,7 +112,7 @@ class OpenaiHandler:
         await response_to_user_message_stream_signal.send_async(
             self,
             _sync_wrapper=sync_wrapper,
-            message={"content": "", "flag": "end"},
+            message={"content": {"content": "", "context_id": self.context.id}, "flag": "end"},
         )
         
         # save response to context
@@ -118,7 +122,7 @@ class OpenaiHandler:
                 _sync_wrapper=sync_wrapper,
                 message={
                     "content":{
-                        "messages": [{"role":"assistant", "content":collected_messages}],
+                        "messages": [{"role": "assistant", "content": collected_messages}],
                         "context": self.context,
                     },
                     "flag": "",
@@ -217,11 +221,10 @@ class OpenaiHandler:
                             "content":{
                                 "messages": [
                                     {
-                                        "role": "assistant",
+                                        "role": "system",
                                         "content": (
-                                            f"<log />Call function: {function_call_display_str}\n"
-                                            "This is just a brief history record of the function you have previously invoked. "
-                                            "You should not call functions in this manner, nor should you use the <log /> tag."
+                                            f"<log />Assistant called function: {function_call_display_str}\n"
+                                            "This is an automatically logged message to remind you of your function call history.\n"
                                         )
                                     },
                                 ],
@@ -233,11 +236,10 @@ class OpenaiHandler:
                 else:
                     self.context.chat_context_append(
                         {
-                            "role": "assistant",
+                            "role": "system",
                             "content": (
-                                f"<log />Call function: {function_call_display_str}\n"
-                                "This is just a brief history record of the function you have previously invoked. "
-                                "You should not call functions in this manner, nor should you use the <log /> tag."
+                                f"<log />Assistant called function: {function_call_display_str}\n"
+                                "This is an automatically logged message to remind you of your function call history.\n"
                             )
                         }
                     )
@@ -281,3 +283,111 @@ class OpenaiHandler:
                 ],
             )
             await self_handler.put_job(ResponseJob(response=response, manager=self.manager, context=self.context, callback=callback))
+
+
+class GroupTalkHandler:
+    @handler
+    async def handle_response(self, self_handler, response_dict: dict[str, Iterable]):
+        items = list(response_dict.items())
+        # Randomly shuffle the order to give each role an equal opportunity to speak.
+        random.shuffle(items)
+        for role_name, response in items:
+            self_handler.call_handler(self.parse_stream_response(role_name, response))
+
+    @handler
+    async def wait_for_termination(self, self_handler, group_talk_manager):
+        while True:
+            await asyncio.sleep(1)
+            # If no one is speaking, check if the user is speaking.
+            if group_talk_manager.speaking is None:
+                messages = [{"role": "user", "name": "host", "content": message} for message in group_talk_manager.user_talk_buffer]
+                if messages:
+                    common_message_signal.send(
+                        self,
+                        _async_wrapper=async_wrapper_with_loop,
+                        message={
+                            "content": messages,
+                            "flag": "group_talk_user_message_send",
+                        },
+                    )
+                    response_dict = {}
+                    items = list(group_talk_manager.roles.items())
+                    # Randomly shuffle the order to give each role an equal opportunity to speak.
+                    random.shuffle(items)
+                    for role_name, role in items:
+                        response_dict[role_name] = role.chat(message=messages)
+                    GroupTalkHandler = group_talk_manager.manager.get_handler("GroupTalkHandler")
+                    # Because at any given moment only one role can speak, it is safe when multiple dialogue tasks are running in parallel;
+                    # there will be no inconsistency in the role's chat history.
+                    self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
+                    group_talk_manager.user_talk_buffer = []
+            if not group_talk_manager.running:
+                group_talk_manager.terminate_task_node()
+                break
+
+    @handler
+    async def parse_stream_response(self, self_handler, role_name, stream_response):
+        async_stream_response = async_iterable_from_gpt(stream_response)
+        talk_manager = self_handler.ancestor_chain[-2]
+        if not talk_manager.running:
+            return
+        full_response_content = await self.stream_response_result(async_stream_response=async_stream_response)
+        if "Can I speak" in full_response_content:
+            role = talk_manager.roles[role_name]
+            if talk_manager.speaking:
+                # No need to actually reply.
+                role.context.chat_context_append({"role": "user", "name": "host", "content": f"Host says to you: No, {talk_manager.speaking} is speaking."})
+            else:
+                role.context.chat_context_append({"role": "assistant", "content": full_response_content})
+                talk_manager.speaking = role_name
+                response = talk_manager.roles[role_name].chat(message={"role": "user", "name": "host", "content": f"Host says to you: Yes, you are {role_name}, you can talk now."})
+                async_talk_stream_response = async_iterable_from_gpt(response)
+                talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
+                TalkToAll = talk_manager.manager.get_job("TalkToAll")
+                await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
+
+    async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
+        chunk_list = []
+        async for chunk in async_stream_response:
+            if not chunk:
+                continue
+            chunk_content = chunk.get("content")
+            if not chunk_content:
+                continue
+            chunk_list.append(chunk_content)
+        full_response_content = ''.join(chunk_list)
+        return full_response_content      
+
+    async def stream_response_display_and_result(self, role_name: str, async_stream_response: AsyncIterable, talk_manager) -> str:
+        chunk_list = []
+        async for chunk in async_stream_response:
+            if not chunk:
+                continue
+            chunk_content = chunk.get("content")
+            if not chunk_content:
+                continue
+            await response_auxiliary_message_signal.send_async(
+                self,
+                _sync_wrapper=sync_wrapper,
+                message={
+                    "content": {
+                        "flag": "content",
+                        "content": {"role": "assistant", "name": role_name, "content": chunk_content, "group_talk_manager_id": talk_manager.group_talk_manager_id},
+                    },
+                    "flag": "group_talk_response",
+                },
+            )
+            chunk_list.append(chunk_content)
+        full_response_content = ''.join(chunk_list)
+        await response_auxiliary_message_signal.send_async(
+            self,
+            _sync_wrapper=sync_wrapper,
+            message={
+                "content": {
+                    "flag": "end",
+                    "content": {"role": "assistant", "name": role_name, "content": "", "group_talk_manager_id": talk_manager.group_talk_manager_id},
+                },
+                "flag": "group_talk_response",
+            },
+        )
+        return full_response_content

@@ -352,6 +352,8 @@ class TaskNode(metaclass=ABCMeta):
         self._commander: CommanderAsync | None = None
         self._parent: TaskNode | None | Literal["Null"] = None
         self._children: list = [self]
+        self._callback: Callback | None = None
+        self._state: Literal["active", "terminated"] = "active"
     
     def add_child(self, child: TaskNode) -> None:
         self._children.append(child)
@@ -406,6 +408,41 @@ class TaskNode(metaclass=ABCMeta):
             current = current.parent
         return chain
 
+    async def terminate_task_node(self):
+        """Terminate the task_node. This involves detaching the node along with its entire connected subtree from its parent node.
+        The parent node will immediately consider this child node as completed, but the detached subtree may continue to run,
+        potentially leading to side effects. The 'close_task_node' method is safer, but it's not entirely foolproof.
+        """
+        self._children.clear()
+        if self._callback:
+            await self.commander._callback_handle(callback=self._callback, which="at_terminate", task_node=self)
+        parent = self.parent
+        if parent != "Null":
+            await parent.del_child(self)
+
+    async def close_task_node(self):
+        """Terminate the task_node and prevent its descendants from further creating child nodes,
+        so as to minimize the side effects of shutting down the node.
+        """
+        def terminate_children(node: TaskNode, visited=None):
+            if visited is None:
+                visited = set()
+            if node in visited:
+                return
+            visited.add(node)
+            node._state = "terminated"
+            for child in node._children:
+                terminate_children(child, visited)
+
+        self._children.clear()
+        if self._callback:
+            await self.commander._callback_handle(callback=self._callback, which="at_terminate", task_node=self)
+        parent = self.parent
+        if parent != "Null":
+            await parent.del_child(self)
+        
+        terminate_children(self)
+
 
 class CommanderAsyncInterface(TaskNode):
     @abstractmethod
@@ -426,24 +463,24 @@ class CommanderAsync(CommanderAsyncInterface):
     def __init__(self, logger: logging.Logger | None = None):
         super().__init__()
         CommanderAsync._commander_instances.add(self)
+        self._commander = self
+        self._children = []
+        self._parent = "Null"
         self.callbacks_at_commander_end_list = []
         self.background_tasks = []
         self.unique_id = itertools.count(1)
-        self._children = []
-        self._parent = "Null"
         self.logger = logger or get_null_logger()
 
     def async_commander_run(self, job: Job | Sequence[Job]) -> None:
         self.__job_queue = asyncio.Queue()
-        asyncio.run(self.commander(job))
+        asyncio.run(self.commander_async(job))
 
-    async def commander(self, init_job: Job | Sequence[Job]) -> None:
+    async def commander_async(self, init_job: Job | Sequence[Job]) -> None:
         # initial job
         if not isinstance(init_job, Iterable):
             init_job = [init_job]
         for job in init_job:
-            self.add_child(job)
-            await self.__job_queue.put(job)
+            await self.put_job(job=job, parent=self)
 
         while True:
             # stop condition
@@ -460,7 +497,6 @@ class CommanderAsync(CommanderAsyncInterface):
                     self.callbacks_at_commander_end_list.append(callback)
             
             job._id = next(self.unique_id)
-            job._commander = self
             job_task = job.task
             if getattr(job_task, "_tasker_", None) is not True:
                 raise NotTaskerError(job)
@@ -479,7 +515,7 @@ class CommanderAsync(CommanderAsyncInterface):
     async def _callback_handle(
         self,
         callback: Callback | None,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_terminate", "at_handler_end", "at_job_end", "at_commander_end"],
         task_node: TaskNode | None = None,
     ) -> None:
         if callback is None:
@@ -524,19 +560,30 @@ class CommanderAsync(CommanderAsyncInterface):
         job._parent = "Null"
         await self.__job_queue.put(job)
 
-    async def put_job(self, job: Job, parent: TaskNode | None = None) -> None:
+    async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None) -> None:
         if parent is None:
             parent = self
-        job._parent = parent
+        if requester is None:
+            requester = parent
+        if parent._state == "terminated":
+            return
         parent.add_child(job)
+        if job._commander is None:
+            job._commander = parent.commander
         await self.__job_queue.put(job)
 
-    def call_handler(self, handler: HandlerCoroutine, parent: Job | HandlerCoroutine) -> Task:
+    def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None) -> Task | None:
         if getattr(handler, "_handler_", None) is not True:
             raise NotHandlerError(parent)
+        if parent is None:
+            parent = self
+        if requester is None:
+            requester = parent
+        if parent._state == "terminated":
+            return
         parent.add_child(handler)
-        handler._parent = parent
-        handler._commander = parent.commander
+        if handler._commander is None:
+            handler._commander = parent.commander
         task = asyncio.create_task(handler.wrap_coroutine())
         self.task_keeper(task)
         return task
@@ -608,13 +655,13 @@ class HandlerCoroutine(TaskNode):
     def __await__(self):
         return self.wrap_coroutine().__await__()
 
-    async def put_job(self, job: Job):
+    async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        await commander.put_job(job=job, parent=self)
+        await commander.put_job(job=job, parent=parent or self, requester=requester)
 
-    def call_handler(self, handler: HandlerCoroutine):
+    def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        commander.call_handler(handler=handler, parent=self)
+        commander.call_handler(handler=handler, parent=parent or self, requester=requester)
     
     @property
     def callback(self) -> Callback | None:
@@ -622,7 +669,7 @@ class HandlerCoroutine(TaskNode):
 
     def add_callback_functions(
         self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_terminate", "at_handler_end", "at_job_end", "at_commander_end"],
         functions_info: dict | list[dict],
     ) -> None:
         if self._callback is None:
@@ -707,6 +754,7 @@ class Callback:
         at_receiving_start: list | None = None,
         at_receiving_end: list | None = None,
         at_exception: list | None = None,
+        at_terminate: list | None = None,
         at_handler_end: list | None = None,
         at_job_end: list | None = None,
         at_commander_end: list | None = None,
@@ -770,6 +818,17 @@ class Callback:
                     "inject_task_node": bool, whether pass back task node into callback function automatically
                 },
             ]
+            at_terminate: [
+                # callback when the task_node is terminated
+                {
+                    "function": callback_function,
+                    "params": {
+                        "args": tuple, position arguments of callback function
+                        "kwargs": dict, key-values arguments of callback function
+                    },
+                    "inject_task_node": bool, whether pass back task node into callback function automatically
+                },
+            ]
             at_handler_end: [
                 # callback when this handler is finished
                 {
@@ -809,6 +868,7 @@ class Callback:
         self.at_receiving_start = at_receiving_start or []
         self.at_receiving_end = at_receiving_end or []
         self.at_exception = at_exception or []
+        self.at_terminate = at_terminate or []
         self.at_handler_end = at_handler_end or []
         self.at_job_end = at_job_end or []
         self.at_commander_end = at_commander_end or []
@@ -849,7 +909,7 @@ class Callback:
         self.__task_node = value
 
     def update(self, callbacks: Callback | None | list[Callback | None]) -> Callback:
-        fields = ["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"]
+        fields = ["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_terminate", "at_handler_end", "at_job_end", "at_commander_end"]
         if callbacks is None:
             return self
         elif isinstance(callbacks, Callback):
@@ -870,9 +930,9 @@ class Job(TaskNode):
 
     def __init__(self, callback: Callback | None = None):
         super().__init__()
-        self._callback = callback
         if callback is not None:
             callback._task_node = self
+        self._callback = callback
 
     @abstractmethod
     async def task(self) -> HandlerCoroutine | None:
@@ -882,13 +942,13 @@ class Job(TaskNode):
         if self._callback is not None:
             await self.commander._callback_handle(callback=self._callback, which="at_job_end", task_node=self)
 
-    async def put_job(self, job: Job):
+    async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        await commander.put_job(job=job, parent=self)
+        await commander.put_job(job=job, parent=parent or self, requester=requester)
 
-    def call_handler(self, handler: HandlerCoroutine):
+    def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        commander.call_handler(handler=handler, parent=self)
+        commander.call_handler(handler=handler, parent=parent or self, requester=requester)
 
     @property
     def callback(self) -> Callback | None:
@@ -896,7 +956,7 @@ class Job(TaskNode):
 
     def add_callback_functions(
         self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_handler_end", "at_job_end", "at_commander_end"],
+        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_exception", "at_terminate", "at_handler_end", "at_job_end", "at_commander_end"],
         functions_info: dict | list[dict],
     ) -> None:
         if self._callback is None:

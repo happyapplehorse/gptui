@@ -5,7 +5,7 @@ from typing import Literal
 
 from .blinker_wrapper import async_wrapper_without_loop, async_wrapper_with_loop, sync_wrapper
 from .context import OpenaiContext
-from .jobs import ResponseJob
+from .jobs import ResponseJob, GroupTalkManager, TalkToAll
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .signals import notification_signal, chat_context_extend_for_sending_signal
@@ -335,3 +335,17 @@ def response_to_stream_format(mode: Literal["no_function_call", "function_call"]
                                          {"choices":[{"delta":{"content":reply_content}, "finish_reason":"null"}]},
                                          {"choices":[{"delta":{}, "finish_reason":finish_reason}]}]
     return result
+
+
+class OpenAIGroupTalk:
+    def __init__(self, manager: ManagerInterface):
+        self.manager = manager
+        self.openai_api = openai_api(manager.dot_env_config_path)
+
+    def talk_stream(self, group_talk_manager: GroupTalkManager, message_content: str) -> None:
+        if group_talk_manager.running is False:
+            group_talk_manager.running = True
+            group_talk_manager.user_talk_buffer.append(message_content)
+            self.manager.gk_kernel.commander.async_commander_run(group_talk_manager)
+        else:
+            group_talk_manager.user_talk_buffer.append(message_content)
