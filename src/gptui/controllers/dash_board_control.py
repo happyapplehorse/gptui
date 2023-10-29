@@ -14,7 +14,7 @@ class DashBoard:
         if conversation_id is None:
             conversation_id = self.app.openai.conversation_active
         conversation = self.app.openai.conversation_dict[conversation_id]
-        self.display(tokens_num_window=tokens_num_window, conversation=conversation, openai_context=conversation["openai_context"])
+        self.display(tokens_num_window=tokens_num_window, openai_context=conversation["openai_context"])
 
     def group_talk_dash_board_display(self, tokens_num_window: int, conversation_id: int | None = None):
         "Display the token's monitor for group talk in dashboard"
@@ -24,9 +24,9 @@ class DashBoard:
         roles = list(conversation["group_talk_manager"].roles.values())
         if roles:
             first_role = roles[0]
-            self.display(tokens_num_window=tokens_num_window, conversation=conversation, openai_context=first_role.context)
+            self.display(tokens_num_window=tokens_num_window, openai_context=first_role.context)
 
-    def display(self, tokens_num_window: int, conversation: dict, openai_context: OpenaiContext):
+    def display(self, tokens_num_window: int, openai_context: OpenaiContext):
         "Display the token's monitor in dashboard"
         
         def is_inside_segment(position: int, start_positions: list[int], end_positions:list[int]):
@@ -48,9 +48,9 @@ class DashBoard:
         tokens_num = openai_context.tokens_num
         assert tokens_num is not None
         tokens_num_list = openai_context.tokens_num_list
-        bead_index_list = conversation["bead"]["positions"]
+        bead_index_list = openai_context.bead_info["positions"]
         bead_tokens_list = [sum(tokens_num_list[:index]) for index in bead_index_list]
-        bead_length_list = conversation["bead"]["lengths"]
+        bead_length_list = openai_context.bead_info["lengths"]
 
         tokens_proportion = tokens_num / tokens_num_window
         bead_positions_ratio_list_start = [num / tokens_num for num in bead_tokens_list]

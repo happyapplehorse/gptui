@@ -24,7 +24,7 @@ class Role:
         self.context.chat_context_saver = "inner"
 
     def set_role_prompt(self, prompt: str):
-        self.context.bead["content"] = [{"role": "system", "content": prompt}]
+        self.context.bead = [{"role": "system", "content": prompt}]
         self.context.insert_bead()
 
     def chat(self, message: dict | list[dict]) -> Iterable:
