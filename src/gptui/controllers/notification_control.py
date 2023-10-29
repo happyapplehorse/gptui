@@ -1,5 +1,6 @@
 import logging
 import openai
+import uuid
 
 from ..models.signals import notification_signal
 from ..models.openai_chat import OpenaiContext
@@ -18,7 +19,7 @@ class Notification:
 
     async def notification_display(self, sender, **kwargs) -> None:
         notification = kwargs["message"]
-        content =notification["content"]
+        content = notification["content"]
         flag = notification["flag"]
 
         if flag == "info":
@@ -36,6 +37,10 @@ class Notification:
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
             elif description == "Commander status changed":
+                tab_id = self.app.query_one("#chat_tabs").active
+                tab_mode = tab_id[:3]
+                if tab_mode != "lqt":
+                    return
                 status = info_content["status"]
                 commander_status_display = self.app.query_one("#commander_status_display")
                 if status is True:
@@ -45,12 +50,45 @@ class Notification:
                     commander_status_display.update(Text('\u260c', 'yellow'))
                     await self.app.chat_context.chat_context_vectorize()
                     commander_status_display.update(Text('\u260c', 'green'))
-        
+            elif description == "GroupTalkManager status changed":
+                status = info_content["status"]
+                tab_id = self.app.query_one("#chat_tabs").active
+                tab_mode = tab_id[:3]
+                if tab_mode != "lxt":
+                    return
+                commander_status_display = self.app.query_one("#commander_status_display")
+                if status is True:
+                    commander_status_display.update(Text('\u00a4', 'green'))
+                    self.displayer.update(Text("Group talk created.", "green"))
+                else:
+                    commander_status_display.update(Text('\u263d', 'red'))
+                    self.displayer.update(Text("Group talk closed.", "green"))
+
         elif flag == "warning":
-            pass
+            ani_id = uuid.uuid4()
+            self.app.post_message(
+                AnimationRequest(
+                    ani_id=ani_id,
+                    action="start",
+                    ani_type="static",
+                    keep_time=3,
+                    ani_end_display=self.app.status_region_default,
+                    others=Text(f"{content}", "yellow"),
+                )
+            )
 
         elif flag == "error":
-            pass
+            ani_id = uuid.uuid4()
+            self.app.post_message(
+                AnimationRequest(
+                    ani_id=ani_id,
+                    action="start",
+                    ani_type="static",
+                    keep_time=3,
+                    ani_end_display=self.app.status_region_default,
+                    others=Text(f"{content}", "red"),
+                )
+            )
         
         elif flag == "openai_error":
             error = content["error"]

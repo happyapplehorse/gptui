@@ -10,7 +10,8 @@ from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
 from ..gptui_kernel.manager import ManagerInterface
 from ..models.context import OpenaiContext
-from ..models.openai_chat import OpenaiChatInterface
+from ..models.jobs import GroupTalkManager
+from ..models.openai_chat import OpenaiChatInterface, OpenAIGroupTalk
 from ..models.utils.openai_settings_from_dot_env import openai_settings_from_dot_env
 from ..models.utils.tokens_num import tokens_num_from_chat_context
 from ..utils.my_text import MyText as Text
@@ -27,11 +28,24 @@ class OpenaiChatManage:
     {conversation_id:{
         "tab_name": tab_name,
         "file_id": file_id,
-        "openai_context": openai_context,
+        "openai_context": OpenaiContext,
         "bead": {
                 "positions": index list of beads,
                 "content": dict or list[dict], openai message or list of message which express the bead content,
                 "length": list of bead's tokens num,
+            },
+        "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
+        }
+    }
+    Schema for group talk conversations:
+    {conversation_id:{
+        "tab_name": tab_name,
+        "file_id": file_id,
+        "group_talk_manager": GroupTalkManager,
+        "bead": {
+                "positions": [],
+                "content": [],
+                "length": [],
             },
         "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
         }
@@ -47,6 +61,7 @@ class OpenaiChatManage:
         conversations_recover: bool = False,
         vector_memory: bool = True,
     ) -> None:
+        assert manager.dot_env_config_path is not None
         self.openai_api_key, self.openai_org_id = openai_settings_from_dot_env(manager.dot_env_config_path)
         # check if workpath is a valid directory
         if not os.path.isdir(workpath):
@@ -61,6 +76,7 @@ class OpenaiChatManage:
         self.conversation_dict = {}
         self.conversation_count = 0
         self.conversation_active = 0
+        self.group_talk_conversation_active = 0
         self.conversation_id_set = set()
         if conversations_recover:
             try:
@@ -106,6 +122,9 @@ class OpenaiChatManage:
 
         if vector_memory is True:
             self.init_volatile_memory()
+        
+        self.openai_group_talk = OpenAIGroupTalk(manager=manager)
+        self.group_talk_conversation_dict = {}
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
@@ -237,7 +256,13 @@ class OpenaiChatManage:
         """
         Generate a initial template bead.
         """
-        bead = {"role":"user", "content":f"Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\nCONVERSATION ID: {bead_id}"}
+        bead = {
+            "role": "user",
+            "content": (
+                "Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\n"
+                f"CONVERSATION ID: {bead_id}"
+            )
+        }
         return bead
 
     def conversation_delete(self, conversation_id: int = 0) -> None:
@@ -359,6 +384,37 @@ class OpenaiChatManage:
 
         tab_name = self.conversation_dict[conversation_id]["tab_name"]
         self.app.push_screen(InputDialog(prompt=input_dialog_prompt or "Enter a name for the conversation:", default_input=tab_name), input_handle)
+
+    def open_group_talk_conversation(
+        self,
+        id: int | str | None = None,
+        max_sending_tokens_ratio: float | None = None,
+    ) -> int:
+        """
+        Open a empty group talk conversation, and return the conversation's id.
+        Conversation active id should be handle manually
+        """
+        self.conversation_count = id or time.time() * 1000
+        self.conversation_count = int(self.conversation_count)
+        while self.conversation_count in self.conversation_id_set or self.conversation_count == 0:
+            assert True, "The conversation_id is duplicated."
+            self.conversation_count += 1
+        group_talk_manager = GroupTalkManager(manager=self.manager)
+        group_talk_manager.group_talk_manager_id = self.conversation_count
+        self.group_talk_conversation_dict[self.conversation_count] = {
+            "tab_name": "Group Talk",
+            "file_id": None,
+            "group_talk_manager": group_talk_manager,
+            "bead": {
+                    "positions": [],
+                    "content": [],
+                    "length": [],
+                },
+            "max_sending_tokens_ratio": max_sending_tokens_ratio or self.app.config["default_conversation_parameters"]["max_sending_tokens_ratio"],
+        }
+        self.conversation_id_set.add(self.conversation_count)
+        self.group_talk_conversation_active = self.conversation_count
+        return self.conversation_count
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:

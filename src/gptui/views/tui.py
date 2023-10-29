@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import hashlib
 import importlib
 import itertools
 import json
@@ -37,6 +38,7 @@ from textual.widgets import (
 from textual.widgets._tabs import Underline
 
 from .animation import AnimationManager, AnimationRequest, DefaultAnimation, StaticDisplayAnimation, SettingMemoryAnimation
+from .common_message import CommonMessage
 from .fun_zone import FunZone, JustBeing, BombBoom
 from .mywidgets import (
     GridContent,
@@ -58,6 +60,7 @@ from ..controllers.chat_context_control import ChatContext
 from ..controllers.chat_response_control import ChatResponse
 from ..controllers.dash_board_control import DashBoard
 from ..controllers.decorate_display_control import DecorateDisplay
+from ..controllers.group_talk_control import GroupTalkControl
 from ..controllers.notification_control import Notification
 from ..controllers.openai_chat_manage import OpenaiChatManage
 from ..controllers.tube_files_control import TubeFiles
@@ -67,6 +70,7 @@ from ..drivers.driver_manager import DriverManager
 from ..models.context import OpenaiContext
 from ..models.doc import Doc, document_loader
 from ..models.gptui_basic_services.plugins.conversation_service import ConversationService
+from ..models.jobs import GroupTalkManager
 from ..models.openai_chat import OpenaiChat
 from ..models.utils.openai_api import openai_api
 from ..gptui_kernel.manager import Manager
@@ -162,7 +166,6 @@ class MainApp(App[str]):
                     with Vertical(classes="dot_display"):
                         yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
                         yield Label(Text("1", 'yellow'), id="tabs_num_display")
-                    #yield Tabs(Tab("None", id="lqt1"), id="chat_tabs")
                     yield Tabs(id="chat_tabs")
                     with Vertical(classes="dot_display"):
                         yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
@@ -343,21 +346,33 @@ class MainApp(App[str]):
     async def on_input_submitted(self, message) -> None:
         if message.input.id == "message_region":
             input = message.value
+            
+            # If there is no chat window, then send the input to 'horse'.
             if self.query_one("#chat_tabs").tab_count == 0:
                 self.horse.refresh_input(input)
                 return
+            
             upload_file_switch = self.query_one("#file_tube #send_switch")
             tab = self.query_one("#chat_tabs").active_tab
+
             if not tab:
                 Thread(target = self.no_context_manager.chat, args = (input,)).start()
                 return
-            id = int(tab.id[3:])
-            if id <= 0:
-                Thread(target = self.no_context_manager.chat, args = (message.value,)).start()
+            
+            tab_mode = tab.id[:3]
+            
+            if tab_mode == "ncc":
+                Thread(target = self.no_context_manager.chat, args = (input,)).start()
                 return
+            elif tab_mode == "lxt":
+                group_talk_manager = self.openai.group_talk_conversation_dict[self.openai.group_talk_conversation_active]["group_talk_manager"]
+                self.group_talk_chat(input_text=input, group_talk_manager=group_talk_manager)
+                return
+            
             context = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"]
             stream = context.parameters.get("stream", True)
 
+            # If the upload_file_switch is on, append the content of the file to the prompt.
             if upload_file_switch.value:
                 displayer = self.query_one("#status_region")
                 tf = TubeFiles(displayer=displayer)
@@ -465,20 +480,42 @@ class MainApp(App[str]):
             id = int(tab_id[3:])
             if id > 0:
                 self.openai.conversation_active = id
-                conv_content = self.openai.conversation_dict[id]["openai_context"].chat_context
-                self.context_to_chat_window(conv_content)
+                conversation_chat_context = self.openai.conversation_dict[id]["openai_context"].chat_context
+                self.context_to_chat_window(conversation_chat_context)
             else:
                 self.no_context_manager.no_context_chat_active = id
                 self.context_to_chat_window(self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active])
 
     def on_tabs_tab_activated(self, event: Tabs.TabActivated) -> None:
         tab_id = event.tab.id
+        assert tab_id is not None
         id = int(tab_id[3:])
-        if id > 0:
-            gptui_logger.debug(f"tab: {id}")
+        tab_mode = tab_id[:3]
+        if tab_mode == "lxt":
+            self.openai.group_talk_conversation_active = id
+            group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
+            roles_list = list(group_talk_manager.roles.values())
+            if not roles_list:
+                self.query_one("#chat_region").clear()
+                return
+            first_role = roles_list[0]
+            self.chat_display.tab_not_switching.clear()
+            self.context_to_chat_window(first_role.context.chat_context)
+            self.chat_display.tab_not_switching.set()
+            tokens_window = self.get_tokens_window(first_role.context.parameters.get("model"))
+            self.dash_board.group_talk_dash_board_display(tokens_window, conversation_id=id)
+            self.query_one("#status_region").update(self.status_region_default)
+            self.query_one("#message_region").focus()
+            self.register_plugins_to_manager()
+            self.register_default_plugins_to_manager()
+            self.plugin_refresh()
+            self.chat_parameters_display()
+        elif tab_mode == "lqt":
             self.openai.conversation_active = id
             openai_context = self.openai.conversation_dict[id]["openai_context"]
+            self.chat_display.tab_not_switching.clear()
             self.context_to_chat_window(openai_context.chat_context)
+            self.chat_display.tab_not_switching.set()
             tokens_window = self.get_tokens_window(openai_context.parameters.get("model"))
             self.dash_board.dash_board_display(tokens_window, conversation_id=id)
             self.query_one("#status_region").update(self.status_region_default)
@@ -487,7 +524,7 @@ class MainApp(App[str]):
             self.register_default_plugins_to_manager()
             self.plugin_refresh()
             self.chat_parameters_display()
-        else:
+        elif tab_mode == "ncc":
             self.no_context_manager.no_context_chat_active = id
             self.context_to_chat_window(self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active])
             dashboard = self.query_one("#dash_board")
@@ -495,6 +532,7 @@ class MainApp(App[str]):
             dashboard.update(Text(" X \n" * height,"red"))
             self.query_one("#status_region").update(Text("Disposable chat now.", "yellow"))
             self.query_one("#message_region").focus()
+        # Refresh the tabs number.
         tab_num = self.query_one("#chat_tabs").tab_count
         if tab_num > 9:
             tab_num = u'\u21DE'
@@ -567,6 +605,12 @@ class MainApp(App[str]):
         if message.message_name == "vector_memory_write":
             message_content = message.message_content
             self.qdrant_queue.put({"action": "write_reference", "content": message_content})
+        if message.message_name == "open_group_talk":
+            message_content = message.message_content
+            tab_id = message_content["tab_id"]
+            tab_name = message_content["tab_name"]
+            chat_tabs = self.query_one("#chat_tabs")
+            chat_tabs.add_tab(Tab(tab_name, id=tab_id))
 
     def action_set_chat_parameters(self, parameters: dict) -> None:
         # valid check
@@ -727,7 +771,7 @@ class MainApp(App[str]):
     async def action_new_disposable_chat(self):
         no_context_chat_id = self.no_context_manager.open_no_context_chat()
         self.no_context_manager.no_context_chat_active = no_context_chat_id
-        tab_id = "lqt" + str(no_context_chat_id)
+        tab_id = "ncc" + str(no_context_chat_id)
         self.query_one("#chat_tabs").add_tab(Tab("NoCo", id=tab_id))
         await asyncio.sleep(0.2)
         self.query_one("#chat_tabs").active = tab_id
@@ -943,10 +987,24 @@ class MainApp(App[str]):
 
     @work(exclusive=True, thread=True)
     def chat_stream(self, input_text: str, context: OpenaiContext) -> None:
-        piece = {"role":"user", "content":input_text}
+        piece = {"role": "user", "content": input_text}
         self.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
         self.openai.openai_chat.chat_stream(message=piece, context=context)
         self.conversation_tab_rename(context)
+
+    @work(exclusive=True, thread=True)
+    def group_talk_chat(self, input_text: str, group_talk_manager: GroupTalkManager) -> None:
+        self.post_message(
+            AnimationRequest(
+                ani_id=uuid.uuid4(),
+                action="start",
+                ani_type="static",
+                keep_time=2,
+                ani_end_display=self.status_region_default,
+                others=Text("The message will be sent as soon as possible.", "green"),
+            )
+        )
+        self.openai.openai_group_talk.talk_stream(group_talk_manager=group_talk_manager, message_content=input_text)
 
     def conversation_tab_rename(self, context: OpenaiContext):
         conversation_id = context.id
@@ -984,11 +1042,11 @@ class MainApp(App[str]):
 
     # context to chat window
     ############################################################################## context to chat window
-    def context_to_chat_window(self, context:list[dict], change_line:bool=True) -> None:
+    def context_to_chat_window(self, context: list[dict], change_line: bool = True) -> None:
         self.query_one("#chat_region").clear()
         self.decorate_display.clear_code_block() # clear code_block DecorateDisplay
         for piece in context:
-            piece_content = {"role":piece["role"], "content":piece["content"]}
+            piece_content = {"role": piece["role"], "name": piece.get("name", None), "content": piece["content"]}
             self.context_piece_to_chat_window(piece=piece_content, change_line=change_line, decorator_switch=True)
 
     def context_piece_to_chat_window(self, piece: dict, change_line: bool = False, decorator_switch: bool = False) -> None:
@@ -1036,24 +1094,15 @@ class MainApp(App[str]):
         if role == "user":
             return piece
         elif role == "assistant":
-            if not piece["content"].startswith("<log />"):
-                return piece
-            else:
-                return None
+            return piece
         else:
             return None
 
     def decorator(self, piece: dict, stream: bool = False, copy_code: bool = True, emoji: bool = True) -> Lines:
         content = piece["content"]
         role = piece["role"]
-        if role == "user":
-            color = "green"
-        elif role == "assistant":
-            color = "red"
-        elif role == "system":
-            color = "yellow"
-        else:
-            color = "white"
+        name = piece.get("name", None)
+
         displayer = self.query_one("#chat_region")
         width = displayer.content_size.width
         if emoji:
@@ -1064,10 +1113,49 @@ class MainApp(App[str]):
             stream=stream,
             copy_code=copy_code,
             wrap={"file_wrap":{"wrap": wrap_file, "wrap_num": 4}})
-        out = self.decorate_display.background_chain(out, width-5)
-        out, _, _ = self.decorate_display.panel_chain(*out, panel_color=color)
-        out = self.decorate_display.indicator_chain(out, indicator_color=color)
-        return out
+        out = self.decorate_display.background_chain(out, width - 5)
+        
+        def string_to_color(s) -> str:
+            # Translate a string to a color
+            m = hashlib.md5()
+            m.update(s.encode('utf-8'))
+            h = int(m.hexdigest(), 16)
+            r = (h & 0xFF0000) >> 16
+            g = (h & 0x00FF00) >> 8
+            b = h & 0x0000FF
+            return "#{:02X}{:02X}{:02X}".format(r, g, b)
+
+        if name is None:
+            if role == "user":
+                color = "green"
+            elif role == "assistant":
+                color = "red"
+            elif role == "system":
+                color = "yellow"
+            else:
+                color = "white"
+            out, _, _ = self.decorate_display.panel_chain(*out, panel_color=color)
+            out = self.decorate_display.indicator_chain(out, indicator_color=color)
+            return out
+        else:
+            color = string_to_color(name)
+            if role == "user":
+                role_icon = Emoji.replace(":man:")
+            elif role == "assistant":
+                role_icon = Emoji.replace(":robot:")
+            else:
+                role_icon = ""
+            role_length = Text(role_icon + name).cell_len
+            role_display = Lines(
+                [
+                    Text(u'\u256D' + u'\u2500' * role_length + u'\u256E'),
+                    Text(u'\u2502' + role_icon + name + u'\u2502'),
+                ]
+            )
+            out, _, _ = self.decorate_display.panel_chain(*out, panel_color=color)
+            role_display.extend(out)
+            out = self.decorate_display.indicator_chain(role_display, indicator_color=color)
+            return out
     
     def get_tokens_window(self, model: str) -> int:
         """
@@ -1092,6 +1180,7 @@ class MainApp(App[str]):
             if confirm:
                 tabs.remove_tab(old_tab_id)
                 self.openai.conversation_delete(conversation_id=int(old_tab_id[3:]))
+                self.chat_display.delete_buffer_id(id=int(old_tab_id[3:]))
             else:
                 return
 
@@ -1181,6 +1270,7 @@ class MainApp(App[str]):
         self.chat_context = ChatContext(self)
         self.assistant_tube = AssistantTube(self)
         self.dash_board = DashBoard(self)
+        self.group_talk = GroupTalkControl(self)
         self.horse = Horse()
 
     async def app_init(self):
@@ -1402,6 +1492,15 @@ class MainApp(App[str]):
         init_log.write(Text("1", "red"))
         self.qdrant_thread.join()
         self.exit(exit_log)
+
+    async def open_group_talk(self) -> int:
+        await self.horse.stop_async()
+        group_talk_conversation_id = self.openai.open_group_talk_conversation()
+        tab_name = self.openai.group_talk_conversation_dict[group_talk_conversation_id]["tab_name"]
+        tab_id = "lxt" + str(group_talk_conversation_id)
+        # Only main thread can handle UI event correctly.
+        self.post_message(CommonMessage(message_name="open_group_talk", message_content={"tab_id": tab_id, "tab_name": tab_name}))
+        return group_talk_conversation_id
 
 
 class MyDirectoryTree(DirectoryTree):
