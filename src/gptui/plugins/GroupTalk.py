@@ -151,5 +151,40 @@ class GroupTalk:
             role = roles[role_name]
         except KeyError:
             return f"Role name {role_name} dose not exist."
-        role.context.chat_context_append({"role": "system", "content": role_prompt})
+        if role.context.bead:
+            role.context.bead[-1]["content"] += "\n" + role_prompt
+        else:
+            role.set_role_prompt(role_prompt)
+        return f"Role prompt has been added to {role_name}."
+    
+    @sk_function(
+        description="Reset role prompts for the character's features",
+        name="reset_role_prompt",
+    )
+    @sk_function_context_parameter(
+        name="role_name",
+        description="The name of the role, must match '^[a-zA-Z0-9_-]{1,64}$'",
+    )
+    @sk_function_context_parameter(
+        name="role_prompt",
+        description="Prompt for indicating the role's identity and tasks"
+    )
+    @sk_function_context_parameter(
+        name="group_talk_id",
+        description="The ID of the group talk"
+    )
+    def reset_role_prompt(self, context: SKContext) -> str:
+        role_name = context["role_name"]
+        role_prompt = context["role_prompt"]
+        group_talk_id = int(context["group_talk_id"])
+        try:
+            group_talk_conversation = self.manager.client.openai.group_talk_conversation_dict[group_talk_id]
+        except KeyError:
+            return f"There is no corresponding ID for {group_talk_id}."
+        roles = group_talk_conversation["group_talk_manager"].roles
+        try:
+            role = roles[role_name]
+        except KeyError:
+            return f"Role name {role_name} dose not exist."
+        role.set_role_prompt(role_prompt)
         return f"Role prompt has been added to {role_name}."
