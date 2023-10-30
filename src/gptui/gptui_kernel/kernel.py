@@ -533,9 +533,9 @@ class CommanderAsync(CommanderAsyncInterface):
             if params is None:
                 if inject_task_node:
                     if iscoroutinefunction(function):
-                        await function(task_node)
+                        await function(task_node=task_node)
                     else:
-                        function(task_node)
+                        function(task_node=task_node)
                 else:
                     if iscoroutinefunction(function):
                         await function()
@@ -546,9 +546,9 @@ class CommanderAsync(CommanderAsyncInterface):
                 kwargs = params.get("kwargs", {})
                 if inject_task_node:
                     if iscoroutinefunction(function):
-                        await function(task_node, *args, **kwargs)
+                        await function(*args, **kwargs, task_node=task_node)
                     else:
-                        function(task_node, *args, **kwargs)
+                        function(*args, **kwargs, task_node=task_node)
                 else:
                     if iscoroutinefunction(function):
                         await function(*args, **kwargs)
