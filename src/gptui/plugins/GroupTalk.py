@@ -28,7 +28,7 @@ class GroupTalk:
         group_talk_id = await self.manager.client.open_group_talk()
         return (
             "Group talk have been created successfully."
-            f"The ID of the group talk is {group_talk_id}. The ID of this group talk is important; "
+            f"The ID of the group talk is {group_talk_id}. This ID is important; "
             "you should remember it and not confuse it with the conversation ID you already have."
             "Next, you should create roles for this group talk. "
             "If the user has not yet specified roles, you should ask the user what kind of roles he would like to create."
@@ -90,7 +90,7 @@ class GroupTalk:
             f"Please engage in the chat while adhering to these guidelines and staying in character as the '{role_name}'."
         )
         openai_context_parent = self.manager.client.openai.conversation_dict[self.manager.client.openai.conversation_active]["openai_context"]
-        role = Role(name=role_name, system_message=prompt, manager=self.manager, openai_context_parent=openai_context_parent)
+        role = Role(name=role_name, manager=self.manager, openai_context_parent=openai_context_parent)
         role.set_role_prompt(prompt)
         group_talk_manager.create_role(role=role, role_name=role_name)
 

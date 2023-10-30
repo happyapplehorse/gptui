@@ -16,7 +16,7 @@ class Role:
         """Role use the same openai parameters as in the parent conversation.
         """
         self.name = name
-        self.context = BeadOpenaiContext()
+        self.context = BeadOpenaiContext(parameters=openai_context_parent.parameters)
         self.manager = manager
         self.openai_api = openai_api(manager.dot_env_config_path)
         self.context.max_sending_tokens_num = openai_context_parent.max_sending_tokens_num

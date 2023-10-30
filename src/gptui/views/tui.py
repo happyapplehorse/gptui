@@ -492,6 +492,13 @@ class MainApp(App[str]):
         id = int(tab_id[3:])
         tab_mode = tab_id[:3]
         if tab_mode == "lxt":
+            # Update commander_status_display
+            commander_status_display = self.query_one("#commander_status_display")
+            if self.notification.commander_status.get(id, False):
+                commander_status_display.update(Text('\u2725', 'green'))
+            else:
+                commander_status_display.update(Text('\u2668', 'red'))
+            
             self.openai.group_talk_conversation_active = id
             group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
             roles_list = list(group_talk_manager.roles.values())
@@ -511,6 +518,13 @@ class MainApp(App[str]):
             self.plugin_refresh()
             self.chat_parameters_display()
         elif tab_mode == "lqt":
+            # Update commander_status_display
+            commander_status_display = self.query_one("#commander_status_display")
+            if self.notification.commander_status.get(id, False):
+                commander_status_display.update(Text('\u260d', 'red'))
+            else:
+                commander_status_display.update(Text('\u260c', 'green'))
+            
             self.openai.conversation_active = id
             openai_context = self.openai.conversation_dict[id]["openai_context"]
             self.chat_display.tab_not_switching.clear()
@@ -1158,8 +1172,7 @@ class MainApp(App[str]):
             return out
     
     def get_tokens_window(self, model: str) -> int:
-        """
-        Query tokens window for openai model from config.
+        """Query tokens window for openai model from config.
         Return 0 if no corresponding tokens window for model in config.
         """
         model_info = self.config["openai_model_info"].get(model)
@@ -1176,10 +1189,14 @@ class MainApp(App[str]):
             self.no_context_manager.no_context_chat_delete(int(old_tab_id[3:]))
             return
 
-        def check_dialog_handle(confirm: bool) -> None:
+        async def check_dialog_handle(confirm: bool) -> None:
             if confirm:
+                tab_mode = old_tab_id[:3]
                 tabs.remove_tab(old_tab_id)
-                self.openai.conversation_delete(conversation_id=int(old_tab_id[3:]))
+                if tab_mode == "lqt":
+                    self.openai.delete_conversation(conversation_id=int(old_tab_id[3:]))
+                elif tab_mode == "lxt":
+                    await self.openai.delete_group_talk_conversation(group_talk_conversation_id=int(old_tab_id[3:]))
                 self.chat_display.delete_buffer_id(id=int(old_tab_id[3:]))
             else:
                 return

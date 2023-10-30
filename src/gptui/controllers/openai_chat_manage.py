@@ -8,12 +8,14 @@ from dataclasses import asdict
 
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
+from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
+from ..models.blinker_wrapper import async_wrapper_with_loop
 from ..models.context import BeadOpenaiContext
 from ..models.jobs import GroupTalkManager
 from ..models.openai_chat import OpenaiChatInterface, OpenAIGroupTalk
+from ..models.signals import notification_signal
 from ..models.utils.openai_settings_from_dot_env import openai_settings_from_dot_env
-from ..models.utils.tokens_num import tokens_num_from_chat_context
 from ..utils.my_text import MyText as Text
 from ..views.animation import AnimationRequest
 from ..views.screens import InputDialog
@@ -235,7 +237,7 @@ class OpenaiChatManage:
             pass
         return conversation_id
 
-    def conversation_delete(self, conversation_id: int = 0) -> None:
+    def delete_conversation(self, conversation_id: int = 0) -> None:
         "delete a conversation from conversation dict"
         if conversation_id == 0:
             conversation_id = self.conversation_active
@@ -371,8 +373,51 @@ class OpenaiChatManage:
             self.conversation_count += 1
         group_talk_manager = GroupTalkManager(manager=self.manager)
         group_talk_manager.group_talk_manager_id = self.conversation_count
+        callback = Callback(
+            at_job_start=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": {
+                            (self,),
+                        },
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": True, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
+            at_job_end=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": {
+                            (self,),
+                        },
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": False, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
+        )
+        group_talk_manager.add_callback(callback)
         self.group_talk_conversation_dict[self.conversation_count] = {
-            "tab_name": "Group Talk",
+            "tab_name": "Group-Talk",
             "file_id": None,
             "group_talk_manager": group_talk_manager,
             "max_sending_tokens_ratio": max_sending_tokens_ratio or self.app.config["default_conversation_parameters"]["max_sending_tokens_ratio"],
@@ -380,6 +425,14 @@ class OpenaiChatManage:
         self.conversation_id_set.add(self.conversation_count)
         self.group_talk_conversation_active = self.conversation_count
         return self.conversation_count
+
+    async def delete_group_talk_conversation(self, group_talk_conversation_id: int = 0) -> None:
+        """delete a group talk conversation from group_talk_conversation_dict"""
+        if group_talk_conversation_id == 0:
+            group_talk_conversation_id = self.group_talk_conversation_active
+        group_talk_manager = self.group_talk_conversation_dict["group_talk_manager"]
+        await group_talk_manager.close_group_talk()
+        del self.group_talk_conversation_dict[group_talk_conversation_id]
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:

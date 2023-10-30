@@ -140,7 +140,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"status":True},
+                                    "content":{"status": True, "context": context},
                                     "description":"Commander status changed",
                                 },
                                 "flag":"info",
@@ -158,7 +158,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"context":context},
+                                    "content":{"context": context},
                                     "description":"Starting to receive the original response message to the user",
                                 },
                                 "flag":"info",
@@ -176,7 +176,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_sync_wrapper": sync_wrapper,
                             "message":{
                                 "content":{
-                                    "content":{"status":False},
+                                    "content":{"status": False, "context": context},
                                     "description":"Commander status changed",
                                 },
                                 "flag":"info",
@@ -261,7 +261,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"status":True},
+                                    "content":{"status": True, "context": context},
                                     "description":"Commander status changed",
                                 },
                                 "flag":"info",
@@ -279,7 +279,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"context":context},
+                                    "content":{"context": context},
                                     "description":"Starting to receive the original response message to the user",
                                 },
                                 "flag":"info",
@@ -297,7 +297,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "_sync_wrapper": sync_wrapper,
                             "message":{
                                 "content":{
-                                    "content":{"status":False},
+                                    "content":{"status": False, "context": context},
                                     "description":"Commander status changed",
                                 },
                                 "flag":"info",

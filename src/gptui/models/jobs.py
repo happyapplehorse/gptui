@@ -35,49 +35,7 @@ class GroupTalkManager(Job):
         self.group_talk_manager_id: int | None = None
         self.roles: dict[str, Role] = {}
         self.user_talk_buffer = []
-        callback = Callback(
-            at_job_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": {
-                            (self,),
-                        },
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message": {
-                                "content": {
-                                    "content": {"status": True},
-                                    "description": "GroupTalkManager status changed",
-                                },
-                                "flag": "info",
-                            },
-                        },
-                    },
-                },
-            ],
-            at_job_end=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": {
-                            (self,),
-                        },
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message": {
-                                "content": {
-                                    "content": {"status": False},
-                                    "description": "GroupTalkManager status changed",
-                                },
-                                "flag": "info",
-                            },
-                        },
-                    },
-                },
-            ],
-        )
-        super().__init__(callback=callback)
+        super().__init__()
     
     @property
     def speaking(self) -> str | None:

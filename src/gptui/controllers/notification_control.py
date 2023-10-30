@@ -16,6 +16,7 @@ class Notification:
         self.app = app
         self.displayer = app.query_one("#status_region")
         notification_signal.connect(self.notification_display)
+        self.commander_status = {}
 
     async def notification_display(self, sender, **kwargs) -> None:
         notification = kwargs["message"]
@@ -37,32 +38,32 @@ class Notification:
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
             elif description == "Commander status changed":
-                tab_id = self.app.query_one("#chat_tabs").active
-                tab_mode = tab_id[:3]
-                if tab_mode != "lqt":
-                    return
+                tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
+                context_id = info_content["context"].id
                 commander_status_display = self.app.query_one("#commander_status_display")
-                if status is True:
-                    commander_status_display.update(Text('\u260d', 'red'))
-                else:
-                    self.displayer.update(self.app.status_region_default)
-                    commander_status_display.update(Text('\u260c', 'yellow'))
-                    await self.app.chat_context.chat_context_vectorize()
-                    commander_status_display.update(Text('\u260c', 'green'))
+                self.commander_status[context_id] = status
+                if tab_id == context_id:
+                    if status is True:
+                        commander_status_display.update(Text('\u260d', 'red'))
+                    else:
+                        self.displayer.update(self.app.status_region_default)
+                        commander_status_display.update(Text('\u260c', 'yellow'))
+                        await self.app.chat_context.chat_context_vectorize()
+                        commander_status_display.update(Text('\u260c', 'green'))
             elif description == "GroupTalkManager status changed":
+                tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
-                tab_id = self.app.query_one("#chat_tabs").active
-                tab_mode = tab_id[:3]
-                if tab_mode != "lxt":
-                    return
+                group_talk_manager_id = info_content["group_talk_manager"].group_talk_manager_id
                 commander_status_display = self.app.query_one("#commander_status_display")
-                if status is True:
-                    commander_status_display.update(Text('\u00a4', 'green'))
-                    self.displayer.update(Text("Group talk created.", "green"))
-                else:
-                    commander_status_display.update(Text('\u263d', 'red'))
-                    self.displayer.update(Text("Group talk closed.", "green"))
+                self.commander_status[group_talk_manager_id] = status
+                if tab_id == group_talk_manager_id:
+                    if status is True:
+                        commander_status_display.update(Text('\u2725', 'green'))
+                        self.displayer.update(Text("Group talk created.", "green"))
+                    else:
+                        commander_status_display.update(Text('\u2668', 'red'))
+                        self.displayer.update(Text("Group talk closed.", "green"))
 
         elif flag == "warning":
             ani_id = uuid.uuid4()
