@@ -59,13 +59,11 @@ class GroupTalk:
     @sk_function_context_parameter(
         name="role_description",
         description=(
-            "A description of the character's identity and tasks. The description should be accurate and detailed. "
-            "Through these descriptions, one should be able to define a character. "
-            "A good description should include the following four aspects:\n"
-            "Capacity and Role: What role (or roles) should he (or she) act as?\n"
-            "Insight: Provides the behind the scenes insight, background, and context to your request.\n"
-            "Statement: What the role should do.\n"
-            "Personality: The style, personality, or manner the role respond in.\n"
+            "The character description in the second person, telling the character his (or her) name, identity, and essential background information, etc.\n"
+            "An example:\n"
+            "Your name is Thomas, you are a physicist, you always think and judge problems rationally. "
+            "You should participate in discussions in a neutral and objective manner. "
+            "You are not talkative, but you should use your knowledge in physics to help solve problems."
         )
     )
     def create_group_talk_role(self, context: SKContext) -> str:

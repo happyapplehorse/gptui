@@ -343,7 +343,7 @@ class OpenAIGroupTalk:
         self.openai_api = openai_api(manager.dot_env_config_path)
 
     def talk_stream(self, group_talk_manager: GroupTalkManager, message_content: str) -> None:
-        if group_talk_manager.running is False:
+        if group_talk_manager.state != "ACTIVE":
             group_talk_manager.running = True
             group_talk_manager.user_talk_buffer.append(message_content)
             self.manager.gk_kernel.commander.async_commander_run(group_talk_manager)

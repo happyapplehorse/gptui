@@ -87,6 +87,7 @@ class GroupTalkManager(Job):
         
     @tasker(PASS_WORD)
     async def task(self):
+        self.running = True
         GroupTalkHandler = self.manager.get_handler("GroupTalkHandler")
         return GroupTalkHandler().wait_for_termination(self)
 
