@@ -28,7 +28,7 @@ class GroupTalk:
         group_talk_id = await self.manager.client.open_group_talk()
         return (
             "Group talk have been created successfully."
-            f"The ID of the group talk is {group_talk_id}. The ID of this group talk is important; "
+            f"The ID of the group talk is {group_talk_id}. This ID is important; "
             "you should remember it and not confuse it with the conversation ID you already have."
             "Next, you should create roles for this group talk. "
             "If the user has not yet specified roles, you should ask the user what kind of roles he would like to create."
@@ -39,9 +39,9 @@ class GroupTalk:
         name="close_group_talk",
         input_description="The ID of the group talk",
     )
-    async def close_group_talk(self, group_talk_id: str) -> str:
+    def close_group_talk(self, group_talk_id: str) -> str:
         group_talk_manager = self.manager.client.openai.group_talk_conversation_dict[int(group_talk_id)]["group_talk_manager"]
-        await group_talk_manager.close_group_talk()
+        group_talk_manager.close_group_talk()
         return "The group talk has been closed."
 
     @sk_function(
@@ -59,13 +59,11 @@ class GroupTalk:
     @sk_function_context_parameter(
         name="role_description",
         description=(
-            "A description of the character's identity and tasks. The description should be accurate and detailed. "
-            "Through these descriptions, one should be able to define a character. "
-            "A good description should include the following four aspects:\n"
-            "Capacity and Role: What role (or roles) should he (or she) act as?\n"
-            "Insight: Provides the behind the scenes insight, background, and context to your request.\n"
-            "Statement: What the role should do.\n"
-            "Personality: The style, personality, or manner the role respond in.\n"
+            "The character description in the second person, telling the character his (or her) name, identity, and essential background information, etc.\n"
+            "An example:\n"
+            "Your name is Thomas, you are a physicist, you always think and judge problems rationally. "
+            "You should participate in discussions in a neutral and objective manner. "
+            "You are not talkative, but you should use your knowledge in physics to help solve problems."
         )
     )
     def create_group_talk_role(self, context: SKContext) -> str:
@@ -90,7 +88,7 @@ class GroupTalk:
             f"Please engage in the chat while adhering to these guidelines and staying in character as the '{role_name}'."
         )
         openai_context_parent = self.manager.client.openai.conversation_dict[self.manager.client.openai.conversation_active]["openai_context"]
-        role = Role(name=role_name, system_message=prompt, manager=self.manager, openai_context_parent=openai_context_parent)
+        role = Role(name=role_name, manager=self.manager, openai_context_parent=openai_context_parent)
         role.set_role_prompt(prompt)
         group_talk_manager.create_role(role=role, role_name=role_name)
 
@@ -151,5 +149,40 @@ class GroupTalk:
             role = roles[role_name]
         except KeyError:
             return f"Role name {role_name} dose not exist."
-        role.context.chat_context_append({"role": "system", "content": role_prompt})
+        if role.context.bead:
+            role.context.bead[-1]["content"] += "\n" + role_prompt
+        else:
+            role.set_role_prompt(role_prompt)
+        return f"Role prompt has been added to {role_name}."
+    
+    @sk_function(
+        description="Reset role prompts for the character's features",
+        name="reset_role_prompt",
+    )
+    @sk_function_context_parameter(
+        name="role_name",
+        description="The name of the role, must match '^[a-zA-Z0-9_-]{1,64}$'",
+    )
+    @sk_function_context_parameter(
+        name="role_prompt",
+        description="Prompt for indicating the role's identity and tasks"
+    )
+    @sk_function_context_parameter(
+        name="group_talk_id",
+        description="The ID of the group talk"
+    )
+    def reset_role_prompt(self, context: SKContext) -> str:
+        role_name = context["role_name"]
+        role_prompt = context["role_prompt"]
+        group_talk_id = int(context["group_talk_id"])
+        try:
+            group_talk_conversation = self.manager.client.openai.group_talk_conversation_dict[group_talk_id]
+        except KeyError:
+            return f"There is no corresponding ID for {group_talk_id}."
+        roles = group_talk_conversation["group_talk_manager"].roles
+        try:
+            role = roles[role_name]
+        except KeyError:
+            return f"Role name {role_name} dose not exist."
+        role.set_role_prompt(role_prompt)
         return f"Role prompt has been added to {role_name}."

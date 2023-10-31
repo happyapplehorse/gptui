@@ -76,6 +76,7 @@ class Horse:
         self.apple = apple
         if size_check:
             if (apple.canvas_width > self.happy.canvas_width) or (apple.canvas_height > self.happy.canvas_height):
+                self.run_status = False
                 return False
         
         status = True
@@ -83,9 +84,7 @@ class Horse:
             inp = self.input
             self.input = None
             status, frame_info = apple.frame(inp)
-            if self._stop_flag:
-                break
-            if self._stop_async_flag:
+            if self._stop_flag or self._stop_async_flag:
                 break
             await self.frame_handle(frame_info)
         

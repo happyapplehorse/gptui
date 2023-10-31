@@ -353,16 +353,24 @@ class TaskNode(metaclass=ABCMeta):
         self._parent: TaskNode | None | Literal["Null"] = None
         self._children: list = [self]
         self._callback: Callback | None = None
-        self._state: Literal["active", "terminated"] = "active"
+        self._state: Literal["PENDING", "ACTIVE", "TERMINATED", "COMPLETED"] = "PENDING"
     
     def add_child(self, child: TaskNode) -> None:
         self._children.append(child)
         child._parent = self
+        child._state = "ACTIVE"
     
     async def del_child(self, child: TaskNode) -> None:
-        self._children.remove(child)
+        try:
+            self._children.remove(child)
+        except ValueError:
+            # _children may have be cleared by terminated operation.
+            # Since no deletion poeration was performed, there's nothing to do.
+            return
         if not self._children:
             await self._do_at_done()
+            if self._state != "TERMINATED":
+                self._state = "COMPLETED"
             parent = self.parent
             if parent != "Null":
                 await parent.del_child(self)
@@ -398,6 +406,10 @@ class TaskNode(metaclass=ABCMeta):
         return len(self._children)
 
     @property
+    def state(self) -> str:
+        return self._state
+
+    @property
     def ancestor_chain(self) -> list[TaskNode]:
         chain = []
         if self.parent == "Null":
@@ -417,6 +429,7 @@ class TaskNode(metaclass=ABCMeta):
         if self._callback:
             await self.commander._callback_handle(callback=self._callback, which="at_terminate", task_node=self)
         parent = self.parent
+        self._state = "TERMINATED"
         if parent != "Null":
             await parent.del_child(self)
 
@@ -430,7 +443,7 @@ class TaskNode(metaclass=ABCMeta):
             if node in visited:
                 return
             visited.add(node)
-            node._state = "terminated"
+            node._state = "TERMINATED"
             for child in node._children:
                 terminate_children(child, visited)
 
@@ -533,9 +546,9 @@ class CommanderAsync(CommanderAsyncInterface):
             if params is None:
                 if inject_task_node:
                     if iscoroutinefunction(function):
-                        await function(task_node)
+                        await function(task_node=task_node)
                     else:
-                        function(task_node)
+                        function(task_node=task_node)
                 else:
                     if iscoroutinefunction(function):
                         await function()
@@ -546,9 +559,9 @@ class CommanderAsync(CommanderAsyncInterface):
                 kwargs = params.get("kwargs", {})
                 if inject_task_node:
                     if iscoroutinefunction(function):
-                        await function(task_node, *args, **kwargs)
+                        await function(*args, **kwargs, task_node=task_node)
                     else:
-                        function(task_node, *args, **kwargs)
+                        function(*args, **kwargs, task_node=task_node)
                 else:
                     if iscoroutinefunction(function):
                         await function(*args, **kwargs)
@@ -558,6 +571,7 @@ class CommanderAsync(CommanderAsyncInterface):
     async def _do_at_done(self) -> None:
         job = ComEnd()
         job._parent = "Null"
+        job._commander = self
         await self.__job_queue.put(job)
 
     async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None) -> None:
@@ -565,7 +579,7 @@ class CommanderAsync(CommanderAsyncInterface):
             parent = self
         if requester is None:
             requester = parent
-        if parent._state == "terminated":
+        if parent.state == "TERMINATED":
             return
         parent.add_child(job)
         if job._commander is None:
@@ -579,7 +593,7 @@ class CommanderAsync(CommanderAsyncInterface):
             parent = self
         if requester is None:
             requester = parent
-        if parent._state == "terminated":
+        if parent.state == "TERMINATED":
             return
         parent.add_child(handler)
         if handler._commander is None:

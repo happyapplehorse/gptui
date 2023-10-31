@@ -44,10 +44,8 @@ class Memo:
             conversation = self.app.openai.conversation_dict[conversation_id]
         except KeyError:
             return f"Write memo faild. Conversation id {conversation_id} is not correct."
-        bead_content = conversation["bead"]["content"]
-        if isinstance(bead_content, dict):
-            bead_content["content"] += "\n" + content
-        elif isinstance(bead_content, list):
-            bead_content[-1]["content"] += "\n" + content
-        self.app.openai.bead_insert(conversation_id)
+        openai_context = conversation["openai_context"]
+        bead_content = openai_context.bead
+        bead_content[-1]["content"] += "\n" + content
+        openai_context.insert_bead()
         return f"'{content}' have been written into the memo!" 

@@ -322,7 +322,7 @@ class GroupTalkHandler:
                     self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
                     group_talk_manager.user_talk_buffer = []
             if not group_talk_manager.running:
-                group_talk_manager.terminate_task_node()
+                await group_talk_manager.close_task_node()
                 break
 
     @handler
@@ -340,7 +340,13 @@ class GroupTalkHandler:
             else:
                 role.context.chat_context_append({"role": "assistant", "content": full_response_content})
                 talk_manager.speaking = role_name
-                response = talk_manager.roles[role_name].chat(message={"role": "user", "name": "host", "content": f"Host says to you: Yes, you are {role_name}, you can talk now."})
+                response = talk_manager.roles[role_name].chat(
+                    message={
+                        "role": "user",
+                        "name": "host",
+                        "content": f"Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
+                    }
+                )
                 async_talk_stream_response = async_iterable_from_gpt(response)
                 talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
                 TalkToAll = talk_manager.manager.get_job("TalkToAll")

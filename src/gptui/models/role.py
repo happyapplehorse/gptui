@@ -16,7 +16,7 @@ class Role:
         """Role use the same openai parameters as in the parent conversation.
         """
         self.name = name
-        self.context = BeadOpenaiContext()
+        self.context = BeadOpenaiContext(parameters=openai_context_parent.parameters)
         self.manager = manager
         self.openai_api = openai_api(manager.dot_env_config_path)
         self.context.max_sending_tokens_num = openai_context_parent.max_sending_tokens_num
@@ -24,7 +24,7 @@ class Role:
         self.context.chat_context_saver = "inner"
 
     def set_role_prompt(self, prompt: str):
-        self.context.bead["content"] = [{"role": "system", "content": prompt}]
+        self.context.bead = [{"role": "system", "content": prompt}]
         self.context.insert_bead()
 
     def chat(self, message: dict | list[dict]) -> Iterable:
