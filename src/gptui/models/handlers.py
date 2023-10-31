@@ -322,7 +322,7 @@ class GroupTalkHandler:
                     self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
                     group_talk_manager.user_talk_buffer = []
             if not group_talk_manager.running:
-                group_talk_manager.terminate_task_node()
+                await group_talk_manager.close_task_node()
                 break
 
     @handler

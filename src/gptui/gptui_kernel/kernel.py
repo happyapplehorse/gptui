@@ -361,7 +361,12 @@ class TaskNode(metaclass=ABCMeta):
         child._state = "ACTIVE"
     
     async def del_child(self, child: TaskNode) -> None:
-        self._children.remove(child)
+        try:
+            self._children.remove(child)
+        except ValueError:
+            # _children may have be cleared by terminated operation.
+            # Since no deletion poeration was performed, there's nothing to do.
+            return
         if not self._children:
             await self._do_at_done()
             if self._state != "TERMINATED":
@@ -566,6 +571,7 @@ class CommanderAsync(CommanderAsyncInterface):
     async def _do_at_done(self) -> None:
         job = ComEnd()
         job._parent = "Null"
+        job._commander = self
         await self.__job_queue.put(job)
 
     async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None) -> None:

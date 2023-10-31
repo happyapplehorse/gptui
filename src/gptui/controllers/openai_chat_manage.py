@@ -394,6 +394,26 @@ class OpenaiChatManage:
                     },
                 },
             ],
+            at_terminate=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": {
+                            (self,),
+                        },
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": False, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
             at_job_end=[
                 {
                     "function": notification_signal.send,

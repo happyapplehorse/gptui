@@ -81,8 +81,7 @@ class GroupTalkManager(Job):
         self.roles[role_name] = role
         return True
 
-    async def close_group_talk(self):
-        await self.close_task_node()
+    def close_group_talk(self):
         self.running = False
         
     @tasker(PASS_WORD)

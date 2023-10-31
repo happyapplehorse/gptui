@@ -39,9 +39,9 @@ class GroupTalk:
         name="close_group_talk",
         input_description="The ID of the group talk",
     )
-    async def close_group_talk(self, group_talk_id: str) -> str:
+    def close_group_talk(self, group_talk_id: str) -> str:
         group_talk_manager = self.manager.client.openai.group_talk_conversation_dict[int(group_talk_id)]["group_talk_manager"]
-        await group_talk_manager.close_group_talk()
+        group_talk_manager.close_group_talk()
         return "The group talk has been closed."
 
     @sk_function(

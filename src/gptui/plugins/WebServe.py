@@ -107,72 +107,26 @@ class WebServe:
         description="The url of webpage",
     )
     @sk_function_context_parameter(
-        name="ul",
-        description="True or False, indicate whether a unordered list should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="ol",
-        description="True or False, indicate whether an ordered list should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="dl",
-        description="True or False, indicate whether a 'dl' tag in html should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
         name="table",
         description="True or False, indicate whether a table in html should be parsed",
         default_value="False"
     )
-    @sk_function_context_parameter(
-        name="title",
-        description="True or False, indicate whether the title in html should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="start_with_h",
-        description="True or False, indicate whether the tags 'h1'-'h6' and 'hr' in html should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="a_href",
-        description="True or False, indicate whether a hyperlink tag with href attribute should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="br",
-        description="True or False, indicate whether a 'br' tag in html should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="blockquote",
-        description="True or False, indicate whether a blockquote tag should be parsed",
-        default_value="True"
-    )
-    @sk_function_context_parameter(
-        name="img",
-        description="True or False, indicate whether a img tag should be parsed",
-        default_value="False"
-    )
     def web_parse(self, context: SKContext) -> str:
-        """
-        提取<title>，如果有的话
-        提取所有<p>段落、各级子标题、有序列表、无序列表、表格、横向分割线
+        """Extract the title, if present.
+        Extract all p paragraphs, various levels of subheadings, ordered lists, unordered lists, tables, and horizontal rules.
         """
         
         url = context["url"]
-        ul = bool(context["ul"])
-        ol = bool(context["ol"])
-        dl = bool(context["dl"])
+        ul = True
+        ol = True
+        dl = True
         table = bool(context["table"])
-        title = bool(context["title"])
-        start_with_h = bool(context["start_with_h"])
-        a_href = bool(context["a_href"])
-        br = bool(context["br"])
-        blockquote = bool(context["blockquote"])
-        img = bool(context["img"])
+        title = True
+        start_with_h = True
+        a_href = True
+        br = True
+        blockquote = True
+        img = False
 
         etree = html.etree
         
