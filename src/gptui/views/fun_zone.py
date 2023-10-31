@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 import textwrap
 
@@ -329,4 +330,116 @@ class BombBoom(Apple):
     
     @property
     def canvas_height(self) -> int:
-        return 16  
+        return 16
+
+
+class RotatingCube(Apple):
+
+    def __init__(self, happy_width: int = 40, happy_height: int = 80):
+        # The width and height of the apple canvas
+        self.height = happy_height
+        self.width = happy_width
+        # A buffer to store the Z coordinate (depth) for each pixel on the canvas
+        self.z_buffer = [0] * (self.width * self.height)
+        # A buffer to store the character to be drawn for each pixel on the canvas
+        self.buffer = [' '] * (self.width * self.height)
+        # Horizontal offset for translating the cube's position along the X-axis
+        self.horizontal_offset = 0
+        # The speed by which the cube increments its position in each iteration
+        # The density of points on the surface
+        self.increment_speed = 0.6
+        # The width of the cube in the 3D coordinate system
+        self.cube_width = min(self.width, self.height) // 2
+        # A constant to control the scaling factor for projecting 3D points onto the 2D screen
+        self.K1 = self.cube_width * 2
+        # Distance of the camera from the origin of the 3D coordinate system
+        self.distance_from_cam = self.cube_width * 5
+
+        self.frame_gen = self._frame()
+        self.frame_gen.send(None)
+
+    @property
+    def canvas_width(self) -> int:
+        return self.width
+    
+    @property
+    def canvas_height(self) -> int:
+        return self.height
+
+    def frame(self, inp) -> tuple[bool, tuple[float, TextType]]:
+        status, result = safe_send(self.frame_gen, inp)
+        if status == "OK":
+            return True, result
+        else:
+            return False, result
+    
+    def _frame(self):
+        a = random.uniform(0, 2 * math.pi)
+        b = random.uniform(0, 2 * math.pi)
+        c = random.uniform(0, 2 * math.pi)
+        while True:
+            yield (0.1, self._draw_cube(a, b, c))
+            a += 0.01
+            b += 0.02
+            c += 0.03
+
+    def _float_range(self, start, stop, step):
+        while start < stop:
+            yield start
+            start += step
+    
+    def _calculate_x(self, i, j, k, A, B, C):
+        return j * math.sin(A) * math.sin(B) * math.cos(C) - k * math.cos(A) * math.sin(B) * math.cos(C) + j * math.cos(A) * math.sin(C) + k * math.sin(A) * math.sin(C) + i * math.cos(B) * math.cos(C)
+
+    def _calculate_y(self, i, j, k, A, B, C):
+        return j * math.cos(A) * math.cos(C) + k * math.sin(A) * math.cos(C) - j * math.sin(A) * math.sin(B) * math.sin(C) + k * math.cos(A) * math.sin(B) * math.sin(C) - i * math.cos(B) * math.sin(C)
+
+    def _calculate_z(self, i, j, k, A, B):
+        return k * math.cos(A) * math.cos(B) - j * math.sin(A) * math.cos(B) + i * math.sin(B)
+
+    def _calculate_for_surface(self, cube_x, cube_y, cube_z, ch, A, B, C):
+        x = self._calculate_x(cube_x, cube_y, cube_z, A, B, C)
+        y = self._calculate_y(cube_x, cube_y, cube_z, A, B, C)
+        z = self._calculate_z(cube_x, cube_y, cube_z, A, B) + self.distance_from_cam
+
+        # One Over Z
+        ooz = 1 / z
+        width = self.width
+        height = self.height
+        K1 = self.K1
+
+        xp = int(width / 2 + self.horizontal_offset + K1 * ooz * x * 2)
+        yp = int(height / 2 + K1 * ooz * y)
+
+        idx = xp + yp * width
+
+        if 0 <= idx < width * height:
+            if ooz > self.z_buffer[idx]:
+                self.z_buffer[idx] = ooz
+                self.buffer[idx] = ch
+
+    def _draw_cube(self, A, B, C):
+
+        for i in range(len(self.buffer)):
+            self.buffer[i] = ' '
+            self.z_buffer[i] = 0
+        
+        cube_width = self.cube_width
+        increment_speed = self.increment_speed
+
+        for cube_x in self._float_range(-cube_width, cube_width, increment_speed):
+            for cube_y in self._float_range(-cube_width, cube_width, increment_speed):
+                self._calculate_for_surface(cube_x, cube_y, -cube_width, '?', A, B, C)
+                self._calculate_for_surface(cube_width, cube_y, cube_x, '*', A, B, C)
+                self._calculate_for_surface(-cube_width, cube_y, -cube_x, '=', A, B, C)
+                self._calculate_for_surface(-cube_x, cube_y, cube_width, '#', A, B, C)
+                self._calculate_for_surface(cube_x, -cube_width, -cube_y, '!', A, B, C)
+                self._calculate_for_surface(cube_x, cube_width, cube_y, '+', A, B, C)
+
+        lines = []
+        for i in range(self.height):
+            line = ''.join(self.buffer[i * self.width : (i + 1) * self.width])
+            lines.append(line)
+        buffer_str = '\n'.join(lines)
+        return buffer_str
+

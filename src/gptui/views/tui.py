@@ -39,7 +39,7 @@ from textual.widgets._tabs import Underline
 
 from .animation import AnimationManager, AnimationRequest, DefaultAnimation, StaticDisplayAnimation, SettingMemoryAnimation
 from .common_message import CommonMessage
-from .fun_zone import FunZone, JustBeing, BombBoom
+from .fun_zone import FunZone, JustBeing, BombBoom, RotatingCube
 from .mywidgets import (
     GridContent,
     MyFillIn,
@@ -555,9 +555,11 @@ class MainApp(App[str]):
     async def on_tabs_cleared(self, event: Tabs.Cleared) -> None:
         self.openai.conversation_active = 0
         chat_region = self.query_one("#chat_region")
+        chat_region_width = chat_region.content_size.width
+        chat_region_height = chat_region.content_size.height
         chat_region.clear()
         fun_zone = FunZone(chat_region)
-        apples = [JustBeing(), BombBoom()]
+        apples = [JustBeing(), BombBoom(), RotatingCube(happy_width=chat_region_width, happy_height=chat_region_height)]
         apple = random.choice(apples)
         self.horse.set_happy(fun_zone)
         self.run_worker(self.horse.run(apple))
