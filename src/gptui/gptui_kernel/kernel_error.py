@@ -1,11 +1,15 @@
 import semantic_kernel as sk
 
 
-class KernelError(Exception):
+class KernelException(Exception):
     ...
 
 
-class NoCommanderError(KernelError):
+class CommanderException(Exception):
+    ...
+
+
+class NoCommanderError(CommanderException):
     def __init__(self, job):
         self.job = job
     
@@ -13,7 +17,23 @@ class NoCommanderError(KernelError):
         return f"Commander not found in {self.job}."
 
 
-class NotTaskerError(KernelError):
+class CommanderNotRunError(CommanderException):
+    def __init__(self, commander):
+        self.commander = commander
+    
+    def __str__(self):
+        return f"Commander is not running, commander: {self.commander}."
+
+
+class CommanderAlreadyRunningError(CommanderException):
+    def __init__(self, commander):
+        self.commander = commander
+    
+    def __str__(self):
+        return f"Commander already is running, commander: {self.commander}"
+
+
+class NotTaskerError(CommanderException):
     def __init__(self, job):
         self.job = job
     
@@ -21,7 +41,7 @@ class NotTaskerError(KernelError):
         return f"Task method of {self.job} is not a Tasker."
 
 
-class NotHandlerError(KernelError):
+class NotHandlerError(CommanderException):
     def __init__(self, job):
         self.job = job
     
@@ -29,7 +49,7 @@ class NotHandlerError(KernelError):
         return f"Object is not a Handler called in {self.job}."
 
 
-class PluginInfoError(KernelError):
+class PluginInfoError(KernelException):
     def __init__(self, plugin_info: tuple):
         self.plugin_info = plugin_info
     
@@ -37,7 +57,7 @@ class PluginInfoError(KernelError):
         return f"Plugin info in {self.plugin_info} is a wrong type."
 
 
-class InvalidArgumentTypeError(KernelError):
+class InvalidArgumentTypeError(KernelException):
     def __init__(self, argument, expected_type):
         self.argument = argument
         self.expected_type = expected_type
@@ -46,7 +66,7 @@ class InvalidArgumentTypeError(KernelError):
         return f"Invalid argumen type: Expected {self.expected_type}, got {type(self.argument)}"
 
 
-class AttributeNotSetError(KernelError):
+class AttributeNotSetError(CommanderException):
     def __init__(self, obj, attr):
         self.obj = obj
         self.attr = attr
@@ -55,7 +75,7 @@ class AttributeNotSetError(KernelError):
         return f"The {self.attr} attribute of {self.obj} has not been set yet."
 
 
-class PluginsMatchError(KernelError):
+class PluginsMatchError(KernelException):
     def __init__(self, sk_kernel: sk.Kernel, plugins_list: list[tuple]):
         self.sk_kernel = sk_kernel
         self.plugins_list = plugins_list

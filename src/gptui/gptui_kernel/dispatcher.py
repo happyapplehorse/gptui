@@ -1,5 +1,5 @@
 import asyncio
-from typing import Iterable, AsyncIterator, Callable
+from typing import Iterable, AsyncIterator
 
 from .kernel import Callback
 
@@ -24,7 +24,7 @@ async def async_iterable_from_gpt(response: Iterable, callback: Callback | None 
         yield chunk_delta
 
 
-async def async_dispatcher_function_call(source: AsyncIterator, task_keeper: Callable):
+async def async_dispatcher_function_call(source: AsyncIterator):
     """
     dispatch the message to user and function call
     """
@@ -139,11 +139,10 @@ async def async_dispatcher_function_call(source: AsyncIterator, task_keeper: Cal
         return generator()
     
     splitter_task = asyncio.create_task(splitter())
-    task_keeper(splitter_task)
     
     return make_generator
 
-async def async_dispatcher_custom_protocol(source: AsyncIterator, roles: list, task_keeper: Callable):
+async def async_dispatcher_custom_protocol(source: AsyncIterator, roles: list):
     """
     generate a async generator for each role
     roles is a list like [(role_start_tag, role_end_tag),]
@@ -209,5 +208,4 @@ async def async_dispatcher_custom_protocol(source: AsyncIterator, roles: list, t
         return generator()
     
     splitter_task = asyncio.create_task(splitter())
-    task_keeper(splitter_task)
     return make_generator

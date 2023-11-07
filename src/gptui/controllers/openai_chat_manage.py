@@ -446,12 +446,12 @@ class OpenaiChatManage:
         self.group_talk_conversation_active = self.conversation_count
         return self.conversation_count
 
-    async def delete_group_talk_conversation(self, group_talk_conversation_id: int = 0) -> None:
+    def delete_group_talk_conversation(self, group_talk_conversation_id: int = 0) -> None:
         """delete a group talk conversation from group_talk_conversation_dict"""
         if group_talk_conversation_id == 0:
             group_talk_conversation_id = self.group_talk_conversation_active
-        group_talk_manager = self.group_talk_conversation_dict["group_talk_manager"]
-        await group_talk_manager.close_group_talk()
+        group_talk_manager = self.group_talk_conversation_dict[group_talk_conversation_id]["group_talk_manager"]
+        group_talk_manager.close_group_talk()
         del self.group_talk_conversation_dict[group_talk_conversation_id]
 
 

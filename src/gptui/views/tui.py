@@ -169,7 +169,7 @@ class MainApp(App[str]):
                     yield Tabs(id="chat_tabs")
                     with Vertical(classes="dot_display"):
                         yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
-                        yield Label(Text(u'\u260C', 'green'), id="commander_status_display")
+                        yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
                 
                 with Horizontal(id="chat_window"):
                     yield MyChatWindow(id="chat_region")
@@ -725,16 +725,18 @@ class MainApp(App[str]):
                 if state_write_status:
                     self.qdrant_queue.put({"action": "STOP"})
                     self.qdrant_thread.join()
+                    self.manager.gk_kernel.commander.exit()
                     self.exit("Conversation is cached successfully.")
                 else:
-                    self.run_worker(self.exit_check("App state is not saved successfully, do you want to exit without save?"))
+                    self.run_worker(self.exit_check("GPTUI state is not saved successfully, do you want to exit without save?"))
         else:
             if state_write_status:
                 self.qdrant_queue.put({"action": "STOP"})
                 self.qdrant_thread.join()
-                self.exit("App's last state was saved successfully.")
+                self.manager.gk_kernel.commander.exit()
+                self.exit("GPTUI's last state was saved successfully.")
             else:
-                self.run_worker(self.exit_check("App state is not saved successfully, do you want to exit without save?"))
+                self.run_worker(self.exit_check("GPTUI state is not saved successfully, do you want to exit without save?"))
 
     async def action_add_conversation(self):
         await self.horse.stop_async()
@@ -1107,9 +1109,15 @@ class MainApp(App[str]):
 
     def filter(self, piece: dict) -> dict | None:
         role = piece["role"]
-        if role == "user":
-            return piece
-        elif role == "assistant":
+        name = piece.get("name", None)
+        content = piece["content"]
+        assert isinstance(content, str)
+        if role in {"user", "assistant"}:
+            if name:
+                if content.startswith("SYS_INNER:"):
+                    return None
+            if content == "Can I speak?":
+                return None
             return piece
         else:
             return None
@@ -1191,14 +1199,14 @@ class MainApp(App[str]):
             self.no_context_manager.no_context_chat_delete(int(old_tab_id[3:]))
             return
 
-        async def check_dialog_handle(confirm: bool) -> None:
+        def check_dialog_handle(confirm: bool) -> None:
             if confirm:
                 tab_mode = old_tab_id[:3]
                 tabs.remove_tab(old_tab_id)
                 if tab_mode == "lqt":
                     self.openai.delete_conversation(conversation_id=int(old_tab_id[3:]))
                 elif tab_mode == "lxt":
-                    await self.openai.delete_group_talk_conversation(group_talk_conversation_id=int(old_tab_id[3:]))
+                    self.openai.delete_group_talk_conversation(group_talk_conversation_id=int(old_tab_id[3:]))
                 self.chat_display.delete_buffer_id(id=int(old_tab_id[3:]))
             else:
                 return
@@ -1210,6 +1218,7 @@ class MainApp(App[str]):
             if confirm:
                 self.qdrant_queue.put({"action": "STOP"})
                 self.qdrant_thread.join()
+                self.manager.gk_kernel.commander.exit()
                 self.exit()
             else:
                 return
@@ -1267,6 +1276,8 @@ class MainApp(App[str]):
                 plugin_display_down.add_children(MyCheckBox(status=(plugin.plugin_info in plugins_actived), icon=Text("  \U000F0C23 ", "purple"), label=Text(plugin.name), pointer=plugin, domain=plugin_display_down))
     
     def manager_init(self, manager: Manager) -> None:
+        commander_thread = threading.Thread(target=manager.gk_kernel.commander.run)
+        commander_thread.start()
         manager.load_services(where=ConversationService(manager), skill_name="conversation_service")
         # The purpose of using the following manually constructed relative import is to 
         # avoid duplicate imports and errors in package identity determination caused by inconsistent package names.
@@ -1510,6 +1521,7 @@ class MainApp(App[str]):
         await asyncio.sleep(1)
         init_log.write(Text("1", "red"))
         self.qdrant_thread.join()
+        self.manager.gk_kernel.commander.exit()
         self.exit(exit_log)
 
     async def open_group_talk(self) -> int:

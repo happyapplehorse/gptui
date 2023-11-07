@@ -28,10 +28,11 @@ class ResponseJob(Job):
 
 
 class GroupTalkManager(Job):
-    def __init__(self, manager: ManagerInterface):
+    def __init__(self, manager: ManagerInterface, user_name: str = "admin"):
         self._speaking = None
         self.running = False
         self.manager = manager
+        self.user_name = user_name
         self.group_talk_manager_id: int | None = None
         self.roles: dict[str, Role] = {}
         self.user_talk_buffer = []
@@ -44,7 +45,7 @@ class GroupTalkManager(Job):
     @speaking.setter
     def speaking(self, value: str | None):
         if value is None:
-            messages = [{"role": "user", "name": "host", "content": message} for message in self.user_talk_buffer]
+            messages = [{"role": "user", "name": self.user_name, "content": message} for message in self.user_talk_buffer]
             if messages:
                 common_message_signal.send(
                     self,

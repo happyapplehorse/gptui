@@ -24,7 +24,7 @@ from ..gptui_kernel.dispatcher import(
     async_dispatcher_function_call,
 )
 from ..gptui_kernel.manager import ManagerInterface
-from ..gptui_kernel.kernel import BasicJob, handler, Callback
+from ..gptui_kernel.kernel import BasicJob, handler, Callback, PASS_WORD
 from ..gptui_kernel.dispatcher import async_iterable_from_gpt
 
 
@@ -37,7 +37,7 @@ class ResponseHandler:
         self.manager = manager
         self.context = context
 
-    @handler
+    @handler(PASS_WORD)
     async def handle_response(self, self_handler, response, callback):
         """handler that handle response from LLM"""
         commander = self_handler.commander
@@ -46,7 +46,6 @@ class ResponseHandler:
                 response=response,
                 callback=callback,
             ),
-            task_keeper=commander.task_keeper,
         )
         to_user_gen = make_role_generator("to_user")
         function_call_gen = make_role_generator("function_call")
@@ -65,7 +64,7 @@ class OpenaiHandler:
         self.chat_context_saver = context.chat_context_saver
         self.openai_api = openai_api(manager.dot_env_config_path)
 
-    @handler
+    @handler(PASS_WORD)
     async def user_handler(self, self_handler, user_gen) -> None:
         """Handling the part of the message sent to the user by LLM
         args:
@@ -134,7 +133,7 @@ class OpenaiHandler:
         if response_to_user_message_sentence_stream_signal.receivers:
             await response_to_user_message_sentence_stream_signal.send_async(self, _sync_wrapper=sync_wrapper, message={"content":"", "flag":"end"})
     
-    @handler
+    @handler(PASS_WORD)
     async def function_call_handler(self, self_handler, function_call_gen) -> None:
         message_list = []
         async for chunk in function_call_gen:
@@ -286,22 +285,26 @@ class OpenaiHandler:
 
 
 class GroupTalkHandler:
-    @handler
+    @handler(PASS_WORD)
     async def handle_response(self, self_handler, response_dict: dict[str, Iterable]):
         items = list(response_dict.items())
         # Randomly shuffle the order to give each role an equal opportunity to speak.
         random.shuffle(items)
         for role_name, response in items:
+            gptui_logger.debug(f"---------handle_response: {role_name}-----------")
             self_handler.call_handler(self.parse_stream_response(role_name, response))
+            gptui_logger.debug(f"---------handle_response end-----------")
 
-    @handler
+    @handler(PASS_WORD)
     async def wait_for_termination(self, self_handler, group_talk_manager):
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             # If no one is speaking, check if the user is speaking.
             if group_talk_manager.speaking is None:
-                messages = [{"role": "user", "name": "host", "content": message} for message in group_talk_manager.user_talk_buffer]
+                gptui_logger.debug("----1111----")
+                messages = [{"role": "user", "name": group_talk_manager.user_name, "content": message} for message in group_talk_manager.user_talk_buffer]
                 if messages:
+                    gptui_logger.debug("----2222----")
                     common_message_signal.send(
                         self,
                         _async_wrapper=async_wrapper_with_loop,
@@ -310,50 +313,63 @@ class GroupTalkHandler:
                             "flag": "group_talk_user_message_send",
                         },
                     )
+                    gptui_logger.debug("----3333----")
                     response_dict = {}
                     items = list(group_talk_manager.roles.items())
                     # Randomly shuffle the order to give each role an equal opportunity to speak.
                     random.shuffle(items)
+                    gptui_logger.debug("----4444----")
                     for role_name, role in items:
                         response_dict[role_name] = role.chat(message=messages)
+                    gptui_logger.debug("----5555----")
                     GroupTalkHandler = group_talk_manager.manager.get_handler("GroupTalkHandler")
                     # Because at any given moment only one role can speak, it is safe when multiple dialogue tasks are running in parallel;
                     # there will be no inconsistency in the role's chat history.
                     self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
+                    gptui_logger.debug("----6666----")
                     group_talk_manager.user_talk_buffer = []
             if not group_talk_manager.running:
                 await group_talk_manager.close_task_node()
+                gptui_logger.debug("----close end----")
                 break
 
-    @handler
+    @handler(PASS_WORD)
     async def parse_stream_response(self, self_handler, role_name, stream_response):
         async_stream_response = async_iterable_from_gpt(stream_response)
         talk_manager = self_handler.ancestor_chain[-2]
         if not talk_manager.running:
             return
+        gptui_logger.debug(f"-------------parse_stream_response: role_name: {role_name} ------------------")
         full_response_content = await self.stream_response_result(async_stream_response=async_stream_response)
+        gptui_logger.debug("----aaaa----")
+        role = talk_manager.roles[role_name]
         if "Can I speak" in full_response_content:
-            role = talk_manager.roles[role_name]
             if talk_manager.speaking:
                 # No need to actually reply.
-                role.context.chat_context_append({"role": "user", "name": "host", "content": f"Host says to you: No, {talk_manager.speaking} is speaking."})
+                role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
+                role.context.chat_context_append({"role": "user", "name": "host", "content": f"SYS_INNER: Host says to you: No, {talk_manager.speaking} is speaking."})
             else:
-                role.context.chat_context_append({"role": "assistant", "content": full_response_content})
+                role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 talk_manager.speaking = role_name
                 response = talk_manager.roles[role_name].chat(
                     message={
                         "role": "user",
                         "name": "host",
-                        "content": f"Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
+                        "content": f"SYS_INNER: Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
                     }
                 )
                 async_talk_stream_response = async_iterable_from_gpt(response)
                 talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
                 TalkToAll = talk_manager.manager.get_job("TalkToAll")
                 await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
+        else:
+            role.context.chat_context_append({"role": "assistant", "content": " "})
+            if not full_response_content.isspace():
+                gptui_logger.debug(f"The assistant speak without asking 'Can I speak?' first: {full_response_content}")
 
     async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
         chunk_list = []
+        gptui_logger.debug("----bbbb----")
         async for chunk in async_stream_response:
             if not chunk:
                 continue
@@ -361,6 +377,7 @@ class GroupTalkHandler:
             if not chunk_content:
                 continue
             chunk_list.append(chunk_content)
+        gptui_logger.debug("----cccc----")
         full_response_content = ''.join(chunk_list)
         return full_response_content      
 

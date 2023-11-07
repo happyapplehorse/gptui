@@ -141,7 +141,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "message":{
                                 "content":{
                                     "content":{"status": True, "context": context},
-                                    "description":"Commander status changed",
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -167,7 +167,7 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_commander_end=[
+            at_job_end=[
                 {
                     "function": notification_signal.send_async,
                     "params": {
@@ -177,7 +177,25 @@ class OpenaiChat(OpenaiChatInterface):
                             "message":{
                                 "content":{
                                     "content":{"status": False, "context": context},
-                                    "description":"Commander status changed",
+                                    "description":"Job status changed",
+                                },
+                                "flag":"info",
+                            },
+                        },
+                    },
+                },
+            ],
+            at_commander_end=[
+                {
+                    "function": notification_signal.send_async,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_sync_wrapper": sync_wrapper,
+                            "message":{
+                                "content":{
+                                    "content": "",
+                                    "description":"Commander exit",
                                 },
                                 "flag":"info",
                             },
@@ -188,7 +206,7 @@ class OpenaiChat(OpenaiChatInterface):
         )
 
         job = ResponseJob(manager=self.manager, response=response_stream_format, context=context, callback=callback)
-        self.manager.gk_kernel.commander.async_commander_run(job)
+        self.manager.gk_kernel.commander.put_job_threadsafe(job)
     
     def chat_stream(self, context: OpenaiContext, message: dict | list[dict]) -> None:
         "stream version of chat function with openai"
@@ -262,7 +280,7 @@ class OpenaiChat(OpenaiChatInterface):
                             "message":{
                                 "content":{
                                     "content":{"status": True, "context": context},
-                                    "description":"Commander status changed",
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -288,7 +306,7 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_commander_end=[
+            at_job_end=[
                 {
                     "function": notification_signal.send_async,
                     "params": {
@@ -298,7 +316,25 @@ class OpenaiChat(OpenaiChatInterface):
                             "message":{
                                 "content":{
                                     "content":{"status": False, "context": context},
-                                    "description":"Commander status changed",
+                                    "description":"Job status changed",
+                                },
+                                "flag":"info",
+                            },
+                        },
+                    },
+                },
+            ],
+            at_commander_end=[
+                {
+                    "function": notification_signal.send_async,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_sync_wrapper": sync_wrapper,
+                            "message":{
+                                "content":{
+                                    "content": "",
+                                    "description":"Commander exit",
                                 },
                                 "flag":"info",
                             },
@@ -309,7 +345,7 @@ class OpenaiChat(OpenaiChatInterface):
         )
 
         job = ResponseJob(manager=self.manager, response=response, context=context, callback=callback)
-        self.manager.gk_kernel.commander.async_commander_run(job)
+        self.manager.gk_kernel.commander.put_job_threadsafe(job)
 
 
 def response_to_stream_format(mode: Literal["no_function_call", "function_call"], response) -> list:
@@ -346,6 +382,6 @@ class OpenAIGroupTalk:
         if group_talk_manager.state != "ACTIVE":
             group_talk_manager.running = True
             group_talk_manager.user_talk_buffer.append(message_content)
-            self.manager.gk_kernel.commander.async_commander_run(group_talk_manager)
+            self.manager.gk_kernel.commander.put_job_threadsafe(group_talk_manager)
         else:
             group_talk_manager.user_talk_buffer.append(message_content)

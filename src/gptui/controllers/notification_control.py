@@ -37,7 +37,10 @@ class Notification:
             elif description == "Starting to receive the original response message to the user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
-            elif description == "Commander status changed":
+            elif description == "Commander exit":
+                commander_status_display = self.app.query_one("#commander_status_display")
+                commander_status_display.update(Text('\u260a', 'cyan'))
+            elif description == "Job status changed":
                 tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
                 context_id = info_content["context"].id

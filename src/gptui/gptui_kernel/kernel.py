@@ -4,13 +4,14 @@ import itertools
 import json
 import logging
 import sys
+import threading
 import weakref
 from abc import ABCMeta, abstractmethod
-from asyncio import Task
+from asyncio import Task, AbstractEventLoop
 from functools import wraps
 from importlib import import_module
 from inspect import iscoroutinefunction
-from typing import Coroutine, Sequence, Iterable, Literal, cast
+from typing import TypeVar, Generic, Coroutine, Sequence, Iterable, Literal, cast
 
 import semantic_kernel as sk
 from dotenv import dotenv_values
@@ -24,6 +25,8 @@ from .kernel_error import (
     NotTaskerError,
     PluginInfoError,
     PluginsMatchError,
+    CommanderNotRunError,
+    CommanderAlreadyRunningError,
 )
 from .null_logger import get_null_logger
 
@@ -457,73 +460,196 @@ class TaskNode(metaclass=ABCMeta):
         terminate_children(self)
 
 
-class CommanderAsyncInterface(TaskNode):
+T = TypeVar('T')
+
+
+class CommanderAsyncInterface(TaskNode, Generic[T]):
+    @property
     @abstractmethod
-    def async_commander_run(self, job: Job | Sequence[Job]) -> None:
+    def running_status(self) -> bool:
         ...
 
     @abstractmethod
-    async def put_job(self, job: Job, parent: TaskNode | None = None) -> None:
+    def is_empty(self) -> bool:
         ...
 
     @abstractmethod
-    def call_handler(self, handler: HandlerCoroutine, parent: Job | HandlerCoroutine) -> Task:
+    def run(self, job: Job | Sequence[Job] | None = None, auto_exit: bool = False) -> None | T:
+        ...
+
+    @abstractmethod
+    def run_auto(self, job: Job | Sequence[Job], auto_exit: bool = True) -> bool:
+        ...
+
+    @abstractmethod
+    def exit(self, return_result: T | None = None) -> None:
+        ...
+
+    @abstractmethod
+    def wait_for_exit(self) -> None | T:
+        ...
+
+    @abstractmethod
+    def put_job_threadsafe(self, job: Job) -> None:
+        ...
+
+    @abstractmethod
+    def call_handler_threadsafe(self, handler: HandlerCoroutine):
         ...
 
 
-class CommanderAsync(CommanderAsyncInterface):
+class CommanderAsync(CommanderAsyncInterface[T]):
     _commander_instances = weakref.WeakSet()
     def __init__(self, logger: logging.Logger | None = None):
         super().__init__()
         CommanderAsync._commander_instances.add(self)
+        self.__job_queue = asyncio.Queue()
         self._commander = self
         self._children = []
         self._parent = "Null"
-        self.callbacks_at_commander_end_list = []
-        self.background_tasks = []
-        self.unique_id = itertools.count(1)
+        self._callbacks_at_commander_end_list = []
+        self._unique_id = itertools.count(1)
+        self.__running = False
+        self._return_result = None
+        self._event_loop: AbstractEventLoop | None = None
+        self._running_lock = threading.Lock()
+        self.__exit_event = threading.Event()
+        self.__exit_event.set()
         self.logger = logger or get_null_logger()
 
-    def async_commander_run(self, job: Job | Sequence[Job]) -> None:
-        self.__job_queue = asyncio.Queue()
-        asyncio.run(self.commander_async(job))
+    @property
+    def running_status(self) -> bool:
+        with self._running_lock:
+            return self.__running
+    
+    def is_empty(self) -> bool:
+        return self.__job_queue.empty() and not self._children
 
-    async def commander_async(self, init_job: Job | Sequence[Job]) -> None:
+    def run(self, job: Job | Sequence[Job] | None = None, auto_exit: bool = False, new_queue: bool = True) -> None | T:
+        with self._running_lock:
+            if self.__running is True:
+                raise CommanderAlreadyRunningError("Commander is running.")
+            self.__running = True
+            self.__exit_event.clear()
+            if new_queue is True:
+                self.__job_queue = asyncio.Queue()
+        self._event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._event_loop)
+        try:
+            self._event_loop.run_until_complete(self._commander_async(job, auto_exit))
+        finally:
+            for task in asyncio.all_tasks(self._event_loop):
+                task.cancel()
+            self._event_loop.run_until_complete(self._event_loop.shutdown_asyncgens())
+            self._event_loop.close()
+            asyncio.set_event_loop(None)
+        return self._return_result
+
+    def run_auto(self, job: Job | Sequence[Job], auto_exit: bool = True, new_queue: bool = True) -> bool:
+        with self._running_lock:
+            if self.__running is True:
+                if job is not None:
+                    if not isinstance(job, Iterable):
+                        job = [job]
+                    for one_job in job:
+                        self.put_job_threadsafe(one_job)
+                return False
+            self.__running = True
+            self.__exit_event.clear()
+            if new_queue is True:
+                self.__job_queue = asyncio.Queue()
+        self._event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._event_loop)
+        try:
+            self._event_loop.run_until_complete(self._commander_async(job, auto_exit))
+        finally:
+            for task in asyncio.all_tasks(self._event_loop):
+                task.cancel()
+            self._event_loop.run_until_complete(self._event_loop.shutdown_asyncgens())
+            self._event_loop.close()
+            asyncio.set_event_loop(None)
+        return True
+
+    def exit(self, return_result: T | None = None, wait: bool = True) -> None:
+        """Exit the _commander_async loop.
+
+        Args:
+            return_result: this value will be returned by self.run()
+            wait{bool}: whether return only after the commander loop has truly finished. The default value is True.
+        """
+        with self._running_lock:
+            if self.__running is False:
+                self._return_result = return_result
+                return
+            #self._exit_event.clear()
+            self.__running = False
+            job = ComEnd()
+            job._parent = "Null"
+            job._commander = self
+            self.put_job_threadsafe(job)
+            if wait is True:
+                self.__exit_event.wait()
+            self._return_result = return_result
+
+    def wait_for_exit(self) -> None | T:
+        # Because this could be a potentially prolonged and blocking wait, using a lock might lead to a deadlock.
+        # Thus, we avoid waiting within the lock here.
+        # If the following condition is met, it indicates that it is running between
+        # self.__running=True and self.__exit_event.clear() in self.run.
+        # We wait for these two statements to complete by waiting for the lock (without consuming CPU).
+        if self.__running and self.__exit_event.is_set():
+            with self._running_lock:
+                pass
+        self.__exit_event.wait()
+        return self._return_result
+
+    async def _commander_async(self, init_job: Job | Sequence[Job] | None = None, auto_exit: bool = False) -> None:
+        """The core of the commander runs a loop to dispatch tasks.
+        In each commander, there is only one running loop to ensure thread safety.
+        If coordination between multiple commanders(loops) is required, a thread-safe API can be used.
+        """
         # initial job
-        if not isinstance(init_job, Iterable):
-            init_job = [init_job]
-        for job in init_job:
-            await self.put_job(job=job, parent=self)
-
-        while True:
+        if init_job is not None:
+            if not isinstance(init_job, Iterable):
+                init_job = [init_job]
+            for job in init_job:
+                await self._put_job(job=job, parent=self)
+        
+        while self.__running:
+            self.logger.debug("-------------------------_commander_async loop-------------------------")
             # stop condition
-            if self.__job_queue.empty() and not self._children:
-                break
+            if auto_exit:
+                if self._running_lock.acquire(blocking=False):
+                    try:
+                        if self.__job_queue.empty() and not self._children:
+                            self.__running = False
+                            break
+                    finally:
+                        self._running_lock.release()
+                else:
+                    # To avoid a deadlock.
+                    pass
             
             job = await self.__job_queue.get()
+            self.logger.debug(repr(job))
 
             callback = getattr(job, "callback", None)
             if callback is not None:
                 await self._callback_handle(callback=callback, which="at_job_start", task_node=job)
                 at_commander_end = callback.at_commander_end
                 if at_commander_end:
-                    self.callbacks_at_commander_end_list.append(callback)
+                    self._callbacks_at_commander_end_list.append(callback)
             
-            job._id = next(self.unique_id)
+            job._id = next(self._unique_id)
             job_task = job.task
             if getattr(job_task, "_tasker_", None) is not True:
                 raise NotTaskerError(job)
             await job_task()
 
-        await asyncio.gather(*self.background_tasks)
-        for callback in self.callbacks_at_commander_end_list:
+        for callback in self._callbacks_at_commander_end_list:
             await self._callback_handle(callback=callback, which="at_commander_end")
-        self.callback_at_commander_end = Callback(at_commander_end=[])
-
-    def task_keeper(self, task: Task) -> None:
-        "keep task alive until finished"
-        self.background_tasks.append(task)
-        task.add_done_callback(self.background_tasks.remove)
+        self._callbacks_at_commander_end_list = []
+        self.__exit_event.set()
 
     async def _callback_handle(
         self,
@@ -574,7 +700,7 @@ class CommanderAsync(CommanderAsyncInterface):
         job._commander = self
         await self.__job_queue.put(job)
 
-    async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None) -> None:
+    async def _put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None) -> None:
         if parent is None:
             parent = self
         if requester is None:
@@ -584,28 +710,63 @@ class CommanderAsync(CommanderAsyncInterface):
         parent.add_child(job)
         if job._commander is None:
             job._commander = parent.commander
+        
+        if not job.commander is self:
+            job.commander.put_job_threadsafe(job)
+            return
+        
         await self.__job_queue.put(job)
 
-    def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None) -> Task | None:
+    def put_job_threadsafe(self, job: Job) -> None:
+        event_loop = self._event_loop
+        if event_loop is None:
+            raise CommanderNotRunError(self)
+        asyncio.run_coroutine_threadsafe(self._put_job(job), event_loop)
+
+    def _call_handler(
+        self,
+        handler: HandlerCoroutine,
+        parent: TaskNode | None = None,
+        requester: TaskNode | None = None
+    ) -> Task | None:
         if getattr(handler, "_handler_", None) is not True:
             raise NotHandlerError(parent)
+        
         if parent is None:
             parent = self
         if requester is None:
             requester = parent
+        
         if parent.state == "TERMINATED":
             return
+        
         parent.add_child(handler)
         if handler._commander is None:
             handler._commander = parent.commander
+        
+        handler_callback = handler.callback
+        if handler_callback is not None:
+            if handler_callback.at_commander_end:
+                handler.commander._callbacks_at_commander_end_list.append(handler_callback)
+        
+        if not handler.commander is self:
+            handler.commander.call_handler_threadsafe(handler)
+            return
+        
         task = asyncio.create_task(handler.wrap_coroutine())
-        self.task_keeper(task)
         return task
+
+    def call_handler_threadsafe(self, handler: HandlerCoroutine):
+        event_loop = self._event_loop
+        if event_loop is None:
+            raise CommanderNotRunError(self)
+        event_loop.call_soon_threadsafe(self._call_handler, (handler,))
 
 
 def tasker(password):
     assert password == PASS_WORD, ("The password is incorrect, "
         "you should ensure that all time-consuming tasks are placed outside of the commander. "
+        "Time-consuming tasks pose a risk of blocking the commander. "
         "The correct password is: I assure all time-consuming tasks are delegated externally")
     def decorator(func):
         """
@@ -634,6 +795,7 @@ def tasker(password):
                 return result
             finally:
                 await self_job.del_child(self_job)
+
         return wrap_function
     return decorator
 
@@ -671,11 +833,11 @@ class HandlerCoroutine(TaskNode):
 
     async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        await commander.put_job(job=job, parent=parent or self, requester=requester)
+        await commander._put_job(job=job, parent=parent or self, requester=requester)
 
     def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        commander.call_handler(handler=handler, parent=parent or self, requester=requester)
+        commander._call_handler(handler=handler, parent=parent or self, requester=requester)
     
     @property
     def callback(self) -> Callback | None:
@@ -707,56 +869,62 @@ class HandlerCoroutine(TaskNode):
         self._callback._task_node = self
 
 
-def handler(coro_func):
-    """
-    Decorate a handler.
-    It Dose:
-        put a JobDone() at end of the task;
-        subtrack one from the job's _children_count, and trigger the down_check of this job.
-    """
-    if not iscoroutinefunction(coro_func):
-        raise TypeError("Handler function must to be a coroutine function.")
+def handler(password):
+    assert password == PASS_WORD, ("The password is incorrect, "
+        "you should ensure that all time-consuming tasks are placed outside of the commander. "
+        "Time-consuming tasks pose a risk of blocking the commander. "
+        "The correct password is: I assure all time-consuming tasks are delegated externally")
+    def decorator(coro_func):
+        """
+        Decorate a handler to a HandlerCoroutine.
+        HandlerCoroutine object dose:
+            Automatically add self_handler as the second parameter.
+            Remove self from the node's _children, and trigger the down check of this handler task node when it is done.
+        """
+        if not iscoroutinefunction(coro_func):
+            raise TypeError("Handler function must to be a coroutine function.")
 
-    @wraps(coro_func)
-    def decorator(*args, **kwargs):
-        handler_coroutine = HandlerCoroutine()
-        if '.' in coro_func.__qualname__:
-            # coro_func is a method
-            coro = coro_func(args[0], handler_coroutine, *args[1:], **kwargs)
-            for arg in args:
-                if isinstance(arg, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = arg
-                    else:
-                        handler_coroutine._callback.update(arg)
-                    arg._task_node = handler_coroutine
-            for value in kwargs.values():
-                if isinstance(value, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = value
-                    else:
-                        handler_coroutine._callback.update(value)
-                    value._task_node = handler_coroutine
-        else:
-            # coro_func is a function
-            coro = coro_func(handler_coroutine, *args, **kwargs)
-            for arg in args:
-                if isinstance(arg, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = arg
-                    else:
-                        handler_coroutine._callback.update(arg)
-                    arg._task_node = handler_coroutine
-            for value in kwargs.values():
-                if isinstance(value, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = value
-                    else:
-                        handler_coroutine._callback.update(value)
-                    value._task_node = handler_coroutine
-        handler_coroutine.coro = coro
-        return handler_coroutine
-   
+        @wraps(coro_func)
+        def wrap_function(*args, **kwargs):
+            handler_coroutine = HandlerCoroutine()
+            if '.' in coro_func.__qualname__:
+                # coro_func is a method
+                coro = coro_func(args[0], handler_coroutine, *args[1:], **kwargs)
+                for arg in args:
+                    if isinstance(arg, Callback):
+                        if handler_coroutine._callback is None:
+                            handler_coroutine._callback = arg
+                        else:
+                            handler_coroutine._callback.update(arg)
+                        arg._task_node = handler_coroutine
+                for value in kwargs.values():
+                    if isinstance(value, Callback):
+                        if handler_coroutine._callback is None:
+                            handler_coroutine._callback = value
+                        else:
+                            handler_coroutine._callback.update(value)
+                        value._task_node = handler_coroutine
+            else:
+                # coro_func is a function
+                coro = coro_func(handler_coroutine, *args, **kwargs)
+                for arg in args:
+                    if isinstance(arg, Callback):
+                        if handler_coroutine._callback is None:
+                            handler_coroutine._callback = arg
+                        else:
+                            handler_coroutine._callback.update(arg)
+                        arg._task_node = handler_coroutine
+                for value in kwargs.values():
+                    if isinstance(value, Callback):
+                        if handler_coroutine._callback is None:
+                            handler_coroutine._callback = value
+                        else:
+                            handler_coroutine._callback.update(value)
+                        value._task_node = handler_coroutine
+            handler_coroutine.coro = coro
+            return handler_coroutine
+       
+        return wrap_function
     return decorator
 
 
@@ -958,11 +1126,11 @@ class Job(TaskNode):
 
     async def put_job(self, job: Job, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        await commander.put_job(job=job, parent=parent or self, requester=requester)
+        await commander._put_job(job=job, parent=parent or self, requester=requester)
 
     def call_handler(self, handler: HandlerCoroutine, parent: TaskNode | None = None, requester: TaskNode | None = None):
         commander = self.commander
-        commander.call_handler(handler=handler, parent=parent or self, requester=requester)
+        commander._call_handler(handler=handler, parent=parent or self, requester=requester)
 
     @property
     def callback(self) -> Callback | None:
