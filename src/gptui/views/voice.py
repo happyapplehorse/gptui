@@ -63,7 +63,7 @@ class Voice(Static, can_focus=True):
         self.myapp = app
         self.max_record_time = max_record_time
         self.timer = None
-        os.makedirs("./temp", exist_ok=True)
+        os.makedirs(os.path.join(app.config["workpath"], "temp"), exist_ok=True)
         self.progress_timer = self.set_interval(1, self.progress_drive, pause=True)
         self.key_time_deque = deque(maxlen=2)
         self.voice_record_start_handle = None
@@ -151,7 +151,7 @@ class Voice(Static, can_focus=True):
             self.query_one("#voice_status_region").update(Text("Transcribing ...", "green"))
             def blocking_transcribe():
                 try:
-                    with open("./temp/voice_temp.wav", "rb") as audio_file:
+                    with open(os.path.join(self.myapp.config["workpath"], "temp/voice_temp.wav"), "rb") as audio_file:
                         transcript = self.openai_api.Audio.transcribe("whisper-1", audio_file)
                 except FileNotFoundError:
                     self.query_one("#voice_status_region").update(Text("Have no voice file", "red"))
@@ -205,7 +205,10 @@ class Voice(Static, can_focus=True):
         self.query_one("#progress_bar").advance(1)
 
     def voice_record_start(self, time: int = 60) -> None:
-        exit_code, self.voice_record_start_handle = self.myapp.drivers.voice_record_start("./temp/voice_temp.wav", time)
+        exit_code, self.voice_record_start_handle = self.myapp.drivers.voice_record_start(
+            os.path.join(self.myapp.config["workpath"], "temp/voice_temp.wav"),
+            time,
+        )
         if exit_code:
             self.query_one("#voice_status_region").update(Text(f"Record failed with exit code {exit_code}.", "red"))
         else:

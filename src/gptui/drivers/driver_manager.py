@@ -1,4 +1,5 @@
 import logging
+import os
 
 from .drivers import CopyCode, TextToSpeak, VoiceRecordStart, VoiceRecordQuit
 from .driver_interface import DriverInterface
@@ -21,6 +22,10 @@ class DriverManager:
     
     def _register_driver_method(self):
         self.copy_code = CopyCode(self.os)
-        self.tts = TextToSpeak(self.os)
+        self.tts = TextToSpeak(
+            platform=self.os,
+            dot_env_path=self.app.config["dot_env_path"],
+            temp_dir=os.path.join(self.app.config["workpath"], "temp"),
+        )
         self.voice_record_start = VoiceRecordStart(self.os)
         self.voice_record_quit = VoiceRecordQuit(self.os)

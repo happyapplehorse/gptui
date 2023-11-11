@@ -1111,16 +1111,17 @@ class MainApp(App[str]):
         role = piece["role"]
         name = piece.get("name", None)
         content = piece["content"]
-        assert isinstance(content, str)
+        if content is None:
+            return
         if role in {"user", "assistant"}:
             if name:
                 if content.startswith("SYS_INNER:"):
                     return None
             if content == "Can I speak?":
-                return None
+                return
             return piece
         else:
-            return None
+            return
 
     def decorator(self, piece: dict, stream: bool = False, copy_code: bool = True, emoji: bool = True) -> Lines:
         content = piece["content"]

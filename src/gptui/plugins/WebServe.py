@@ -40,6 +40,7 @@ class WebServe:
         name="start",
         description=("The index of the first result to return. The default number of results per page is 10, "
                      "so &start=11 would start at the top of the second page of results. Notice: start + num have to be less than 100."),
+        default_value="1",
     )
     def google_search(self, context: SKContext) -> str:
         """

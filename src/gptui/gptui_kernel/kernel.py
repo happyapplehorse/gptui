@@ -271,10 +271,10 @@ class Kernel(KernelInterface):
             to_user: bool = True,
             auto_remove_input: bool = True
         ) -> tuple[list[dict], dict]:
-            """
-            Retrieve the meta and links of the specified function registered in the kernel for use in LLM function calls.
+            """Retrieve the meta and links of the specified function registered in the kernel for use in LLM function calls.
             If both plugins_list and functions are not specified, all functions registered in the kenel will be returned.
-            args:
+            
+            Args:
                 plugins_list: Add specified plugins
                 functions: Add specified functions
                 to_user: Add to user ability
@@ -283,7 +283,8 @@ class Kernel(KernelInterface):
                     The conditions for automatically removing 'input' arg is:
                         There are more than two args in the args list.
                         The description of 'input' is empty.
-            return:
+            
+            Return:
                 (
                     available_functions_meta: list,
                     available_functions_link: dict,
@@ -319,14 +320,20 @@ class Kernel(KernelInterface):
             available_functions_meta = []
             available_functions_link = {}
             for function in functions_meta:
-                available_functions_meta.append({"name": function["name"],
-                                            "description": function["description"],
-                                            "parameters": {
-                                                    "type": "object",
-                                                    "properties": (parameters:={}),
-                                                    "required": (required:=[]),
-                                                }
-                                            })
+                available_functions_meta.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": function["name"],
+                            "description": function["description"],
+                            "parameters": {
+                                "type": "object",
+                                "properties": (parameters := {}),
+                                "required": (required := []),
+                            },
+                        },
+                    }
+                )
                 if to_user is True:
                     parameters["to_user"] = {
                         "type": "string",
@@ -616,7 +623,6 @@ class CommanderAsync(CommanderAsyncInterface[T]):
                 await self._put_job(job=job, parent=self)
         
         while self.__running:
-            self.logger.debug("-------------------------_commander_async loop-------------------------")
             # stop condition
             if auto_exit:
                 if self._running_lock.acquire(blocking=False):
@@ -631,7 +637,6 @@ class CommanderAsync(CommanderAsyncInterface[T]):
                     pass
             
             job = await self.__job_queue.get()
-            self.logger.debug(repr(job))
 
             callback = getattr(job, "callback", None)
             if callback is not None:

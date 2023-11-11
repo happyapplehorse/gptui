@@ -1,7 +1,8 @@
-#############################################################################
-##The configurations in this document are the program's default settings,  ##
-##ensuring the presence of essential configuration items.                  ##
-#############################################################################
+# +--------------------------------------------------------------------------+
+# \ The configurations in this document are the program's default settings,  \
+# \ ensuring the presence of essential configuration items.                  \
+# +--------------------------------------------------------------------------+
+
 
 GPTUI_BASIC_SERVICES_PATH:
 PLUGIN_PATH:

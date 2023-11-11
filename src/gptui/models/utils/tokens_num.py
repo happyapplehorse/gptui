@@ -39,7 +39,7 @@ def tokens_num_from_chat_context(chat_context: list, model: str) -> int:
     for message in chat_context:
         tokens_num += tokens_per_message
         for key, value in message.items():
-            tokens_num += len(encoding.encode(value))
+            tokens_num += len(encoding.encode(str(value)) if value else [])
             if key == "name":
                 tokens_num += tokens_per_name
     tokens_num += 3  # every reply is primed with <|start|>assistant<|message|>

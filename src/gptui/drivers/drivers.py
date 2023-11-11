@@ -7,6 +7,7 @@ import threading
 import time
 
 from .driver_interface import DriverInterface
+from ..models.utils.openai_api import openai_api_client
 
 
 gptui_logger = logging.getLogger("gptui_logger")
@@ -25,9 +26,21 @@ class CopyCode(DriverInterface):
 
 
 class TextToSpeak(DriverInterface):
+
+    def __init__(self, dot_env_path: str, temp_dir: str, *args, **kwargs):
+        self.openai_api_client = openai_api_client(dot_env_path=dot_env_path)
+        self.temp_dir = temp_dir
+        super().__init__(*args, **kwargs)
     
     def termux(self, content: str):
-        subp = subprocess.Popen(['termux-tts-speak', content])
+        speech_file_path = os.path.join(self.temp_dir, "speech.mp3")
+        response = self.openai_api_client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=content
+        )
+        response.stream_to_file(speech_file_path)
+        subp = subprocess.Popen(['termux-media-player', 'play', speech_file_path])
         return subp
 
     def linux(self, content: str):

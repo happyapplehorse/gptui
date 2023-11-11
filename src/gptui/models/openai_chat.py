@@ -3,13 +3,15 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Literal
 
+from openai.types.chat import ChatCompletionMessageParam
+
 from .blinker_wrapper import async_wrapper_without_loop, async_wrapper_with_loop, sync_wrapper
 from .context import OpenaiContext
-from .jobs import ResponseJob, GroupTalkManager, TalkToAll
+from .jobs import ResponseJob, GroupTalkManager
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .signals import notification_signal, chat_context_extend_for_sending_signal
-from .utils.openai_api import openai_api
+from .utils.openai_api import openai_api_client
 from .utils.tokens_num import tokens_num_for_functions_call
 from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
@@ -43,7 +45,7 @@ class OpenaiChatInterface(metaclass=ABCMeta):
 class OpenaiChat(OpenaiChatInterface):
     def __init__(self, manager: ManagerInterface):
         self.manager = manager
-        self.openai_api = openai_api(manager.dot_env_config_path)
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
 
     def chat_message_append(self, context: OpenaiContext, message: dict | list[dict], tokens_num_update: bool = True) -> None:
         "Append chat message to the end of the chat_context of the context"
@@ -58,7 +60,7 @@ class OpenaiChat(OpenaiChatInterface):
         for message in messages_list:
             context.chat_context_append(message=message, tokens_num_update=tokens_num_update)
     
-    def chat_message_pop(self, context: OpenaiContext, pop_index: int = -1) -> dict:
+    def chat_message_pop(self, context: OpenaiContext, pop_index: int = -1) -> ChatCompletionMessageParam:
         "Pop a message from context"
         if context.chat_context is None:
             raise ValueError(f"Field 'chat_context' in {context.chat_context} has not been set.")
@@ -98,19 +100,19 @@ class OpenaiChat(OpenaiChatInterface):
             }
         )
         try:
-            function_para = {}
+            tools_para = {}
             if available_functions := self.manager.available_functions_meta:
-                function_para = {"functions": available_functions, "function_call": "auto"}
+                tools_para = {"tools": available_functions, "tool_choice": "auto"}
                 response_mode = "function_call"
             else:
                 response_mode = "no_function_call"
             
-            offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
+            offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = self.openai_api.ChatCompletion.create(
+            response = self.openai_api_client.chat.completions.create(
                 messages=trim_messages,
-                **function_para,
+                **tools_para,
                 **context.parameters,
             )
         except Exception as e:
@@ -242,16 +244,16 @@ class OpenaiChat(OpenaiChatInterface):
             }
         )
         try:
-            function_para = {}
+            tools_para = {}
             if available_functions := self.manager.available_functions_meta:
-                function_para = {"functions": available_functions, "function_call": "auto"}
+                tools_para = {"tools": available_functions, "tool_choice": "auto"}
             
-            offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
+            offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = self.openai_api.ChatCompletion.create(
+            response = self.openai_api_client.chat.completions.create(
                 messages = trim_messages,
-                **function_para,
+                **tools_para,
                 **context.parameters,
                 )
         except Exception as e:
@@ -376,7 +378,7 @@ def response_to_stream_format(mode: Literal["no_function_call", "function_call"]
 class OpenAIGroupTalk:
     def __init__(self, manager: ManagerInterface):
         self.manager = manager
-        self.openai_api = openai_api(manager.dot_env_config_path)
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
 
     def talk_stream(self, group_talk_manager: GroupTalkManager, message_content: str) -> None:
         if group_talk_manager.state != "ACTIVE":

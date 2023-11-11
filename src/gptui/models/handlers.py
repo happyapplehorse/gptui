@@ -18,10 +18,10 @@ from .signals import (
 )
 from .openai_chat_inner_service import chat_service_for_inner
 from .openai_error import OpenaiErrorHandler
-from .utils.openai_api import openai_api
+from .utils.openai_api import openai_api_client
 from ..gptui_kernel.dispatcher import(
     async_iterable_from_gpt,
-    async_dispatcher_function_call,
+    async_dispatcher_tools_call_for_openai,
 )
 from ..gptui_kernel.manager import ManagerInterface
 from ..gptui_kernel.kernel import BasicJob, handler, Callback, PASS_WORD
@@ -40,8 +40,7 @@ class ResponseHandler:
     @handler(PASS_WORD)
     async def handle_response(self, self_handler, response, callback):
         """handler that handle response from LLM"""
-        commander = self_handler.commander
-        make_role_generator = await async_dispatcher_function_call(
+        make_role_generator = await async_dispatcher_tools_call_for_openai(
             source=async_iterable_from_gpt(
                 response=response,
                 callback=callback,
@@ -62,7 +61,7 @@ class OpenaiHandler:
         self.manager = manager
         self.context = context
         self.chat_context_saver = context.chat_context_saver
-        self.openai_api = openai_api(manager.dot_env_config_path)
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
 
     @handler(PASS_WORD)
     async def user_handler(self, self_handler, user_gen) -> None:
@@ -135,153 +134,165 @@ class OpenaiHandler:
     
     @handler(PASS_WORD)
     async def function_call_handler(self, self_handler, function_call_gen) -> None:
-        message_list = []
-        async for chunk in function_call_gen:
-            message_list.append(chunk)
-        message = ''.join(message_list)
-        if not message:
-            return
-        function_dict = {}
-        try:
-            function_dict = json.loads(message)
-        except json.JSONDecodeError as e:
-            gptui_logger.error(e)
-        if function_dict.get("name"):
-            # call the function
-            function_name = function_dict["name"]
-            function_to_call = self.manager.available_functions_link[function_name]
-            function_args = function_dict["arguments"]
-            
-            await notification_signal.send_async(
-                self,
-                _sync_wrapper=sync_wrapper,
-                message={
-                    "content":{
-                        "content": "Function calling: " + function_name + " ... ",
-                        "description": "raw",
-                    },
-                    "flag": "info",
-                }
-            )
-
-            context = self.manager.gk_kernel.context_render(args=function_args, function=function_to_call)
-            
-            # dose insert context
-            if context.variables.get("openai_context") == (True, "AUTO"):
-                openai_context_deepcopy = copy.deepcopy(self.context)
-                openai_context_deepcopy.plugins = [repr(plugin) for plugin in openai_context_deepcopy.plugins]
-                context["openai_context"] = json.dumps(asdict(openai_context_deepcopy))
-
-            function_call_display_str = f"{function_name}({', '.join(f'{k}={v}' for k, v in function_args.items())})"
-            await response_auxiliary_message_signal.send_async(
-                self,
-                _sync_wrapper=sync_wrapper,
-                message={
-                    "content":{"role": "gpt", "content": f"Function call: {function_call_display_str}"},
-                    "flag":"function_call",
-                }
-            )
-            gptui_logger.info("Function call: " + function_call_display_str)
-            function_response_context = await function_to_call.invoke_async(context=context)
-            function_response = str(function_response_context)
-            
-            # send the function response to GPT
-            message = [
-                {
-                    "role": "function",
-                    "name": function_name,
-                    "content": function_response,
-                }
-            ]
-            functions = self.manager.available_functions_meta
-            await notification_signal.send_async(
-                self,
-                _sync_wrapper=sync_wrapper,
-                message={
-                    "content": {
-                        "content": "Send function call result, waiting for response ...",
-                        "description": "raw",
-                    },
-                    "flag": "info",
-                }
-            )
-            if functions:
-                paras = {"messages_list": message, "context": self.context, "openai_api": self.openai_api, "functions": functions, "function_call": "auto"}
-            else:
-                paras = {"messages_list": message, "context": self.context, "openai_api": self.openai_api}
+        function_result_dict = {}
+        function_call_display_str_list = []
+        async for function_call in function_call_gen:
+            if not function_call:
+                continue
+            function_dict = {}
             try:
-                await response_auxiliary_message_signal.send_async(self, _sync_wrapper=sync_wrapper, message={"content":message[0], "flag":"function_response"})
-                # add response to context
-                if self.chat_context_saver == "outer":
-                    await chat_context_extend_signal.send_async(
-                        self,
-                        _sync_wrapper=sync_wrapper,
-                        message={
-                            "content":{
-                                "messages": [
-                                    {
-                                        "role": "system",
-                                        "content": (
-                                            f"<log />Assistant called function: {function_call_display_str}\n"
-                                            "This is an automatically logged message to remind you of your function call history.\n"
-                                        )
-                                    },
-                                ],
-                                "context": self.context
-                            },
-                            "flag": "",
-                        }
-                    )
-                else:
-                    self.context.chat_context_append(
-                        {
-                            "role": "system",
-                            "content": (
-                                f"<log />Assistant called function: {function_call_display_str}\n"
-                                "This is an automatically logged message to remind you of your function call history.\n"
-                            )
-                        }
-                    )
-                response = await asyncio.to_thread(chat_service_for_inner, **paras)
-            except Exception as e:
-                OpenaiErrorHandler().openai_error_handle(error=e, context=self.context)
-                raise e
+                function_dict = json.loads(function_call)
+            except json.JSONDecodeError as e:
+                gptui_logger.error(f"An error occurred while parsing the JSON string. JSON string: {function_call}. Error: {e}")
+            if function_dict.get("name"):
+                # call the function
+                tool_call_index = function_dict["tool_call_index"]
+                tool_call_id = function_dict["tool_call_id"]
+                function_name = function_dict["name"]
+                function_to_call = self.manager.available_functions_link[function_name]
+                function_args = function_dict["arguments"]
+                
+                await notification_signal.send_async(
+                    self,
+                    _sync_wrapper=sync_wrapper,
+                    message={
+                        "content":{
+                            "content": f"Function calling{f'({tool_call_index})' if tool_call_index else ''}: " + function_name + " ... ",
+                            "description": "raw",
+                        },
+                        "flag": "info",
+                    }
+                )
+
+                context = self.manager.gk_kernel.context_render(args=function_args, function=function_to_call)
+                
+                # Dose insert context
+                if context.variables.get("openai_context") == (True, "AUTO"):
+                    openai_context_deepcopy = copy.deepcopy(self.context)
+                    openai_context_deepcopy.plugins = [repr(plugin) for plugin in openai_context_deepcopy.plugins]
+                    context["openai_context"] = json.dumps(asdict(openai_context_deepcopy))
+
+                function_call_display_str = f"{function_name}({', '.join(f'{k}={v}' for k, v in function_args.items())})"
+                function_call_display_str_list.append(function_call_display_str)
+                await response_auxiliary_message_signal.send_async(
+                    self,
+                    _sync_wrapper=sync_wrapper,
+                    message={
+                        "content":{"role": "gpt", "content": f"Function call: {function_call_display_str}"},
+                        "flag":"function_call",
+                    }
+                )
+                gptui_logger.info("Function call: " + function_call_display_str)
+                function_response_context = await function_to_call.invoke_async(context=context)
+                function_response = str(function_response_context)
+                function_result_dict[tool_call_index] = {
+                    "tool_call_id": tool_call_id,
+                    "function_name": function_name,
+                    "function_args": function_args,
+                    "function_result": function_response,
+                }
+        
+        if not function_result_dict:
+            return
+        # send the function response to GPT
+        message = [
+            {
+                "tool_call_id": function_result["tool_call_id"],
+                "role": "tool",
+                "name": function_result["function_name"],
+                "content": function_result["function_result"],
+            } for function_result in function_result_dict.values()
+        ]
+        functions = self.manager.available_functions_meta
+        await notification_signal.send_async(
+            self,
+            _sync_wrapper=sync_wrapper,
+            message={
+                "content": {
+                    "content": "Sent function call result, waiting for response ...",
+                    "description": "raw",
+                },
+                "flag": "info",
+            }
+        )
+        if functions:
+            paras = {"messages_list": message, "context": self.context, "openai_api_client": self.openai_api_client, "tools": functions, "tool_choice": "auto"}
+        else:
+            paras = {"messages_list": message, "context": self.context, "openai_api_client": self.openai_api_client}
+        try:
+            for one_function in function_result_dict.values():
+                await response_auxiliary_message_signal.send_async(self, _sync_wrapper=sync_wrapper, message={"content":{"role": "function", "name": one_function["function_name"], "content": one_function["function_result"]}, "flag":"function_response"})
+            # add response to context
             if self.chat_context_saver == "outer":
                 await chat_context_extend_signal.send_async(
                     self,
                     _sync_wrapper=sync_wrapper,
                     message={
-                        "content": {
-                            "messages": message,
+                        "content":{
+                            "messages": [
+                                {
+                                    "role": "assistant",
+                                    "content": None,
+                                    "tool_calls": [
+                                        {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
+                                    ]
+                                },
+                            ],
                             "context": self.context
                         },
-                        "flag":"function_response"}
+                        "flag": "",
+                    }
                 )
             else:
-                self.context.chat_context_append(message[0])
-            #self.context_record(message)
-            ResponseJob = self.manager.get_job("ResponseJob")
-            callback = Callback(
-                at_receiving_start=[
+                self.context.chat_context_append(
                     {
-                        "function": notification_signal.send,
-                        "params": {
-                            "args": (self,),
-                            "kwargs": {
-                                "_async_wrapper": async_wrapper_with_loop,
-                                "message":{
-                                    "content":{
-                                        "content": "Starting to receive response messages for function calls.",
-                                        "description": "raw",
-                                    },
-                                    "flag":"info",
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
+                        ]
+                    }
+                )
+            response = await asyncio.to_thread(chat_service_for_inner, **paras)
+        except Exception as e:
+            OpenaiErrorHandler().openai_error_handle(error=e, context=self.context)
+            raise e
+        if self.chat_context_saver == "outer":
+            await chat_context_extend_signal.send_async(
+                self,
+                _sync_wrapper=sync_wrapper,
+                message={
+                    "content": {
+                        "messages": message,
+                        "context": self.context
+                    },
+                    "flag":"function_response"}
+            )
+        else:
+            self.context.chat_context_append(message[0])
+        #self.context_record(message)
+        ResponseJob = self.manager.get_job("ResponseJob")
+        callback = Callback(
+            at_receiving_start=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message":{
+                                "content":{
+                                    "content": "Starting to receive response messages for function calls.",
+                                    "description": "raw",
                                 },
+                                "flag":"info",
                             },
                         },
                     },
-                ],
-            )
-            await self_handler.put_job(ResponseJob(response=response, manager=self.manager, context=self.context, callback=callback))
+                },
+            ],
+        )
+        await self_handler.put_job(ResponseJob(response=response, manager=self.manager, context=self.context, callback=callback))
 
 
 class GroupTalkHandler:
@@ -291,9 +302,7 @@ class GroupTalkHandler:
         # Randomly shuffle the order to give each role an equal opportunity to speak.
         random.shuffle(items)
         for role_name, response in items:
-            gptui_logger.debug(f"---------handle_response: {role_name}-----------")
             self_handler.call_handler(self.parse_stream_response(role_name, response))
-            gptui_logger.debug(f"---------handle_response end-----------")
 
     @handler(PASS_WORD)
     async def wait_for_termination(self, self_handler, group_talk_manager):
@@ -301,10 +310,8 @@ class GroupTalkHandler:
             await asyncio.sleep(0.5)
             # If no one is speaking, check if the user is speaking.
             if group_talk_manager.speaking is None:
-                gptui_logger.debug("----1111----")
                 messages = [{"role": "user", "name": group_talk_manager.user_name, "content": message} for message in group_talk_manager.user_talk_buffer]
                 if messages:
-                    gptui_logger.debug("----2222----")
                     common_message_signal.send(
                         self,
                         _async_wrapper=async_wrapper_with_loop,
@@ -313,24 +320,19 @@ class GroupTalkHandler:
                             "flag": "group_talk_user_message_send",
                         },
                     )
-                    gptui_logger.debug("----3333----")
                     response_dict = {}
                     items = list(group_talk_manager.roles.items())
                     # Randomly shuffle the order to give each role an equal opportunity to speak.
                     random.shuffle(items)
-                    gptui_logger.debug("----4444----")
                     for role_name, role in items:
                         response_dict[role_name] = role.chat(message=messages)
-                    gptui_logger.debug("----5555----")
                     GroupTalkHandler = group_talk_manager.manager.get_handler("GroupTalkHandler")
                     # Because at any given moment only one role can speak, it is safe when multiple dialogue tasks are running in parallel;
                     # there will be no inconsistency in the role's chat history.
                     self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
-                    gptui_logger.debug("----6666----")
                     group_talk_manager.user_talk_buffer = []
             if not group_talk_manager.running:
                 await group_talk_manager.close_task_node()
-                gptui_logger.debug("----close end----")
                 break
 
     @handler(PASS_WORD)
@@ -339,9 +341,7 @@ class GroupTalkHandler:
         talk_manager = self_handler.ancestor_chain[-2]
         if not talk_manager.running:
             return
-        gptui_logger.debug(f"-------------parse_stream_response: role_name: {role_name} ------------------")
         full_response_content = await self.stream_response_result(async_stream_response=async_stream_response)
-        gptui_logger.debug("----aaaa----")
         role = talk_manager.roles[role_name]
         if "Can I speak" in full_response_content:
             if talk_manager.speaking:
@@ -369,24 +369,18 @@ class GroupTalkHandler:
 
     async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
         chunk_list = []
-        gptui_logger.debug("----bbbb----")
         async for chunk in async_stream_response:
-            if not chunk:
-                continue
-            chunk_content = chunk.get("content")
+            chunk_content = chunk.delta.content
             if not chunk_content:
                 continue
             chunk_list.append(chunk_content)
-        gptui_logger.debug("----cccc----")
         full_response_content = ''.join(chunk_list)
         return full_response_content      
 
     async def stream_response_display_and_result(self, role_name: str, async_stream_response: AsyncIterable, talk_manager) -> str:
         chunk_list = []
         async for chunk in async_stream_response:
-            if not chunk:
-                continue
-            chunk_content = chunk.get("content")
+            chunk_content = chunk.delta.content
             if not chunk_content:
                 continue
             await response_auxiliary_message_signal.send_async(
