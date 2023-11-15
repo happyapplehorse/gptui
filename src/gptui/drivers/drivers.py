@@ -1,10 +1,13 @@
 from __future__ import annotations
+import itertools
 import logging
 import os
 import pyperclip
 import subprocess
 import threading
 import time
+from threading import Thread
+from typing import Self
 
 from .driver_interface import DriverInterface
 from ..models.utils.openai_api import openai_api_client
@@ -30,34 +33,111 @@ class TextToSpeak(DriverInterface):
     def __init__(self, dot_env_path: str, temp_dir: str, *args, **kwargs):
         self.openai_api_client = openai_api_client(dot_env_path=dot_env_path)
         self.temp_dir = temp_dir
+        self._unique_id = itertools.count(1)
+        self._audio_dict = {}
+        self._now_audio_index = 1
+        self._voice_service = None
+        self.cond = threading.Condition()
+        self.running_status = True
         super().__init__(*args, **kwargs)
-    
-    def termux(self, content: str):
-        speech_file_path = os.path.join(self.temp_dir, "speech.mp3")
-        response = self.openai_api_client.audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=content
-        )
-        response.stream_to_file(speech_file_path)
-        subp = subprocess.Popen(['termux-media-player', 'play', speech_file_path])
-        return subp
 
-    def linux(self, content: str):
+    def get_audio(self, text_content: str) -> str | None:
+        now_id = next(self._unique_id)
+        audio_file_name = f"speech_{now_id}.mp3"
+        speech_file_path = os.path.join(self.temp_dir, audio_file_name)
         try:
-            subp = subprocess.Popen(['espeak', content])
-        except FileNotFoundError:
-            gptui_logger.error("The 'espeak' command is not found on this system")
+            response = self.openai_api_client.audio.speech.create(
+                model="tts-1",
+                voice="alloy",
+                input=text_content,
+            )
+            response.stream_to_file(speech_file_path)
+        except Exception as e:
+            gptui_logger.error(e)
+            with self.cond:
+                self._now_audio_index += 1 # The current reading position scrolls forward by 1.
+            return
         else:
-            return subp
+            with self.cond:
+                if self.running_status is False:
+                    self._now_audio_index += 1 # The current reading position scrolls forward by 1.
+                    return
+                self._audio_dict[now_id] = speech_file_path
+                if not self._voice_service:
+                    voice_service = Thread(target=self.voice_speak)
+                    voice_service.start()
+                    self._voice_service = voice_service
+                self.cond.notify_all()
+        return speech_file_path
     
-    def macos(self, content: str):
+    def voice_speak(self) -> None:
+        while True:
+            with self.cond:
+                gptui_logger.debug(f"----audio_dict_leght: {len(self._audio_dict)}")
+                gptui_logger.debug(f"----audio dict: {self._audio_dict}")
+                gptui_logger.debug(f"----now index: {self._now_audio_index}")
+                if self._now_audio_index in self._audio_dict:
+                    audio_path = self._audio_dict.pop(self._now_audio_index)
+                    self._now_audio_index += 1
+                    speak = True
+                else:
+                    speak = False
+                    status = self.cond.wait(timeout=5)
+                    if not status:
+                        self._voice_service = None
+                        break
+            if speak is True:
+                self.play_audio(audio_path)
+                os.remove(audio_path)
+    
+    def play_audio(self, audio_path: str) -> None:
+        subprocess.run(
+            ['termux-media-player', 'play', audio_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        while True:
+            result = subprocess.run(['termux-media-player', 'info'], stdout=subprocess.PIPE, text=True)
+            if "Playing" not in result.stdout:
+                break
+            time.sleep(0.1)
+
+    def stop(self) -> None:
+        gptui_logger.debug(f"----before stop-----------index: {self._now_audio_index}")
+        with self.cond:
+            self.running_status = False
+            if self._voice_service is None:
+                return
+            else:
+                for value in self._audio_dict.values():
+                    self._now_audio_index += 1
+                    os.remove(value)
+                self._audio_dict = {}
+                gptui_logger.debug("------clear-----")
+                gptui_logger.debug(f"----after clear: {self._audio_dict}")
+        gptui_logger.debug(f"----after stop-----------index: {self._now_audio_index}")
+
+    def termux(self, content: str) -> Self:
+        with self.cond:
+            self.running_status = True
+        Thread(target=self.get_audio, args=(content,)).start()
+        return self
+
+    def linux(self, content: str) -> Self | None:
         try:
             subp = subprocess.Popen(['espeak', content])
         except FileNotFoundError:
             gptui_logger.error("The 'espeak' command is not found on this system")
         else:
-            return subp
+            return self
+    
+    def macos(self, content: str) -> Self | None:
+        try:
+            subp = subprocess.Popen(['espeak', content])
+        except FileNotFoundError:
+            gptui_logger.error("The 'espeak' command is not found on this system")
+        else:
+            return self
 
 
 class VoiceRecordStart(DriverInterface):

@@ -32,8 +32,11 @@ def tokens_num_from_chat_context(chat_context: list, model: str) -> int:
     elif model == "gpt-4-0314":
         tokens_per_message = 3
         tokens_per_name = 1
+    elif model == "gpt-4-1106-preview":
+        tokens_per_message = 3
+        tokens_per_name = 1
     else:
-        gptui_logger.error(f"""tokens_num_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens.""")
+        gptui_logger.error(f"""tokens_num_from_chat_context() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens.""")
         raise NotImplementedError(f"""tokens_num_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens.""")
     tokens_num = 0
     for message in chat_context:
