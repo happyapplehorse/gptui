@@ -6,8 +6,9 @@ import pyperclip
 import subprocess
 import threading
 import time
+from playsound import playsound
 from threading import Thread
-from typing import Self
+from typing import Callable, Self
 
 from .driver_interface import DriverInterface
 from ..models.utils.openai_api import openai_api_client
@@ -37,18 +38,21 @@ class TextToSpeak(DriverInterface):
         self._audio_dict = {}
         self._now_audio_index = 1
         self._voice_service = None
+        self._start_time = 0
+        self._stop_time = 0
+        self._play_audio_method: Callable = self._play_audio_termux
         self.cond = threading.Condition()
-        self.running_status = True
         super().__init__(*args, **kwargs)
 
-    def get_audio(self, text_content: str) -> str | None:
+    def _get_audio(self, text_content: str) -> str | None:
+        send_time = time.time()
         now_id = next(self._unique_id)
         audio_file_name = f"speech_{now_id}.mp3"
         speech_file_path = os.path.join(self.temp_dir, audio_file_name)
         try:
             response = self.openai_api_client.audio.speech.create(
                 model="tts-1",
-                voice="alloy",
+                voice="nova",
                 input=text_content,
             )
             response.stream_to_file(speech_file_path)
@@ -59,23 +63,25 @@ class TextToSpeak(DriverInterface):
             return
         else:
             with self.cond:
-                if self.running_status is False:
+                if self._stop_time > self._start_time: # Stop state
+                    self._now_audio_index += 1 # The current reading position scrolls forward by 1.
+                    return
+                if send_time < self._stop_time:
+                    # Eliminate messages sent before the stop but received after the start due to delay.
+                    # That is, to exclude residual messages from before the start.
                     self._now_audio_index += 1 # The current reading position scrolls forward by 1.
                     return
                 self._audio_dict[now_id] = speech_file_path
                 if not self._voice_service:
-                    voice_service = Thread(target=self.voice_speak)
+                    voice_service = Thread(target=self._voice_speak)
                     voice_service.start()
                     self._voice_service = voice_service
                 self.cond.notify_all()
         return speech_file_path
     
-    def voice_speak(self) -> None:
+    def _voice_speak(self) -> None:
         while True:
             with self.cond:
-                gptui_logger.debug(f"----audio_dict_leght: {len(self._audio_dict)}")
-                gptui_logger.debug(f"----audio dict: {self._audio_dict}")
-                gptui_logger.debug(f"----now index: {self._now_audio_index}")
                 if self._now_audio_index in self._audio_dict:
                     audio_path = self._audio_dict.pop(self._now_audio_index)
                     self._now_audio_index += 1
@@ -87,10 +93,10 @@ class TextToSpeak(DriverInterface):
                         self._voice_service = None
                         break
             if speak is True:
-                self.play_audio(audio_path)
+                self._play_audio_method(audio_path)
                 os.remove(audio_path)
     
-    def play_audio(self, audio_path: str) -> None:
+    def _play_audio_termux(self, audio_path: str) -> None:
         subprocess.run(
             ['termux-media-player', 'play', audio_path],
             stdout=subprocess.DEVNULL,
@@ -102,10 +108,12 @@ class TextToSpeak(DriverInterface):
                 break
             time.sleep(0.1)
 
+    def _play_audio_linux(self, audio_path: str) -> None:
+        playsound(audio_path)
+
     def stop(self) -> None:
-        gptui_logger.debug(f"----before stop-----------index: {self._now_audio_index}")
+        self._stop_time = time.time()
         with self.cond:
-            self.running_status = False
             if self._voice_service is None:
                 return
             else:
@@ -113,31 +121,21 @@ class TextToSpeak(DriverInterface):
                     self._now_audio_index += 1
                     os.remove(value)
                 self._audio_dict = {}
-                gptui_logger.debug("------clear-----")
-                gptui_logger.debug(f"----after clear: {self._audio_dict}")
-        gptui_logger.debug(f"----after stop-----------index: {self._now_audio_index}")
 
     def termux(self, content: str) -> Self:
-        with self.cond:
-            self.running_status = True
-        Thread(target=self.get_audio, args=(content,)).start()
+        self._start_time = time.time()
+        self._play_audio_method = self._play_audio_termux
+        Thread(target=self._get_audio, args=(content,)).start()
         return self
 
-    def linux(self, content: str) -> Self | None:
-        try:
-            subp = subprocess.Popen(['espeak', content])
-        except FileNotFoundError:
-            gptui_logger.error("The 'espeak' command is not found on this system")
-        else:
-            return self
+    def linux(self, content: str) -> Self:
+        self._start_time = time.time()
+        self._play_audio_method = self._play_audio_linux
+        Thread(target=self._get_audio, args=(content,)).start()
+        return self
     
-    def macos(self, content: str) -> Self | None:
-        try:
-            subp = subprocess.Popen(['espeak', content])
-        except FileNotFoundError:
-            gptui_logger.error("The 'espeak' command is not found on this system")
-        else:
-            return self
+    def macos(self, content: str) -> Self:
+        return self.linux(content)
 
 
 class VoiceRecordStart(DriverInterface):

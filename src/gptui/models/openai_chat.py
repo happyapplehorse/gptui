@@ -110,7 +110,7 @@ class OpenaiChat(OpenaiChatInterface):
             offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = self.openai_api_client.chat.completions.create(
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages=trim_messages,
                 **tools_para,
                 **context.parameters,
@@ -251,7 +251,7 @@ class OpenaiChat(OpenaiChatInterface):
             offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
             
-            response = self.openai_api_client.chat.completions.create(
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages = trim_messages,
                 **tools_para,
                 **context.parameters,

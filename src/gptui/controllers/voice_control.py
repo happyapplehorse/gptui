@@ -28,8 +28,6 @@ class VoiceService:
 
     def cancel_speak(self) -> None:
         self.disconnect()
-        gptui_logger.debug("----disconnect------")
         if self.voice_service is None:
             return
         self.voice_service.stop()
-        gptui_logger.debug("----cancel------")

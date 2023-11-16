@@ -34,7 +34,7 @@ def chat_service_for_inner(
     trim_messages = trim_excess_tokens(inner_context, offset=offset_tokens_num)
     
     try:
-        response = openai_api_client.chat.completions.create(
+        response = openai_api_client.with_options(timeout=20.0).chat.completions.create(
             messages=trim_messages,
             **parameters,
             )
