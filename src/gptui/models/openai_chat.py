@@ -3,6 +3,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Literal
 
+from agere.commander import Callback
 from openai.types.chat import ChatCompletionMessageParam
 
 from .blinker_wrapper import async_wrapper_without_loop, async_wrapper_with_loop, sync_wrapper
@@ -13,7 +14,6 @@ from .openai_tokens_truncate import trim_excess_tokens
 from .signals import notification_signal, chat_context_extend_for_sending_signal
 from .utils.openai_api import openai_api_client
 from .utils.tokens_num import tokens_num_for_functions_call
-from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
 
 

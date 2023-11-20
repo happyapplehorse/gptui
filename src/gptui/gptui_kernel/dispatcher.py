@@ -1,7 +1,7 @@
 import asyncio
 from typing import Iterable, AsyncIterator
 
-from .kernel import Callback
+from agere.commander import Callback
 
 
 async def async_iterable_from_gpt(response: Iterable, callback: Callback | None = None):

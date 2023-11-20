@@ -6,6 +6,8 @@ import random
 from dataclasses import asdict
 from typing import Iterable, AsyncIterable
 
+from agere.commander import PASS_WORD, Callback, BasicJob, handler
+
 from .blinker_wrapper import sync_wrapper, async_wrapper_with_loop
 from .context import OpenaiContext
 from .signals import (
@@ -24,7 +26,6 @@ from ..gptui_kernel.dispatcher import(
     async_dispatcher_tools_call_for_openai,
 )
 from ..gptui_kernel.manager import ManagerInterface
-from ..gptui_kernel.kernel import BasicJob, handler, Callback, PASS_WORD
 from ..gptui_kernel.dispatcher import async_iterable_from_gpt
 
 

@@ -6,9 +6,9 @@ import os
 import time
 from dataclasses import asdict
 
+from agere.commander import Callback
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
-from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
 from ..models.blinker_wrapper import async_wrapper_with_loop
 from ..models.context import BeadOpenaiContext

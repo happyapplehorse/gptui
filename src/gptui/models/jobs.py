@@ -2,11 +2,12 @@ import logging
 import random
 from typing import Iterable
 
+from agere.commander import PASS_WORD, Job, Callback, tasker
+
 from .blinker_wrapper import async_wrapper_with_loop
 from .context import Context
 from .role import Role
 from .signals import notification_signal, common_message_signal
-from ..gptui_kernel.kernel import Job, Callback, PASS_WORD, tasker
 from ..gptui_kernel.manager import ManagerInterface
 
 
