@@ -182,7 +182,7 @@ class OpenaiHandler:
                         "flag":"function_call",
                     }
                 )
-                gptui_logger.info("Function call: " + function_call_display_str)
+                gptui_logger.info(f"Function call: {function_call_display_str}; ID: {tool_call_id}.")
                 function_response_context = await function_to_call.invoke_async(context=context)
                 function_response = str(function_response_context)
                 function_result_dict[tool_call_index] = {
@@ -191,6 +191,19 @@ class OpenaiHandler:
                     "function_args": function_args,
                     "function_result": function_response,
                 }
+                await response_auxiliary_message_signal.send_async(
+                    self,
+                    _sync_wrapper=sync_wrapper,
+                    message={
+                        "content":
+                            {
+                                "role": "function",
+                                "name": function_name,
+                                "content": function_response,
+                            },
+                        "flag":"function_response",
+                    },
+                )
         
         if not function_result_dict:
             return
@@ -203,6 +216,7 @@ class OpenaiHandler:
                 "content": function_result["function_result"],
             } for function_result in function_result_dict.values()
         ]
+        gptui_logger.info(f"Function response: {message}")
         functions = self.manager.available_functions_meta
         await notification_signal.send_async(
             self,
@@ -220,8 +234,6 @@ class OpenaiHandler:
         else:
             paras = {"messages_list": message, "context": self.context, "openai_api_client": self.openai_api_client}
         try:
-            for one_function in function_result_dict.values():
-                await response_auxiliary_message_signal.send_async(self, _sync_wrapper=sync_wrapper, message={"content":{"role": "function", "name": one_function["function_name"], "content": one_function["function_result"]}, "flag":"function_response"})
             # add response to context
             if self.chat_context_saver == "outer":
                 await chat_context_extend_signal.send_async(
@@ -270,7 +282,7 @@ class OpenaiHandler:
             )
         else:
             self.context.chat_context_append(message[0])
-        #self.context_record(message)
+
         ResponseJob = self.manager.get_job("ResponseJob")
         callback = Callback(
             at_receiving_start=[

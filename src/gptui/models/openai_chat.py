@@ -257,6 +257,8 @@ class OpenaiChat(OpenaiChatInterface):
                 **context.parameters,
                 )
         except Exception as e:
+            gptui_logger.debug('----trim_messages----in chat----')
+            gptui_logger.debug(trim_messages)
             notification_signal.send(
                 self,
                 _async_wrapper=async_wrapper_without_loop,

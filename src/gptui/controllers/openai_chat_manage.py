@@ -156,7 +156,7 @@ class OpenaiChatManage:
         Generate a initial template bead.
         """
         bead = {
-            "role": "user",
+            "role": "system",
             "content": (
                 "Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\n"
                 f"CONVERSATION ID: {bead_id}"

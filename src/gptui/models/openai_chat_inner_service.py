@@ -39,6 +39,8 @@ def chat_service_for_inner(
             **parameters,
             )
     except Exception as e:
+        gptui_logger.debug('----trim_messages----in chat inner')
+        gptui_logger.debug(trim_messages)
         # The OpenAI API interface is a time-consuming synchronous interface, so it should be called in a new thread, hence there is no event loop here.
         OpenaiErrorHandler().openai_error_handle(error=e, context=inner_context, event_loop=False)
         raise e
