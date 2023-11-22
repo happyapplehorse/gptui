@@ -415,7 +415,8 @@ class WebServe:
             xpath_str += "]"
             content_list = tree.xpath(xpath_str)
             #content_list = tree.xpath("//p/..//*[name() = 'p' or name() = 'ul' or name() = 'ol' or name() = 'dl' or name() = 'table' \
-            #        or name() = 'title' or starts-with(name(),'h') or (name() = 'a' and @href) or name() = 'br' or name() = 'blockquote' or name() = 'img']")
+            #    or name() = 'title' or starts-with(name(),'h') or (name() = 'a' and @href) or name() = 'br' or name() = 'blockquote' or name() = 'img']"
+            #)
             text_list = []
             already_traversed_list = []
             for content in content_list:

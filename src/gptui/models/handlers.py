@@ -6,7 +6,7 @@ import random
 from dataclasses import asdict
 from typing import Iterable, AsyncIterable
 
-from agere.commander import PASS_WORD, Callback, BasicJob, handler
+from agere.commander import PASS_WORD, BasicJob, handler
 from agere.utils.dispatcher import async_dispatcher_tools_call_for_openai
 from agere.utils.llm_async_converters import LLMAsyncAdapter
 
@@ -45,7 +45,7 @@ class ResponseHandler:
     ):
         """handler that handle response from LLM"""
         make_role_generator = await async_dispatcher_tools_call_for_openai(
-            source=LLMAsyncAdapter().llm_to_async_iterable(
+            source=LLMAsyncAdapter(logger=gptui_logger).llm_to_async_iterable(
                 response=response,
                 at_receiving_start=at_receiving_start,
                 at_receiving_end=at_receiving_end,
@@ -140,7 +140,6 @@ class OpenaiHandler:
     @handler(PASS_WORD)
     async def function_call_handler(self, self_handler, function_call_gen) -> None:
         function_result_dict = {}
-        function_call_display_str_list = []
         async for function_call in function_call_gen:
             if not function_call:
                 continue
@@ -178,7 +177,6 @@ class OpenaiHandler:
                     context["openai_context"] = json.dumps(asdict(openai_context_deepcopy))
 
                 function_call_display_str = f"{function_name}({', '.join(f'{k}={v}' for k, v in function_args.items())})"
-                function_call_display_str_list.append(function_call_display_str)
                 await response_auxiliary_message_signal.send_async(
                     self,
                     _sync_wrapper=sync_wrapper,
@@ -289,27 +287,32 @@ class OpenaiHandler:
             self.context.chat_context_append(message[0])
 
         ResponseJob = self.manager.get_job("ResponseJob")
-        callback = Callback(
-            at_receiving_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message":{
-                                "content":{
-                                    "content": "Starting to receive response messages for function calls.",
-                                    "description": "raw",
-                                },
-                                "flag":"info",
+        at_receiving_start = [
+            {
+                "function": notification_signal.send,
+                "params": {
+                    "args": (self,),
+                    "kwargs": {
+                        "_async_wrapper": async_wrapper_with_loop,
+                        "message":{
+                            "content":{
+                                "content": "Starting to receive response messages for function calls.",
+                                "description": "raw",
                             },
+                            "flag":"info",
                         },
                     },
                 },
-            ],
+            },
+        ]
+        await self_handler.put_job(
+            ResponseJob(
+                response=response,
+                manager=self.manager,
+                context=self.context,
+                at_receiving_start=at_receiving_start,
+            )
         )
-        await self_handler.put_job(ResponseJob(response=response, manager=self.manager, context=self.context, callback=callback))
 
 
 class GroupTalkHandler:
@@ -319,7 +322,7 @@ class GroupTalkHandler:
         # Randomly shuffle the order to give each role an equal opportunity to speak.
         random.shuffle(items)
         for role_name, response in items:
-            self_handler.call_handler(self.parse_stream_response(role_name, response))
+            self_handler.call_handler(self.parse_stream_response(role_name=role_name, stream_response=response))
 
     @handler(PASS_WORD)
     async def wait_for_termination(self, self_handler, group_talk_manager):
@@ -354,7 +357,7 @@ class GroupTalkHandler:
 
     @handler(PASS_WORD)
     async def parse_stream_response(self, self_handler, role_name, stream_response):
-        async_stream_response = async_iterable_from_gpt(stream_response)
+        async_stream_response = LLMAsyncAdapter().llm_to_async_iterable(stream_response)
         talk_manager = self_handler.ancestor_chain[-2]
         if not talk_manager.running:
             return
@@ -375,7 +378,7 @@ class GroupTalkHandler:
                         "content": f"SYS_INNER: Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
                     }
                 )
-                async_talk_stream_response = async_iterable_from_gpt(response)
+                async_talk_stream_response = LLMAsyncAdapter().llm_to_async_iterable(response)
                 talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
                 TalkToAll = talk_manager.manager.get_job("TalkToAll")
                 await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))

@@ -9,7 +9,7 @@ authors = [
 ]
 description = "A GPT conversational TUI tool that runs within the terminal."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 dynamic = ["version"]
 classifiers = [
