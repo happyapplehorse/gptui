@@ -15,16 +15,30 @@ gptui_logger = logging.getLogger("gptui_logger")
 
 
 class ResponseJob(Job):
-    def __init__(self, manager: ManagerInterface, response: Iterable, context: Context, callback: Callback | None = None):
+    def __init__(
+        self,
+        manager: ManagerInterface,
+        response: Iterable,
+        context: Context,
+        callback: Callback | None = None,
+        at_receiving_start: list[dict] | None = None,
+        at_receiving_end: list[dict] | None = None,
+    ):
         super().__init__(callback=callback)
         self.response = response
         self.context = context
         self.manager = manager
+        self.at_receiving_start = at_receiving_start
+        self.at_receiving_end = at_receiving_end
 
     @tasker(PASS_WORD)
     async def task(self):
         ResponseHandler = self.manager.get_handler("ResponseHandler")
-        handler = ResponseHandler(self.manager, self.context).handle_response(response=self.response, callback=self.callback)
+        handler = ResponseHandler(self.manager, self.context).handle_response(
+            response=self.response,
+            at_receiving_start=self.at_receiving_start,
+            at_receiving_end=self.at_receiving_end,
+        )
         return handler
 
 

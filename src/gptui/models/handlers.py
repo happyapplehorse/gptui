@@ -7,6 +7,8 @@ from dataclasses import asdict
 from typing import Iterable, AsyncIterable
 
 from agere.commander import PASS_WORD, Callback, BasicJob, handler
+from agere.utils.dispatcher import async_dispatcher_tools_call_for_openai
+from agere.utils.llm_async_converters import LLMAsyncAdapter
 
 from .blinker_wrapper import sync_wrapper, async_wrapper_with_loop
 from .context import OpenaiContext
@@ -21,12 +23,7 @@ from .signals import (
 from .openai_chat_inner_service import chat_service_for_inner
 from .openai_error import OpenaiErrorHandler
 from .utils.openai_api import openai_api_client
-from ..gptui_kernel.dispatcher import(
-    async_iterable_from_gpt,
-    async_dispatcher_tools_call_for_openai,
-)
 from ..gptui_kernel.manager import ManagerInterface
-from ..gptui_kernel.dispatcher import async_iterable_from_gpt
 
 
 gptui_logger = logging.getLogger("gptui_logger")
@@ -39,12 +36,19 @@ class ResponseHandler:
         self.context = context
 
     @handler(PASS_WORD)
-    async def handle_response(self, self_handler, response, callback):
+    async def handle_response(
+        self,
+        self_handler,
+        response,
+        at_receiving_start: list[dict] | None = None,
+        at_receiving_end: list[dict] | None = None,
+    ):
         """handler that handle response from LLM"""
         make_role_generator = await async_dispatcher_tools_call_for_openai(
-            source=async_iterable_from_gpt(
+            source=LLMAsyncAdapter().llm_to_async_iterable(
                 response=response,
-                callback=callback,
+                at_receiving_start=at_receiving_start,
+                at_receiving_end=at_receiving_end,
             ),
         )
         to_user_gen = make_role_generator("to_user")

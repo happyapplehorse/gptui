@@ -151,24 +151,6 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_receiving_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message":{
-                                "content":{
-                                    "content":{"context": context},
-                                    "description":"Starting to receive the original response message to the user",
-                                },
-                                "flag":"info",
-                            },
-                        },
-                    },
-                },
-            ],
             at_job_end=[
                 {
                     "function": notification_signal.send_async,
@@ -187,27 +169,34 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_commander_end=[
-                {
-                    "function": notification_signal.send_async,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_sync_wrapper": sync_wrapper,
-                            "message":{
-                                "content":{
-                                    "content": "",
-                                    "description":"Commander exit",
-                                },
-                                "flag":"info",
+        )
+
+        at_receiving_start = [
+            {
+                "function": notification_signal.send,
+                "params": {
+                    "args": (self,),
+                    "kwargs": {
+                        "_async_wrapper": async_wrapper_with_loop,
+                        "message":{
+                            "content":{
+                                "content":{"context": context},
+                                "description":"Starting to receive the original response message to the user",
                             },
+                            "flag":"info",
                         },
                     },
                 },
-            ],
-        )
+            },
+        ]
 
-        job = ResponseJob(manager=self.manager, response=response_stream_format, context=context, callback=callback)
+        job = ResponseJob(
+            manager=self.manager,
+            response=response_stream_format,
+            context=context,
+            callback=callback,
+            at_receiving_start=at_receiving_start,
+        )
         self.manager.gk_kernel.commander.put_job_threadsafe(job)
     
     def chat_stream(self, context: OpenaiContext, message: dict | list[dict]) -> None:
@@ -292,24 +281,6 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_receiving_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message":{
-                                "content":{
-                                    "content":{"context": context},
-                                    "description":"Starting to receive the original response message to the user",
-                                },
-                                "flag":"info",
-                            },
-                        },
-                    },
-                },
-            ],
             at_job_end=[
                 {
                     "function": notification_signal.send_async,
@@ -328,27 +299,34 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_commander_end=[
-                {
-                    "function": notification_signal.send_async,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_sync_wrapper": sync_wrapper,
-                            "message":{
-                                "content":{
-                                    "content": "",
-                                    "description":"Commander exit",
-                                },
-                                "flag":"info",
+        )
+        
+        at_receiving_start = [
+            {
+                "function": notification_signal.send,
+                "params": {
+                    "args": (self,),
+                    "kwargs": {
+                        "_async_wrapper": async_wrapper_with_loop,
+                        "message":{
+                            "content":{
+                                "content":{"context": context},
+                                "description":"Starting to receive the original response message to the user",
                             },
+                            "flag":"info",
                         },
                     },
                 },
-            ],
-        )
+            },
+        ]
 
-        job = ResponseJob(manager=self.manager, response=response, context=context, callback=callback)
+        job = ResponseJob(
+            manager=self.manager,
+            response=response,
+            context=context,
+            callback=callback,
+            at_receiving_start=at_receiving_start,
+        )
         self.manager.gk_kernel.commander.put_job_threadsafe(job)
 
 
