@@ -23,7 +23,6 @@ class DecorateDisplay:
         self.app = app
         self.code_block_list = []
         self.chain_lines: Lines | None = None
-        self.chain_total_lines: Lines | None = None
         self.chain_length_list: list | None = None
         self.chain_max_width: int | None = None
     
@@ -249,7 +248,7 @@ class DecorateDisplay:
             total_lines.extend(lin)
         length_list = list(map(lambda line: line.cell_len, total_lines))
         max_width = max(length_list)
-        self.chain_total_lines = total_lines
+        self.chain_lines = total_lines
         self.chain_length_list = length_list
         self.chain_max_width = max_width
         return self
@@ -328,6 +327,8 @@ class DecorateDisplay:
             Self
         """
         out = Lines()
+        assert self.chain_lines is not None, "self.chain_lines can not be None"
+        assert self.chain_length_list is not None, "self.chain_length_list can not be None"
         assert self.chain_max_width is not None, "self.chain_max_width can not be None"
         max_width = self.chain_max_width
         if line_type == 0:
@@ -352,13 +353,13 @@ class DecorateDisplay:
         top = Text(u'\u256D' + horizental + u'\u256E', panel_color)
         bottom = Text(u'\u2570' + horizental + u'\u256F', panel_color)
         out.append(top)
-        assert self.chain_lines is not None, "self.chain_lines can not be None"
         for line in self.chain_lines:
             line = Text(vertical, panel_color) + line + Text(vertical, panel_color)
             out.append(line)
         out.append(bottom)
         self.chain_lines = out
-        self.chain_max_width = max_width
+        self.chain_length_list = [max_width + 2] * (len(self.chain_length_list) + 2)
+        self.chain_max_width = max_width + 2
         return self
 
     def indicator_chain(self, indicator_color: str) -> Self:
@@ -377,6 +378,8 @@ class DecorateDisplay:
         first_time = True
         out = Lines()
         assert self.chain_lines is not None, "self.chain_lines can not be None"
+        assert self.chain_length_list is not None, "self.chain_length_list can not be None"
+        assert self.chain_max_width is not None, "self.chain_max_width can not be None"
         for line in self.chain_lines:
             if first_time:
                 out.append(Text(u'\u251c'+u'\u2500'+' ', indicator_color).append_text(line))
@@ -384,6 +387,8 @@ class DecorateDisplay:
             else:
                 out.append(Text(u'\u2502' + '  ', indicator_color).append_text(line))
         self.chain_lines = out
+        self.chain_length_list = [length + 3 for length in self.chain_length_list]
+        self.chain_max_width += 3
         return self
     
     def indicator(self, inp: Text, displayer_width: int, indicator_color: str) -> Lines:
