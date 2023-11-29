@@ -29,6 +29,7 @@ classifiers = [
 ]
 keywords = ["TUI", "terminal", "GPT", "CLI", "textual user interface"]
 dependencies = [
+    'agere>=0.1.1,<1',
     'aiofiles>=23.1.0,<24',
     'beautifulsoup4>=4.12.2,<5',
     'blinker>=1.6.2,<2',
@@ -50,10 +51,14 @@ dependencies = [
     'unstructured>=0.10.18,<1'
 ]
 
-
 [project.urls]
 "Homepage" = "https://github.com/happyapplehorse/gptui"
 "Bug Tracker" = "https://github.com/happyapplehorse/gptui/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = "src"
 
 [tool.setuptools.dynamic]
 version = {attr = "gptui.__version__"}
