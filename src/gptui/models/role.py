@@ -1,10 +1,12 @@
 import logging
 from typing import Iterable
 
+from openai.types.chat import ChatCompletionMessageParam
+
 from .context import BeadOpenaiContext, OpenaiContext
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
-from .utils.openai_api import openai_api
+from .utils.openai_api import openai_api_client
 from ..gptui_kernel.manager import ManagerInterface
 
 
@@ -18,7 +20,7 @@ class Role:
         self.name = name
         self.context = BeadOpenaiContext(parameters=openai_context_parent.parameters)
         self.manager = manager
-        self.openai_api = openai_api(manager.dot_env_config_path)
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
         self.context.max_sending_tokens_num = openai_context_parent.max_sending_tokens_num
         self.openai_context_parent = openai_context_parent
         self.context.chat_context_saver = "inner"
@@ -27,7 +29,7 @@ class Role:
         self.context.bead = [{"role": "system", "content": prompt}]
         self.context.insert_bead()
 
-    def chat(self, message: dict | list[dict]) -> Iterable:
+    def chat(self, message: ChatCompletionMessageParam | list[ChatCompletionMessageParam]) -> Iterable:
         self.context.auto_insert_bead()
         if isinstance(message, dict):
             self.context.chat_context_append(message=message)
@@ -38,7 +40,7 @@ class Role:
         self.context.parameters["stream"] = True
         trim_messages = trim_excess_tokens(self.context, offset=0)
         try:
-            response = self.openai_api.ChatCompletion.create(
+            response = self.openai_api_client.chat.completions.create(
                 messages=trim_messages,
                 **self.context.parameters,
             )

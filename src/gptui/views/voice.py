@@ -4,7 +4,9 @@ import time
 import os
 from collections import deque
 from time import monotonic
+from typing import cast
 
+import openai
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
@@ -63,7 +65,7 @@ class Voice(Static, can_focus=True):
         self.myapp = app
         self.max_record_time = max_record_time
         self.timer = None
-        os.makedirs("./temp", exist_ok=True)
+        os.makedirs(os.path.join(app.config["workpath"], "temp"), exist_ok=True)
         self.progress_timer = self.set_interval(1, self.progress_drive, pause=True)
         self.key_time_deque = deque(maxlen=2)
         self.voice_record_start_handle = None
@@ -151,12 +153,16 @@ class Voice(Static, can_focus=True):
             self.query_one("#voice_status_region").update(Text("Transcribing ...", "green"))
             def blocking_transcribe():
                 try:
-                    with open("./temp/voice_temp.wav", "rb") as audio_file:
-                        transcript = self.openai_api.Audio.transcribe("whisper-1", audio_file)
+                    with open(os.path.join(self.myapp.config["workpath"], "temp/voice_temp.wav"), "rb") as audio_file:
+                        transcript = self.openai_api.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            response_format="text",
+                        )
                 except FileNotFoundError:
                     self.query_one("#voice_status_region").update(Text("Have no voice file", "red"))
                     return
-                except self.openai_api.error.APIConnectionError as e:
+                except openai.APIConnectionError as e:
                     self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", "red"))
                     return
                 except Exception as e:
@@ -166,7 +172,8 @@ class Voice(Static, can_focus=True):
             transcript = await asyncio.to_thread(blocking_transcribe)
             self.query_one("#voice_status_region").update(Text("Transcription Completion!", "green"))
             if transcript:
-                voice_text = transcript['text']
+                transcript_text = cast(str, transcript)
+                voice_text = transcript_text.strip()
                 self.post_message(self.Submitted(voice_text))
                 time_display.reset()
                 self.query_one("#progress_bar").update(total=self.max_record_time, progress=0)
@@ -205,7 +212,10 @@ class Voice(Static, can_focus=True):
         self.query_one("#progress_bar").advance(1)
 
     def voice_record_start(self, time: int = 60) -> None:
-        exit_code, self.voice_record_start_handle = self.myapp.drivers.voice_record_start("./temp/voice_temp.wav", time)
+        exit_code, self.voice_record_start_handle = self.myapp.drivers.voice_record_start(
+            os.path.join(self.myapp.config["workpath"], "temp/voice_temp.wav"),
+            time,
+        )
         if exit_code:
             self.query_one("#voice_status_region").update(Text(f"Record failed with exit code {exit_code}.", "red"))
         else:

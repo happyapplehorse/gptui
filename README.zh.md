@@ -94,7 +94,7 @@ pip install -r requirements.txt
 python main.py
 ```
 当使用`python main.py`或`python -m gptui`来运行本程序时，使用`gptui/config.yml`作为配置文件。
-在Linux或macOS系统下，如果要使用语音和TTS（TextToSpeak）功能，还需要分别安装pyaudio和espeak（暂时只提供了此中方式，效果不是很好）。
+在Linux或macOS系统下，如果要使用语音功能，还需要额外安装pyaudio。
 
 ## 配置
 

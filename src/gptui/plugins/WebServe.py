@@ -40,6 +40,7 @@ class WebServe:
         name="start",
         description=("The index of the first result to return. The default number of results per page is 10, "
                      "so &start=11 would start at the top of the second page of results. Notice: start + num have to be less than 100."),
+        default_value="1",
     )
     def google_search(self, context: SKContext) -> str:
         """
@@ -414,7 +415,8 @@ class WebServe:
             xpath_str += "]"
             content_list = tree.xpath(xpath_str)
             #content_list = tree.xpath("//p/..//*[name() = 'p' or name() = 'ul' or name() = 'ol' or name() = 'dl' or name() = 'table' \
-            #        or name() = 'title' or starts-with(name(),'h') or (name() = 'a' and @href) or name() = 'br' or name() = 'blockquote' or name() = 'img']")
+            #    or name() = 'title' or starts-with(name(),'h') or (name() = 'a' and @href) or name() = 'br' or name() = 'blockquote' or name() = 'img']"
+            #)
             text_list = []
             already_traversed_list = []
             for content in content_list:

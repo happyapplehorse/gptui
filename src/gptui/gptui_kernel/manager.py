@@ -6,8 +6,10 @@ from abc import ABCMeta, abstractmethod
 from importlib import import_module
 from typing import Type
 
-from .kernel import KernelInterface, Kernel, PluginMeta, Job, TemporarySysPath
-from .manager_error import HandlerNotRegisterError, JobNotRegisterError
+from agere.commander import Job
+
+from .kernel import KernelInterface, Kernel, PluginMeta, TemporarySysPath
+from .manager_exceptions import HandlerNotRegisterError, JobNotRegisterError
 from .null_logger import get_null_logger
 
 

@@ -2,6 +2,8 @@ import copy
 import logging
 from typing import Iterable
 
+from openai import OpenAI
+
 from .context import OpenaiContext
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
@@ -14,12 +16,12 @@ gptui_logger = logging.getLogger("gptui_logger")
 def chat_service_for_inner(
         messages_list: list, 
         context: OpenaiContext,
-        openai_api,
+        openai_api_client: OpenAI,
         **kwargs,
     ) -> Iterable:
     
     inner_context = copy.deepcopy(context)
-
+    
     for one_message in messages_list:
         inner_context.chat_context_append(message=one_message)
     
@@ -28,15 +30,17 @@ def chat_service_for_inner(
     parameters.update({"stream": True})
     parameters.update(**kwargs)
 
-    offset_tokens_num = -tokens_num_for_functions_call(parameters["functions"], model=inner_context.parameters["model"])
+    offset_tokens_num = -tokens_num_for_functions_call(parameters["tools"], model=inner_context.parameters["model"])
     trim_messages = trim_excess_tokens(inner_context, offset=offset_tokens_num)
     
     try:
-        response = openai_api.ChatCompletion.create(
+        response = openai_api_client.with_options(timeout=20.0).chat.completions.create(
             messages=trim_messages,
             **parameters,
             )
     except Exception as e:
+        gptui_logger.debug('----trim_messages----in chat inner')
+        gptui_logger.debug(trim_messages)
         # The OpenAI API interface is a time-consuming synchronous interface, so it should be called in a new thread, hence there is no event loop here.
         OpenaiErrorHandler().openai_error_handle(error=e, context=inner_context, event_loop=False)
         raise e

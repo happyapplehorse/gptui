@@ -37,7 +37,10 @@ class Notification:
             elif description == "Starting to receive the original response message to the user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
-            elif description == "Commander status changed":
+            elif description == "Commander exit":
+                commander_status_display = self.app.query_one("#commander_status_display")
+                commander_status_display.update(Text('\u260a', 'cyan'))
+            elif description == "Job status changed":
                 tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
                 context_id = info_content["context"].id
@@ -100,34 +103,18 @@ class Notification:
         app = self.app
         keep_time = 1
         ani_id = context.id
-        if isinstance(error, openai.error.ServiceUnavailableError):
-            text = Text(f"OpenAI servers are not available now: {error}", "red")
+        if isinstance(error, openai.APIStatusError):
+            text = Text(f"OpenAI APIStatusError: {error}", "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"OpenAI servers are not available now: {error}")
-        elif isinstance(error, openai.error.AuthenticationError):
-            text = Text(f"API key or token was invalide, expired, or revoked: {error}", "red")
+            gptui_logger.error(f"OpenAI APIStatusError: {error}")
+        elif isinstance(error, openai.APITimeoutError):
+            text = Text(f"OpenAI APITimeoutError: {error}", "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"API key or token was invalide, expired, or revoked: {error}")
-        elif isinstance(error, openai.error.InvalidRequestError):
-            text = Text(f"Invalid request error: {error}", "red")
+            gptui_logger.error(f"OpenAI APITimeoutError: {error}")
+        elif isinstance(error, openai.APIConnectionError):
+            text = Text(f"OpenAI APIConnectionError: {error}", "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"Invalid request error: {error}")
-        elif isinstance(error, openai.error.Timeout):
-            text = Text(f"OpenAI API request Timeout: {error}", "red")
-            app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"OpenAI API request Timeout: {error}")
-        elif isinstance(error, openai.error.APIError):
-            text = Text(f"OpenAI API returned an API Error: {error}", "red")
-            app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"OpenAI API returned an API Error: {error}")
-        elif isinstance(error, openai.error.APIConnectionError):
-            text = Text(f"Failed to connect to OpenAI API: {error}", "red")
-            app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"Failed to connect to OpenAI API: {error}")
-        elif isinstance(error, openai.error.RateLimitError):
-            text = Text(f"OpenAI API request exceeded rate limit: {error}", "red")
-            app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
-            gptui_logger.error(f"OpenAI API request exceeded rate limit: {error}")
+            gptui_logger.error(f"OpenAI APIConnectionError: {error}")
         else:
             text = Text(f"Unknown error occurred: {error}", "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))

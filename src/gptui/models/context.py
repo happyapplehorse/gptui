@@ -1,18 +1,24 @@
 from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, TypeVar, Generic
+
+from openai.types.chat import ChatCompletionMessageParam
 
 from .utils.tokens_num import tokens_num_from_chat_context
+import logging
+gptui_logger = logging.getLogger("gptui_logger")
+
+T = TypeVar("T")
 
 
 @dataclass
-class Context:
-    chat_context: list[dict] | None = None
+class Context(Generic[T]):
+    chat_context: list[T] | None = None
     id: str | int | None = None
 
     @property
-    def chat_context_copy(self) -> list:
+    def chat_context_copy(self) -> list[T]:
         chat_context = self.chat_context
         if chat_context is None:
             raise ValueError("Field 'chat_context' have not been set.")
@@ -20,7 +26,7 @@ class Context:
 
 
 @dataclass
-class OpenaiContext(Context):
+class OpenaiContext(Context[ChatCompletionMessageParam]):
     parameters: dict = field(default_factory=dict)
     max_sending_tokens_num: int | None = None
     chat_context_saver: Literal["outer", "inner"] | None = None
@@ -59,9 +65,8 @@ class OpenaiContext(Context):
             return None
         return sum(self.tokens_num_list)
 
-    def chat_context_append(self, message: dict, tokens_num_update: bool = True) -> None:
-        """
-        Write chat message to the chat_context, automatically calculate and update the number of tokens.
+    def chat_context_append(self, message: ChatCompletionMessageParam, tokens_num_update: bool = True) -> None:
+        """Write chat message to the chat_context, automatically calculate and update the number of tokens.
         If the number of tokens is not needed or real-time calculation of tokens is not required,
         you can set tokens__num_update to False, or directly manipulate the 'chat_context' attribute.
         """
@@ -74,7 +79,7 @@ class OpenaiContext(Context):
                 tokens_num = tokens_num_from_chat_context([message], model=model)
                 self._tokens_num_list.append(tokens_num)
 
-    def chat_context_pop(self, pop_index: int = -1) -> dict:
+    def chat_context_pop(self, pop_index: int = -1) -> ChatCompletionMessageParam:
         "Pop a message from chat context, and delete the correponding tokens num in _tokens_num_list."
         self._tokens_num_list.pop(pop_index)
         if self.chat_context is None:
@@ -111,7 +116,7 @@ class OpenaiContext(Context):
 
 @dataclass
 class BeadOpenaiContext(OpenaiContext):
-    bead: list[dict] = field(default_factory=list)
+    bead: list[ChatCompletionMessageParam] = field(default_factory=list)
     bead_info: dict[str, list] = field(default_factory=lambda: {"positions": [], "lengths": []})
 
     def insert_bead(self):

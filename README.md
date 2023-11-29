@@ -106,7 +106,7 @@ python main.py
 
 When running the program with `python main.py` or `python -m gptui`, use `gptui/config.yml` as the configuration file.
 
-On Linux or macOS systems, if you want to use voice and TTS (TextToSpeak) functionalities, you'll need to install pyaudio and espeak separately (only this method is provided for now, and the performance is not very good).
+On Linux or macOS systems, if you want to use voice functionalities, you'll need to install pyaudio separately.
 
 ## Configuration
 
