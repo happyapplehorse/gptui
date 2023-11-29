@@ -1,0 +1,69 @@
+site_name: GPTUI
+copyright: Copyright (c) 2023 Xueao Chao
+
+repo_url: https://github.com/happyapplehorse/gptui
+repo_name: happyapplehorse/gptui
+
+theme:
+  name: "material"
+  
+  icon:
+    logo: material/island
+  
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tracking
+    - navigation.path
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.tabs.sticky
+    - navigation.prune
+    - toc.follow
+    - search.suggest
+    - search.hightlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/happyapplehorse
+      name: Github
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Tutorial:
+    - Getting started: getting_started.md
+    - Troubleshooting: troubleshooting.md
+    - Features: features.md
+  - Guide:
+    - guide/index.md
+  - API:
+    - api/index.md

@@ -189,7 +189,7 @@ In addition, you can also press `ESC`, `ctrl+[`, or `ctrl+/` to bring up the hot
 
 # Documentation
 
-For detailed instructions, see [here](docs/man.md), for in-program help documentation see [here](src/gptui/help.md), for further development, see [here](docs/development.md).
+For detailed usage and development instructions, see [here](https://happyapplehorse.github.io/gptui/), for in-program help documentation see [here](src/gptui/help.md).
 
 # Contribution
 

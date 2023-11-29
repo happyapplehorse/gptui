@@ -175,7 +175,7 @@ GPTUI为常用功能提供了快捷键，参考[帮助](https://github.com/happy
 
 # 文档
 
-详细使用说明请看[这里](docs/man.md)，程序内的帮助文档看[这里](src/gptui/help.md)，若要进一步开发，请看[这里](docs/development.md)。
+详细使用和开发说明请看[这里](https://happyapplehorse.github.io/gptui/)，程序内的帮助文档看[这里](src/gptui/help.md)。
 
 # 贡献
 
