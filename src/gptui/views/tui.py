@@ -1123,7 +1123,13 @@ class MainApp(App[str]):
         else:
             return
 
-    def decorator(self, piece: dict, stream: bool = False, copy_code: bool = True, emoji: bool = True) -> Lines:
+    def decorator(
+        self,
+        piece: dict,
+        stream: bool = False,
+        copy_code: bool = True,
+        emoji: bool = True
+    ) -> Lines:
         content = piece["content"]
         role = piece["role"]
         name = piece.get("name", None)
@@ -1134,11 +1140,14 @@ class MainApp(App[str]):
             content = Emoji.replace(content)
         wrap_file = self.query_one("#file_wrap_display").value
         out = self.decorate_display.pre_wrap_and_highlight(
-            input_string=content,
+            inp_string=content,
             stream=stream,
             copy_code=copy_code,
             wrap={"file_wrap":{"wrap": wrap_file, "wrap_num": 4}})
-        out = self.decorate_display.background_chain(out, width - 5)
+        
+        # Reset the decorate_display chain
+        self.decorate_display.get_and_reset_chain()
+        chain = self.decorate_display.background_chain(out, width-5)
         
         def string_to_color(s) -> str:
             # Translate a string to a color
@@ -1159,9 +1168,8 @@ class MainApp(App[str]):
                 color = "yellow"
             else:
                 color = "white"
-            out, _, _ = self.decorate_display.panel_chain(*out, panel_color=color)
-            out = self.decorate_display.indicator_chain(out, indicator_color=color)
-            return out
+            chain.panel_chain(panel_color=color).indicator_chain(indicator_color=color)
+            return chain.chain_lines
         else:
             color = string_to_color(name)
             if role == "user":
@@ -1177,10 +1185,11 @@ class MainApp(App[str]):
                     Text(u'\u2502' + role_icon + name + u'\u2502'),
                 ]
             )
-            out, _, _ = self.decorate_display.panel_chain(*out, panel_color=color)
-            role_display.extend(out)
-            out = self.decorate_display.indicator_chain(role_display, indicator_color=color)
-            return out
+            chain.panel_chain(panel_color=color)
+            role_display.extend(chain.chain_lines)
+            chain.chain_lines = role_display
+            chain.indicator_chain(indicator_color=color)
+            return chain.chain_lines
     
     def get_tokens_window(self, model: str) -> int:
         """Query tokens window for openai model from config.
