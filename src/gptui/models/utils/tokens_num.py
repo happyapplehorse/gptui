@@ -21,18 +21,24 @@ def tokens_num_from_chat_context(chat_context: list, model: str) -> int:
         gptui_logger.warning("Warning when caculate tokens num: model not found. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
     if model == "gpt-3.5-turbo":
-        #gptui_logger.warning("Warning when caculate tokens num: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
-        return tokens_num_from_chat_context(chat_context, model="gpt-3.5-turbo-0301")
+        gptui_logger.warning("Warning when caculate tokens num: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-1106.")
+        return tokens_num_from_chat_context(chat_context, model="gpt-3.5-turbo-1106")
     elif model == "gpt-4":
-        #gptui_logger.warning("Warning when caculate tokens num: gpt-4 may change over time. Returning tokens num assuming gpt-4-0314.")
-        return tokens_num_from_chat_context(chat_context, model="gpt-4-0314")
+        gptui_logger.warning("Warning when caculate tokens num: gpt-4 may change over time. Returning tokens num assuming gpt-4-0613.")
+        return tokens_num_from_chat_context(chat_context, model="gpt-4-0613")
     elif model == "gpt-3.5-turbo-0301":
         tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
         tokens_per_name = -1  # if there's a name, the role is omitted
-    elif model == "gpt-4-0314":
-        tokens_per_message = 3
-        tokens_per_name = 1
-    elif model == "gpt-4-1106-preview":
+    elif model in {
+        "gpt-3.5-turbo-0613",
+        "gpt-3.5-turbo-16k-0613",
+        "gpt-4-0314",
+        "gpt-4-32k-0314",
+        "gpt-4-0613",
+        "gpt-4-32k-0613",
+        "gpt-3.5-turbo-1106",  # Unverified.
+        "gpt-4-1106-preview",  # Unverified.
+    }:
         tokens_per_message = 3
         tokens_per_name = 1
     else:
