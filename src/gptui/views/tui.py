@@ -997,7 +997,9 @@ class MainApp(App[str]):
             piece = {"role":"user", "content":self.input}
             self.app.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
             self.app.openai.openai_chat.chat(message=piece, context=self.context)
-            self.app.conversation_tab_rename(self.context)
+            # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
+            # moved into 'notification_control.py'.
+            # The rename operation is executed after determining the completion of the chat job.
 
     def chat_thread(self, input_text: str, context: OpenaiContext):
         thread_chat = self.ChatThread(self, input_text, context)
@@ -1008,7 +1010,9 @@ class MainApp(App[str]):
         piece = {"role": "user", "content": input_text}
         self.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
         self.openai.openai_chat.chat_stream(message=piece, context=context)
-        self.conversation_tab_rename(context)
+        # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
+        # moved into 'notification_control.py'.
+        # The rename operation is executed after determining the completion of the chat job.
 
     @work(exclusive=True, thread=True)
     def group_talk_chat(self, input_text: str, group_talk_manager: GroupTalkManager) -> None:
