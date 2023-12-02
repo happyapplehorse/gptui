@@ -15,16 +15,17 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 ![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI Features
--  Create and manage conversations with GPT.
--  Display context tokens in real-time.
--  View and adjust GPT conversation parameters at any time, such as temperature, top_p, presence_penalty, etc.
--  A dedicated channel to display internal process calls.
--  Offers a file channel through which you can upload to or download from GPT.
+- Create and manage conversations with GPT.
+- Display context tokens in real-time.
+- View and adjust GPT conversation parameters at any time, such as temperature, top_p, presence_penalty, etc.
+- A dedicated channel to display internal process calls.
+- Offers a file channel through which you can upload to or download from GPT.
+- Voice functionality.
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
-  -  Internet search.
-  -  Open interpreter[^open_interpreter].
-  -  Reminders[^reminder].
-  -  Recollecting memories from vectorized conversation history.
+  - Internet search.
+  - Open interpreter[^open_interpreter].
+  - Reminders[^reminder].
+  - Recollecting memories from vectorized conversation history.
 
 [^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to first follow the instructions provided by open-interpreter to properly set up the environment and API.
 It is recommended to use this under the GPT-4 model.
@@ -197,6 +198,10 @@ Some of GPTUI's plugin features rely on prompt, you can continue to help me impr
 And I'd like to have appropriate animation cues during certain state changes.
 If you have any creative ideas, I'd appreciate your help in implementing them.
 P.S.: Each contributor can leave a quote in the program.
+
+# Note
+This project utilizes OpenAI's Text-to-Speech (TTS) services for generating voice outputs.
+Please be aware that the voices you hear are not produced by human speakers, but are synthesized by AI technology.
 
 # License
 
