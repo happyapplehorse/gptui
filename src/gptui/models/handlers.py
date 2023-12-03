@@ -145,9 +145,11 @@ class OpenaiHandler:
                 continue
             function_dict = {}
             try:
+                gptui_logger.debug(f"----function_call_string:{function_call}----")
                 function_dict = json.loads(function_call)
             except json.JSONDecodeError as e:
                 gptui_logger.error(f"An error occurred while parsing the JSON string. JSON string: {function_call}. Error: {e}")
+                gptui_logger.debug(f"----function_dict:{function_dict}----")
             if function_dict.get("name"):
                 # call the function
                 tool_call_index = function_dict["tool_call_index"]
@@ -171,7 +173,7 @@ class OpenaiHandler:
                 context = self.manager.gk_kernel.context_render(args=function_args, function=function_to_call)
                 
                 # Dose insert context
-                if context.variables.get("openai_context") == (True, "AUTO"):
+                if context.variables.get("openai_context") == "AUTO":
                     openai_context_deepcopy = copy.deepcopy(self.context)
                     openai_context_deepcopy.plugins = [repr(plugin) for plugin in openai_context_deepcopy.plugins]
                     context["openai_context"] = json.dumps(asdict(openai_context_deepcopy))

@@ -1,9 +1,13 @@
 import json
+import logging
 
 from semantic_kernel.skill_definition import sk_function
 
 from ....gptui_kernel import Kernel
 from ....gptui_kernel.manager import auto_init_params
+
+
+gptui_logger = logging.getLogger("gptui_logger")
 
 
 class ConversationService:
@@ -24,8 +28,9 @@ class ConversationService:
         def chat_context_to_string(chat_context_json_str: str) -> str:
             chat_context_json = json.loads(chat_context_json_str)
             chat_context = ''
+            assert isinstance(chat_context_json, list)
             for piece in chat_context_json:
-                chat_context += piece["role"] + ": " + piece["content"] + "\n\n"
+                chat_context += piece["role"] + ": " + str(piece["content"] or piece.get("tool_calls") or "") + "\n\n"
             return chat_context[:1000]
         
         sk_prompt = (
