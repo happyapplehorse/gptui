@@ -506,8 +506,16 @@ class MainApp(App[str]):
                 self.query_one("#chat_region").clear()
                 return
             first_role = roles_list[0]
+            
+            # Change role view
+            first_view_context = change_role_view(
+                context=first_role.context.chat_context,
+                from_view=first_role.name,
+                to_view=group_talk_manager.user_name,
+            )
+
             self.chat_display.tab_not_switching.clear()
-            self.context_to_chat_window(first_role.context.chat_context)
+            self.context_to_chat_window(first_view_context)
             self.chat_display.tab_not_switching.set()
             tokens_window = self.get_tokens_window(first_role.context.parameters.get("model"))
             self.dash_board.group_talk_dash_board_display(tokens_window, conversation_id=id)
@@ -1117,15 +1125,17 @@ class MainApp(App[str]):
         content = piece["content"]
         if content is None:
             return
-        if role in {"user", "assistant"}:
-            if name:
-                if content.startswith("SYS_INNER:"):
-                    return None
+        if role == "system":
+            return
+        elif role == "group_talk_assistant":
+            if name == "host":
+                return
             if content == "Can I speak?":
                 return
-            return piece
-        else:
+        elif role == "tool":
             return
+
+        return piece
 
     def decorator(
         self,
@@ -1176,9 +1186,9 @@ class MainApp(App[str]):
             return chain.chain_lines
         else:
             color = string_to_color(name)
-            if role == "user":
+            if role in {"user", "group_talk_user"}:
                 role_icon = Emoji.replace(":man:")
-            elif role == "assistant":
+            elif role in {"assistant", "group_talk_assistant"}:
                 role_icon = Emoji.replace(":robot:")
             else:
                 role_icon = ""
@@ -1546,6 +1556,31 @@ class MainApp(App[str]):
         # Only main thread can handle UI event correctly.
         self.post_message(CommonMessage(message_name="open_group_talk", message_content={"tab_id": tab_id, "tab_name": tab_name}))
         return group_talk_conversation_id
+
+
+def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:
+    changed_context = []
+    for one_message in context:
+        role = one_message.get("role")
+        name = one_message.get("name")
+        content = one_message.get("content")
+        changed_message = {}
+        if role == "assistant":
+            changed_message["role"] = "group_talk_assistant"
+            changed_message["name"] = from_view
+            changed_message["content"] = content
+        elif role == "user" and name == to_view:
+            changed_message["role"] = "group_talk_user"
+            changed_message["name"] = name
+            changed_message["content"] = content
+        elif role == "user" and name != to_view:
+            changed_message["role"] = "group_talk_assistant"
+            changed_message["name"] = name
+            changed_message["content"] = content
+        else:
+            continue
+        changed_context.append(changed_message)
+    return changed_context
 
 
 class MyDirectoryTree(DirectoryTree):

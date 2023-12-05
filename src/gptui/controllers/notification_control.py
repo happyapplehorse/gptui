@@ -1,5 +1,6 @@
 import logging
 import openai
+import string
 import uuid
 
 from ..models.signals import notification_signal
@@ -25,22 +26,22 @@ class Notification:
 
         if flag == "info":
             info_content = content["content"]
-            description = content["description"]
+            description = remove_punctuation(content["description"]).lower()
             if description == "raw":
                 self.displayer.update(Text(info_content, "green"))
-            elif description == "Starting to send the original chat message from the user.":
+            elif description == "starting to send the original chat message from the user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="start"))
-            elif description == "An error occurred in communication with OpenAI initiated by user.":
+            elif description == "an error occurred in communication with OpenAI initiated by user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
-            elif description == "Starting to receive the original response message to the user":
+            elif description == "starting to receive the original response message to the user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
-            elif description == "Commander exit":
+            elif description == "commander exit":
                 commander_status_display = self.app.query_one("#commander_status_display")
                 commander_status_display.update(Text('\u260a', 'cyan'))
-            elif description == "Job status changed":
+            elif description == "job status changed":
                 tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
                 context_id = info_content["context"].id
@@ -59,7 +60,7 @@ class Notification:
                         if conversation is not None:
                             context = conversation["openai_context"]
                             self.app.conversation_tab_rename(context)
-            elif description == "GroupTalkManager status changed":
+            elif description == "grouptalkmanager status changed":
                 tab_id = int(self.app.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
                 group_talk_manager_id = info_content["group_talk_manager"].group_talk_manager_id
@@ -124,3 +125,7 @@ class Notification:
             text = Text(f"Unknown error occurred: {error}", "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
             gptui_logger.error(f"Unknown error occurred: {error}")
+
+
+def remove_punctuation(s: str):
+    return s.translate(str.maketrans('', '', string.punctuation))

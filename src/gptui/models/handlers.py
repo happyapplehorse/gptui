@@ -145,11 +145,9 @@ class OpenaiHandler:
                 continue
             function_dict = {}
             try:
-                gptui_logger.debug(f"----function_call_string:{function_call}----")
                 function_dict = json.loads(function_call)
             except json.JSONDecodeError as e:
                 gptui_logger.error(f"An error occurred while parsing the JSON string. JSON string: {function_call}. Error: {e}")
-                gptui_logger.debug(f"----function_dict:{function_dict}----")
             if function_dict.get("name"):
                 # call the function
                 tool_call_index = function_dict["tool_call_index"]
@@ -373,26 +371,32 @@ class GroupTalkHandler:
             else:
                 role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 talk_manager.speaking = role_name
-                response = talk_manager.roles[role_name].chat(
-                    message={
-                        "role": "user",
-                        "name": "host",
-                        "content": f"SYS_INNER: Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
-                    }
-                )
-                async_talk_stream_response = LLMAsyncAdapter().llm_to_async_iterable(response)
-                talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
-                TalkToAll = talk_manager.manager.get_job("TalkToAll")
-                await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
+                try:
+                    response = talk_manager.roles[role_name].chat(
+                        message={
+                            "role": "user",
+                            "name": "host",
+                            "content": f"SYS_INNER: Host says to you: Yes, you are {role_name}, you can talk now. Reply directly with what you want to say, without additionally thanking the host.",
+                        }
+                    )
+                    async_talk_stream_response = LLMAsyncAdapter().llm_to_async_iterable(response)
+                    talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
+                except Exception as e:
+                    # If receiving the message fails, set talk_manager.speaking to None to avoid blocking the group chat.
+                    talk_manager.speaking = None
+                    gptui_logger.info(f"Encountered an error when receiving the speech content of group chat member {role_name}, error: {e}")
+                else:
+                    TalkToAll = talk_manager.manager.get_job("TalkToAll")
+                    await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
         else:
             role.context.chat_context_append({"role": "assistant", "content": " "})
             if not full_response_content.isspace():
-                gptui_logger.debug(f"The assistant speak without asking 'Can I speak?' first: {full_response_content}")
+                gptui_logger.warning(f"The group talk member {role_name} speak without asking 'Can I speak?' first: {full_response_content}")
 
     async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
         chunk_list = []
         async for chunk in async_stream_response:
-            chunk_content = chunk.delta.content
+            chunk_content = chunk.choices[0].delta.content
             if not chunk_content:
                 continue
             chunk_list.append(chunk_content)
@@ -402,7 +406,7 @@ class GroupTalkHandler:
     async def stream_response_display_and_result(self, role_name: str, async_stream_response: AsyncIterable, talk_manager) -> str:
         chunk_list = []
         async for chunk in async_stream_response:
-            chunk_content = chunk.delta.content
+            chunk_content = chunk.choices[0].delta.content
             if not chunk_content:
                 continue
             await response_auxiliary_message_signal.send_async(
