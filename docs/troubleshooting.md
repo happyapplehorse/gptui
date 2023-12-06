@@ -1,5 +1,13 @@
 # Potential issues and solutions when installing on Termux
 
+## Installing Termux-API
+
+Some functionalities require the support of Termux-API, such as copying code snippets and voice features.
+To install Termux-API, you need to:
+1. Install the Termux-API plugin. The Termux:API application can be obtained from [F-Droid](https://f-droid.org/en/packages/com.termux.api/).
+2. After installing Termux-API, you also need to execute `pkg install termux-api` in Termux to install the corresponding package.
+3. Grant the necessary permissions to Termux-API.
+
 ## Installing numpy
 
 First, ensure that numpy is installed. You can use `pkg install python-numpy` to install numpy, referring to [Termux Wiki](https://wiki.termux.com/wiki/Python). If using a virtual environment, you might need to use `python -m venv --system-site-packages <your-venv-path>` to make python-numpy available within the virtual environment.
