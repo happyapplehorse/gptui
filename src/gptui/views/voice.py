@@ -251,6 +251,8 @@ class Voice(Static, can_focus=True):
             self.query_one("#send").press()
         self.key_time_deque.clear()
 
+    def on_click(self):
+        self.focus()
 
     class Submitted(Message):
         def __init__(self, content: str) -> None:

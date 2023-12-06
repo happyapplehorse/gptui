@@ -378,9 +378,7 @@ class OpenaiChatManage:
                 {
                     "function": notification_signal.send,
                     "params": {
-                        "args": {
-                            (self,),
-                        },
+                        "args": (self,),
                         "kwargs": {
                             "_async_wrapper": async_wrapper_with_loop,
                             "message": {
@@ -398,9 +396,7 @@ class OpenaiChatManage:
                 {
                     "function": notification_signal.send,
                     "params": {
-                        "args": {
-                            (self,),
-                        },
+                        "args": (self,),
                         "kwargs": {
                             "_async_wrapper": async_wrapper_with_loop,
                             "message": {
@@ -418,9 +414,7 @@ class OpenaiChatManage:
                 {
                     "function": notification_signal.send,
                     "params": {
-                        "args": {
-                            (self,),
-                        },
+                        "args": (self,),
                         "kwargs": {
                             "_async_wrapper": async_wrapper_with_loop,
                             "message": {

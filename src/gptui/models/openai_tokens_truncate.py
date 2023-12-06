@@ -43,8 +43,9 @@ def trim_excess_tokens(
     max_tokens_num: int | None = None,
     offset: int = 0
 ) -> list[ChatCompletionMessageParam]:
-    """
-    Truncate the given context according to max_tokens_num, only retaining the last part.
+    """Truncate the given context according to max_tokens_num, only retaining the last part.
+
+    It will return a new chat_context list and not change the original chat_context.
 
     Args:
         - context (OpenaiContext): the context need to be trimmed.

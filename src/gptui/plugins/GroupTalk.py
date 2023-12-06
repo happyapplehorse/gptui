@@ -4,7 +4,6 @@ from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.skill_definition import sk_function, sk_function_context_parameter
 
 from gptui.gptui_kernel.manager import auto_init_params
-from gptui.models.jobs import GroupTalkManager
 from gptui.models.role import Role
 
 

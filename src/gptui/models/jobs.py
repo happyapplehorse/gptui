@@ -115,17 +115,23 @@ class TalkToAll(Job):
 
     @tasker(PASS_WORD)
     async def task(self):
-        gptui_logger.debug(self.message_content)
         talk_manager = self.ancestor_chain[-2]
         assert isinstance(talk_manager, GroupTalkManager)
         if not talk_manager.running:
             return
         response_dict = {}
-        items = list(talk_manager.roles.items())
+        all_roles = list(talk_manager.roles.items())
         # Randomly shuffle the order to give each role an equal opportunity to speak.
-        random.shuffle(items)
-        for role_name, role in items:
-            response_dict[role_name] = role.chat(message={"role": "user", "name": self.message_from, "content": self.message_content})
-        talk_manager.speaking = None
+        random.shuffle(all_roles)
+        try:
+            for role_name, role in all_roles:
+                if role_name == self.message_from:
+                    response_dict[role_name] = role.chat(message={"role": "assistant", "content": self.message_content})
+                else:
+                    response_dict[role_name] = role.chat(message={"role": "user", "name": self.message_from, "content": self.message_content})
+        except Exception as e:
+            gptui_logger.info(f"Encountered an error when the group chat member {self.message_from} talks to all, error: {e}")
+        finally:
+            talk_manager.speaking = None
         GroupTalkHandler = talk_manager.manager.get_handler("GroupTalkHandler")
         return GroupTalkHandler().handle_response(response_dict)

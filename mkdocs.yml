@@ -28,7 +28,6 @@ theme:
     - navigation.tabs
     - navigation.tracking
     - navigation.path
-    - navigation.sections
     - navigation.top
     - navigation.footer
     - navigation.indexes
@@ -46,6 +45,7 @@ plugins:
         python:
           paths: [src]
   - search
+  - blog
 
 extra:
   social:
@@ -67,3 +67,8 @@ nav:
     - guide/index.md
   - API:
     - api/index.md
+  - Blog:
+    - blog/index.md
+  - About:
+    - Contributing: about/contributing.md
+    - License: about/license.md

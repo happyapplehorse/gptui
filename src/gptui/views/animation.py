@@ -119,14 +119,14 @@ def play_animation(
     else:
         end_display = message.ani_end_display
     while True:
-        for i in frames_list:
+        for frame in frames_list:
             if not animation_instance.animation_status or time.time() - time_start >= keep_time:
                 display_object.update(end_display)
                 return
             priority_list = animation_manager.priority_dict[message.displayer].values()
-            if any(i < message.priority for i in priority_list):
+            if any(priority < message.priority for priority in priority_list):
                 continue
-            display_object.update(i)
+            display_object.update(frame)
             time.sleep(message.ani_speed)
 
 

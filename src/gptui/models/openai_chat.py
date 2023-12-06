@@ -109,7 +109,15 @@ class OpenaiChat(OpenaiChatInterface):
             
             offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
-            
+
+            # Delete the tool reply messages at the beginning of the information list.
+            # This is because if the information starts with a function reply message,
+            # it indicates that the function call information has already been truncated.
+            # The OpenAI API requires that function reply messages must be responses to function calls.
+            # Therefore, if the function reply messages are not removed, it will result in an OpenAI API error.
+            while trim_messages and trim_messages[0].get("role") == "tool":
+                trim_messages.pop(0)
+
             response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages=trim_messages,
                 **tools_para,
@@ -239,7 +247,15 @@ class OpenaiChat(OpenaiChatInterface):
             
             offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
-            
+
+            # Delete the tool reply messages at the beginning of the information list.
+            # This is because if the information starts with a function reply message,
+            # it indicates that the function call information has already been truncated.
+            # The OpenAI API requires that function reply messages must be responses to function calls.
+            # Therefore, if the function reply messages are not removed, it will result in an OpenAI API error.
+            while trim_messages and trim_messages[0].get("role") == "tool":
+                trim_messages.pop(0)
+
             response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages = trim_messages,
                 **tools_para,
@@ -362,6 +378,7 @@ class OpenAIGroupTalk:
 
     def talk_stream(self, group_talk_manager: GroupTalkManager, message_content: str) -> None:
         if group_talk_manager.state != "ACTIVE":
+            group_talk_manager.speaking = None
             group_talk_manager.running = True
             group_talk_manager.user_talk_buffer.append(message_content)
             self.manager.gk_kernel.commander.put_job_threadsafe(group_talk_manager)

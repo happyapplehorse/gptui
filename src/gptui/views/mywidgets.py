@@ -1281,6 +1281,7 @@ class AppStart(Widget):
             text += Text(f"\nVersion: {self.my_app.app_version}\n")
             text += Text("Copyright (c) 2023 happyapplehorse\n")
             text += Text("e-mail: chaoxueao@gmial.com\n")
+            text += Text("Note: Voices in this app are AI-generated, not human-spoken.\n")
             text += "-" * width
             self.static.update(text)
         else:

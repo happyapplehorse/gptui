@@ -1,6 +1,8 @@
 # GPTUI
-![PyPI - Version](https://img.shields.io/pypi/v/gptui)
 ![GitHub](https://img.shields.io/github/license/happyapplehorse/gptui)
+![PyPI - Version](https://img.shields.io/pypi/v/gptui)
+[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/happyapplehorse/gptui/static.yml?label=docs)](https://happyapplehorse.github.io/gptui/)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/happyapplehorse/gptui/python-publish.yml?label=build)
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
@@ -15,24 +17,33 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 ![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI Features
--  Create and manage conversations with GPT.
--  Display context tokens in real-time.
--  View and adjust GPT conversation parameters at any time, such as temperature, top_p, presence_penalty, etc.
--  A dedicated channel to display internal process calls.
--  Offers a file channel through which you can upload to or download from GPT.
+- Create and manage conversations with GPT.
+- Display context tokens in real-time.
+- View and adjust GPT conversation parameters at any time, such as temperature, top_p, presence_penalty, etc.
+- A dedicated channel to display internal process calls.
+- Offers a file channel through which you can upload to or download from GPT.
+- Voice functionality.
+- Group talk functionality[^recommend_better_model].
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
-  -  Internet search.
-  -  Open interpreter[^open_interpreter].
-  -  Reminders[^reminder].
-  -  Recollecting memories from vectorized conversation history.
+  - Internet search.
+  - Open interpreter[^open_interpreter].
+  - Reminders[^recommend_better_model].
+  - Recollecting memories from vectorized conversation history.
 
-[^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to first follow the instructions provided by open-interpreter to properly set up the environment and API.
+[^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to
+first follow the instructions provided by open-interpreter to properly set up the environment and API.
 It is recommended to use this under the GPT-4 model.
-[^reminder]: Recommended for use with the GPT-4 model.
+[^recommend_better_model]: Recommended for use with the GPT-4 model.
 
 # Compatibility
-GPTUI runs in a command line environment and is compatible with Linux, macOS, Android, and of course Windows.
-Using the functionality provided by textual-web, you can also run GPTUI in the browser and share it with remote friends.
+GPTUI runs in a command line environment and is compatible with Linux, macOS, Windows and Android[^compatibility].
+Using the functionality provided by textual-web, you can also run GPTUI in the browser and share it with remote friends👍.
+
+[^compatibility]: I haven't tested it on the Windows platform yet, and some functionalities like code copying,
+voice features, etc., still need drivers to be written. I will complete these features later.
+When running on Android, please use the [Termux](https://github.com/termux/termux-app) terminal tool.
+For additional features like code copying and voice functionalities,
+you need to install [Termux-API](https://github.com/termux/termux-api) and grant the necessary permissions.
 
 <a name="gptui_kernel"> </a>
 ## ⚙️ GPTUI Kernel
@@ -197,6 +208,10 @@ Some of GPTUI's plugin features rely on prompt, you can continue to help me impr
 And I'd like to have appropriate animation cues during certain state changes.
 If you have any creative ideas, I'd appreciate your help in implementing them.
 P.S.: Each contributor can leave a quote in the program.
+
+# Note
+This project utilizes OpenAI's Text-to-Speech (TTS) services for generating voice outputs.
+Please be aware that the voices you hear are not produced by human speakers, but are synthesized by AI technology.
 
 # License
 
