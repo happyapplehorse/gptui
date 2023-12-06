@@ -1130,7 +1130,7 @@ class MainApp(App[str]):
         elif role == "group_talk_assistant":
             if name == "host":
                 return
-            if content == "Can I speak?":
+            if content == "Can I speak?" or content == " ":
                 return
         elif role == "tool":
             return
@@ -1483,7 +1483,7 @@ class MainApp(App[str]):
                             await memory.save_reference_async(
                                 collection = str(context_id),
                                 description = repr(message),
-                                text = message["content"],
+                                text = str(message["content"]),
                                 external_id = repr(message),
                                 external_source_name = "chat_context"
                             )
@@ -1556,6 +1556,15 @@ class MainApp(App[str]):
         # Only main thread can handle UI event correctly.
         self.post_message(CommonMessage(message_name="open_group_talk", message_content={"tab_id": tab_id, "tab_name": tab_name}))
         return group_talk_conversation_id
+
+    def action_test(self):
+        # For test
+        group_talk_manager = self.openai.group_talk_conversation_dict[self.openai.group_talk_conversation_active]["group_talk_manager"]
+        gptui_logger.debug(f"----####----state={group_talk_manager.state},speaking={group_talk_manager.speaking}")
+        try:
+            gptui_logger.debug(f"----####----count:{group_talk_manager.loop_count}")
+        except:
+            pass
 
 
 def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:

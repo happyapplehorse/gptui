@@ -27,11 +27,11 @@
 #  ~/.gptui/.env_gptui
 
 default_openai_parameters:
-  #model: gpt-4-1106-preview
+  model: gpt-4-1106-preview
   # This particular setting is used for 'gpt-4-1106-preview', as it outputs a maximum of 4096 tokens.
   # If using other models, 'max_tokens' can either be left unset or set according to your requirements.
-  #max_tokens: 4096
-  model: gpt-3.5-turbo
+  max_tokens: 4096
+  #model: gpt-3.5-turbo
   stream: true
 
 #default_conversation_parameters:

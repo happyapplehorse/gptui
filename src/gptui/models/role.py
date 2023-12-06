@@ -40,7 +40,7 @@ class Role:
         self.context.parameters["stream"] = True
         trim_messages = trim_excess_tokens(self.context, offset=0)
         try:
-            response = self.openai_api_client.chat.completions.create(
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages=trim_messages,
                 **self.context.parameters,
             )

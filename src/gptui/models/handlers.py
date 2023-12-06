@@ -353,6 +353,7 @@ class GroupTalkHandler:
                     group_talk_manager.user_talk_buffer = []
             if not group_talk_manager.running:
                 await group_talk_manager.close_task_node()
+                group_talk_manager.speaking = None
                 break
 
     @handler(PASS_WORD)

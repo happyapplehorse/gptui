@@ -32,7 +32,7 @@ class Notification:
             elif description == "starting to send the original chat message from the user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="start"))
-            elif description == "an error occurred in communication with OpenAI initiated by user":
+            elif description == "an error occurred in communication with openai initiated by user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
             elif description == "starting to receive the original response message to the user":

@@ -33,7 +33,7 @@ def chat_service_for_inner(
     offset_tokens_num = -tokens_num_for_functions_call(parameters["tools"], model=inner_context.parameters["model"])
     trim_messages = trim_excess_tokens(inner_context, offset=offset_tokens_num)
     
-    # Delete the function reply messages at the beginning of the information list.
+    # Delete the tool reply messages at the beginning of the information list.
     # This is because if the information starts with a function reply message,
     # it indicates that the function call information has already been truncated.
     # The OpenAI API requires that function reply messages must be responses to function calls.

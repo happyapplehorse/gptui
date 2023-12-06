@@ -115,7 +115,6 @@ class TalkToAll(Job):
 
     @tasker(PASS_WORD)
     async def task(self):
-        gptui_logger.debug(self.message_content)
         talk_manager = self.ancestor_chain[-2]
         assert isinstance(talk_manager, GroupTalkManager)
         if not talk_manager.running:
