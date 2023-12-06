@@ -1,5 +1,7 @@
 import logging
 
+from openai.types.chat import ChatCompletionMessageParam
+
 from .context import OpenaiContext
 from .utils.tokens_num import tokens_num_from_string, tokens_num_from_chat_context
 
@@ -36,9 +38,14 @@ def find_position(lst, num):
 
     return left
 
-def trim_excess_tokens(context: OpenaiContext, max_tokens_num: int | None = None, offset: int = 0) -> list[dict]:
-    """
-    Truncate the given context according to max_tokens_num, only retaining the last part.
+def trim_excess_tokens(
+    context: OpenaiContext,
+    max_tokens_num: int | None = None,
+    offset: int = 0
+) -> list[ChatCompletionMessageParam]:
+    """Truncate the given context according to max_tokens_num, only retaining the last part.
+
+    It will return a new chat_context list and not change the original chat_context.
 
     Args:
         - context (OpenaiContext): the context need to be trimmed.
@@ -71,28 +78,30 @@ def trim_excess_tokens(context: OpenaiContext, max_tokens_num: int | None = None
             if new_tokens_num <= 0: # The number 5 is the assumed additional tokens count in message dict compared to message content
                 out_dict["content"] = ""
                 return [out_dict]
-            trim_string = trim_string_by_tokens(out_dict["content"], max_tokens=new_tokens_num, model=model)
+            out_dict_content = out_dict["content"]
+            assert isinstance(out_dict_content, str)
+            trim_string = trim_string_by_tokens(out_dict_content, max_tokens=new_tokens_num, model=model)
             out_dict["content"] = trim_string
             if tokens_num_from_chat_context([out_dict], model=model) < num_after_offset:
                 trim_status = False
         return [out_dict]
     return context.chat_context[position:]
 
-def trim_string_by_tokens(astring: str, max_tokens: int, model: str) -> str:
+def trim_string_by_tokens(string: str, max_tokens: int, model: str) -> str:
     """trims the input string based on a specified maximum token count.
         - If the overall token count of the input string is less than or equal to the specified maximum token count, the function returns the original string as is.
         - If the token count of the input string exceeds the specified maximum, the function trims words from the beginning of the string progressively until the token count does not exceed the limit.
 
     Parameters:
-        - astring (str): The input string to be trimmed.
+        - string (str): The input string to be trimmed.
         - max_tokens (int): The allowable maximum token count.
 
     Returns:
         - str: The trimmed string where the token count does not surpass the specified maximum token count.
     """
-    words = astring.split()
-    if tokens_num_from_string(astring, model) <= max_tokens:
-        return astring
+    words = string.split()
+    if tokens_num_from_string(string, model) <= max_tokens:
+        return string
 
     left, right = 0, len(words)
     

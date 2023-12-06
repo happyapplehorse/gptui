@@ -1,6 +1,8 @@
+import copy
 import logging
 import re
 import os
+from typing import Self
 
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, ClassNotFound
@@ -20,24 +22,21 @@ class DecorateDisplay:
     def __init__(self, app):
         self.app = app
         self.code_block_list = []
+        self.chain_lines: Lines | None = None
+        self.chain_length_list: list | None = None
+        self.chain_max_width: int | None = None
     
     def pre_wrap_and_highlight(
         self,
-        input_string: str,
+        inp_string: str,
         stream: bool = False,
         copy_code: bool = False,
         wrap: dict = {"file_wrap": {"wrap": True, "wrap_num": 4}, "words_color": "white"}
     ) -> Text:
         """Wrap and highlight a string that might contain a file.
-        args:
-            - input_string {str}:
-            - wrap {dict}: wrap parameters, may be {"file_wrap": {"wrap: True", "wrap_num": 4}, "words_color": "white"}
-                file_wrap - wrap: whether wrap file content into a file icon
-                file_wrap - wrap_num: icon numbers each line
-                words_color: text color except file icon
 
-        if 'file_wrap - wrap' is False:
-            return wraped string(Text) such as:
+        if 'file_wrap["wrap"]' is False:
+            return wraped string (Text) such as:
                 content before file start
                 ******************** FILE CONTENT BEGIN ********************
                 ===== Document #1 text.txt =====
@@ -56,13 +55,28 @@ class DecorateDisplay:
                 ******************** FILE CONTENT FINISH *******************
                 content after file end
 
-        if 'file_wrap - wrap' is True:
-            return wraped string(Text) such as:
+        if 'file_wrap["wrap"]' is True:
+            return wraped string (Text) such as:
                 content before file start
                 ******************** FILE CONTENT BEGIN ********************
                 FILE_ICON1 FILE_ICON2 (Actually displayed as rendered icons)
                 ******************** FILE CONTENT FINISH *******************
                 content after file end
+        
+        Args:
+            inp_string:
+            stream: Whether in stream mode?
+            copy_code:
+                Specify whether to enable the copy_code feature for this operation.
+                In a streaming display, the copy_code feature should only be enabled for the last instance.
+            wrap (dict): Wrap parameters. It can include the following key-value strcture.
+                file_wrap: File wrap parameters.
+                    wrap (bool): Whether wrap file content into a file icon.
+                    wrap_num (int): Icon numbers in each line.
+                words_color: Specify the color of the text, excluding the file icons.
+            
+        Example:
+            wrap={"file_wrap": {"wrap: True", "wrap_num": 4}, "words_color": "white"}
         """
 
         file_wrap = wrap.get("file_wrap", {"wrap":True, "wrap_num":4})
@@ -70,7 +84,7 @@ class DecorateDisplay:
         wrap_num = file_wrap["wrap_num"]
         words_color = wrap.get("words_color", "white")
         if wrap_bool is True:
-            out = self.wrap_files_in_string(extract_files_from_string(input_string), wrap_num=wrap_num, stream=stream, copy_code=copy_code, words_color=words_color)
+            out = self.wrap_files_in_string(extract_files_from_string(inp_string), wrap_num=wrap_num, stream=stream, copy_code=copy_code, words_color=words_color)
             return out
         else:
             file_start_flag = "******************** FILE CONTENT BEGIN ********************"
@@ -78,22 +92,22 @@ class DecorateDisplay:
             out_string_list = []
             start = 0
             while True:
-                file_start = input_string.find(file_start_flag, start)
+                file_start = inp_string.find(file_start_flag, start)
                 if file_start == -1:
                     # This is content after 'file_end_flag' or there is no file block
-                    out_string_list.append(self.highlight_code_block_from_plain_text(input_string[start:], stream=stream, copy_code=copy_code, words_color=words_color))
+                    out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:], stream=stream, copy_code=copy_code, words_color=words_color))
                     break
                 # This is content before file begin
-                out_string_list.append(self.highlight_code_block_from_plain_text(input_string[start:file_start], stream=stream, copy_code=copy_code, words_color=words_color))
+                out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:file_start], stream=stream, copy_code=copy_code, words_color=words_color))
                 # file begin flag
                 out_string_list.append(Text(file_start_flag, "cyan"))
                 start = file_start + len(file_start_flag)
-                file_end = input_string.find(file_end_flag, start)
+                file_end = inp_string.find(file_end_flag, start)
                 if file_end == -1:
-                    out_string_list.append(self.highlight_code_block_from_plain_text(input_string[start:], stream=stream, copy_code=copy_code, words_color=words_color))
+                    out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:], stream=stream, copy_code=copy_code, words_color=words_color))
                     break
                 # content in file block
-                out_string_list.append(self.highlight_code_block_from_plain_text(input_string[start:file_end], stream=stream, copy_code=copy_code, words_color=words_color))
+                out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:file_end], stream=stream, copy_code=copy_code, words_color=words_color))
                 # file finish flag
                 out_string_list.append(Text(file_end_flag, "cyan"))
                 start = file_end + len(file_end_flag)
@@ -110,12 +124,14 @@ class DecorateDisplay:
         words_color: str = "white",
     ) -> Text:
         """Translate the content within the string to the corresponding file icon.
-        args:
-            - string_data {list}: output of extract_files_from_string
-            - wrap_num {int}: icon numbers in each line
-            - stream: whether in stream mode?
-            - copy_code: switch in highlight_code_block_from_plain_text
-            - words_color: words color out of file        
+        
+        Args:
+            string_data: Output of extract_files_from_string.
+            wrap_num: Icon numbers in each line.
+            stream: Whether in stream mode?
+            copy_code:
+                Switch in highlight_code_block_from_plain_text.
+            words_color: Specify the color of the text outside of files.
         """
         part_list = []
 
@@ -148,7 +164,7 @@ class DecorateDisplay:
 
     def highlight_code_block_from_plain_text(
         self,
-        input_string: str,
+        inp_string: str,
         stream: bool = False,
         copy_code: bool = False,
         words_color: str = "white",
@@ -156,27 +172,27 @@ class DecorateDisplay:
         output_text = Text()
         while True:
             # Find the start of a code block, indicated by "```".
-            code_start = input_string.find("```")
+            code_start = inp_string.find("```")
             if code_start == -1:
-                output_text.append_text(Text(input_string, words_color))
+                output_text.append_text(Text(inp_string, words_color))
                 break
             # Find the end of the language specifier in the code block, which ends with a newline.
-            lang_end = input_string.find("\n", code_start + 3)
+            lang_end = inp_string.find("\n", code_start + 3)
             if lang_end == -1:
-                output_text.append_text(Text(input_string, words_color))
+                output_text.append_text(Text(inp_string, words_color))
                 break
             # Find the end of the code block, indicated by another "```".
-            code_end = input_string.find("```", lang_end + 1)
+            code_end = inp_string.find("```", lang_end + 1)
             if code_end == -1:
                 if stream:
-                    code_end = len(input_string)
+                    code_end = len(inp_string)
                 else:
-                    output_text.append_text(Text(input_string, words_color))
+                    output_text.append_text(Text(inp_string, words_color))
                     break
             # Append any text before the code block to the output text.
-            output_text.append_text(Text(input_string[:code_start], words_color))
+            output_text.append_text(Text(inp_string[:code_start], words_color))
             # Extract the language specifier.
-            lang = input_string[code_start+3:lang_end].strip()
+            lang = inp_string[code_start+3:lang_end].strip()
             # Try to get a Pygments lexer for this language.
             try:
                 lexer = get_lexer_by_name(lang)
@@ -196,7 +212,7 @@ class DecorateDisplay:
                 # Create a formatter with a specific style.
                 formatter = TerminalTrueColorFormatter(style="material")
                 # Extract the code from the code block.
-                code = input_string[lang_end+1:code_end].strip()
+                code = inp_string[lang_end+1:code_end].strip()
                 # Use Pygments to highlight the code, which will return an ANSI string.
                 ansi_text = highlight(code, lexer, formatter)
                 # Create a Text object from the ANSI string and append it to the output text.
@@ -206,27 +222,58 @@ class DecorateDisplay:
                     self.code_block_list.append(code)
             # If no lexer is found, append the unhighlighted code block to the output text.
             else:
-                output_text.append_text(Text(input_string[code_start:code_end], words_color))
-            # Update the input string to the remaining unprocessed string.
-            input_string = input_string[code_end+3:]
+                output_text.append_text(Text(inp_string[code_start:code_end], words_color))
+            # Update the inp string to the remaining unprocessed string.
+            inp_string = inp_string[code_end+3:]
         
         return output_text
 
-    def text_to_lines_chain(self, input: Text, container_width: int) -> tuple:
+    def text_to_lines_chain(self, inp: Text, container_width: int) -> Self:
+        """Convert the Text object into a Lines object.
+        
+        This operation is a chainable operation.
+        
+        Args:
+            inp: The Text object that needs to be converted.
+            container_width: Specify the width of the display area.
+
+        Returns:
+            Self
+        """
         console = Console()
         total_lines = Lines()
-        lines = input.split(allow_blank=True)
+        lines = inp.split(allow_blank=True)
         for line in lines:
             lin = line.wrap(console=console, width=container_width, overflow="fold", no_wrap=False)
             total_lines.extend(lin)
         length_list = list(map(lambda line: line.cell_len, total_lines))
         max_width = max(length_list)
-        return total_lines, length_list, max_width
+        self.chain_lines = total_lines
+        self.chain_length_list = length_list
+        self.chain_max_width = max_width
+        return self
 
-    def background_chain(self, input: Text, container_width: int, background_color = None) -> tuple:
+    def background_chain(
+        self,
+        inp: Text,
+        container_width: int,
+        background_color = None
+    ) -> Self:
+        """Add a background color to the specified content.
+
+        This operation is a chainable operation.
+        
+        Args:
+            inp: The content that needs background color.
+            container_width: Specify the width of the display area.
+            background_color: Specify the color.
+        
+        Returns:
+            Self
+        """
         console = Console()
         total_lines = Lines()
-        lines = input.split(allow_blank=True)
+        lines = inp.split(allow_blank=True)
         for line in lines:
             lin = line.wrap(console=console, width=container_width, overflow="fold", no_wrap=False)
             total_lines.extend(lin)
@@ -238,10 +285,52 @@ class DecorateDisplay:
             if background_color:
                 line.stylize(Style(bgcolor=background_color))
             out.append(line)
-        return out, length_list, max_width
+        self.chain_lines = out
+        self.chain_length_list = length_list
+        self.chain_max_width = max_width
+        return self
 
-    def panel_chain(self, input: Lines, length_list: list, max_width: int, panel_color, line_type: int = 3) -> tuple:
+    def panel_chain(
+        self,
+        panel_color: str,
+        line_type: int = 3
+    ) -> Self:
+        """Add a border around the given content to make it a rectangular panel.
+
+        This operation is a chainable operation.
+        
+        Args:
+            panel_color: Specify the color of the panel.
+            line_type: Type of the border line.
+                0:
+                    ╭──────────╮
+                    │          │
+                    │          │
+                    ╰──────────╯
+                1:
+                    ╭─ ── ── ──╮
+                    |          |
+                    |          |
+                    ╰─ ── ── ──╯
+                2:
+                    ╭─ ─ ─ ─ ─ ╮
+                    ╵          ╵
+                    ╵          ╵
+                    ╰─ ─ ─ ─ ─ ╯
+                3:
+                    ╭----------╮
+                    ┆          ┆
+                    ┆          ┆
+                    ╰----------╯
+        
+        Returns:
+            Self
+        """
         out = Lines()
+        assert self.chain_lines is not None, "self.chain_lines can not be None"
+        assert self.chain_length_list is not None, "self.chain_length_list can not be None"
+        assert self.chain_max_width is not None, "self.chain_max_width can not be None"
+        max_width = self.chain_max_width
         if line_type == 0:
             horizental = u'\u2500' * max_width
             vertical = u'\u2502'
@@ -258,30 +347,68 @@ class DecorateDisplay:
         elif line_type == 3:
             horizental = '-' * max_width
             vertical = u'\u2506'
-        top = Text(u'\u256D'+horizental+u'\u256E', panel_color)
-        bottom = Text(u'\u2570'+horizental+u'\u256F', panel_color)
+        else:
+            horizental = '-' * max_width
+            vertical = u'\u2506'
+        top = Text(u'\u256D' + horizental + u'\u256E', panel_color)
+        bottom = Text(u'\u2570' + horizental + u'\u256F', panel_color)
         out.append(top)
-        for line in input:
+        for line in self.chain_lines:
             line = Text(vertical, panel_color) + line + Text(vertical, panel_color)
             out.append(line)
         out.append(bottom)
-        return out, length_list, max_width
+        self.chain_lines = out
+        self.chain_length_list = [max_width + 2] * (len(self.chain_length_list) + 2)
+        self.chain_max_width = max_width + 2
+        return self
 
-    def indicator_chain(self, input: Lines, indicator_color: str) -> Lines:
+    def indicator_chain(self, indicator_color: str) -> Self:
+        """Add an indicator to the left of the given content.
+
+        This operation is a chainable operation.
+        The indicator occupies the width of three characters.
+        The inp Lines object should be content that has already been calculated considering the width.
+
+        Args:
+            indicator_color: Specify the indicator color.
+
+        Returns:
+            Self
+        """
         first_time = True
         out = Lines()
-        for line in input:
+        assert self.chain_lines is not None, "self.chain_lines can not be None"
+        assert self.chain_length_list is not None, "self.chain_length_list can not be None"
+        assert self.chain_max_width is not None, "self.chain_max_width can not be None"
+        for line in self.chain_lines:
             if first_time:
                 out.append(Text(u'\u251c'+u'\u2500'+' ', indicator_color).append_text(line))
                 first_time = False
             else:
                 out.append(Text(u'\u2502' + '  ', indicator_color).append_text(line))
-        return out
+        self.chain_lines = out
+        self.chain_length_list = [length + 3 for length in self.chain_length_list]
+        self.chain_max_width += 3
+        return self
     
-    def indicator(self, input: Text, displayer_width: int, indicator_color: str) -> Lines:
+    def indicator(self, inp: Text, displayer_width: int, indicator_color: str) -> Lines:
+        """Add an indicator to the left of the given Text.
+
+        The indicator occupies the width of three characters,
+        and the text content will be displayed with a width of displayer_width-3.
+        Any part exceeding this width will be automatically folded.
+
+        Args:
+            inp: Content that requires an indicator.
+            displayer_width: The width of the displayer.
+            indicator_color: Specify the indicator color.
+
+        Returns:
+            Line object.
+        """
         console = Console()
         total_lines = Lines()
-        lines = input.split(allow_blank=True)
+        lines = inp.split(allow_blank=True)
         for line in lines:
             lin = line.wrap(console=console, width=displayer_width-3, overflow="fold", no_wrap=False)
             total_lines.extend(lin)
@@ -302,14 +429,22 @@ class DecorateDisplay:
     def clear_code_block(self) -> None:
         self.code_block_list = []
 
-def extract_files_from_string(input_string: str) -> list:
+    def get_and_reset_chain(self) -> dict:
+        result = {"lines": copy.copy(self.chain_lines), "length_list": copy.copy(self.chain_length_list), "max_width": self.chain_max_width}
+        self.chain_lines = None
+        self.chain_length_list = None
+        self.chain_max_width = None
+        return result
+
+
+def extract_files_from_string(inp_string: str) -> list:
     """Extract files info from a string might contain files.
     Return a list in order. For content outside of each file block, return its original string.
     For each file block, return a tuple where the contents of the tuple are the filenames within the file block.
     """
 
     result = []
-    file_blocks = re.split(r'(\*{20} FILE CONTENT BEGIN \*{20}|\*{20} FILE CONTENT FINISH \*{19})', input_string)
+    file_blocks = re.split(r'(\*{20} FILE CONTENT BEGIN \*{20}|\*{20} FILE CONTENT FINISH \*{19})', inp_string)
     
     inside_file_block = None
     for block in file_blocks:
@@ -327,4 +462,3 @@ def extract_files_from_string(input_string: str) -> list:
             result.append(block)
     
     return result
-

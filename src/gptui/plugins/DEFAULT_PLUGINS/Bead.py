@@ -38,16 +38,19 @@ class Memo:
     )
     def write_memo(self, context: SKContext) -> str:
         content = context["content"]
-        openai_context_dict = json.loads(str(context["openai_context"]))
+        try:
+            openai_context_dict = json.loads(str(context["openai_context"]))
+        except json.JSONDecodeError:
+            return ("An error occurred while parsing the openai_context content. "
+                "You should not provide the 'openai_context' parameter as the system automatically supplies it."
+            )
         conversation_id = int(openai_context_dict["id"])
         try:
             conversation = self.app.openai.conversation_dict[conversation_id]
         except KeyError:
             return f"Write memo faild. Conversation id {conversation_id} is not correct."
-        bead_content = conversation["bead"]["content"]
-        if isinstance(bead_content, dict):
-            bead_content["content"] += "\n" + content
-        elif isinstance(bead_content, list):
-            bead_content[-1]["content"] += "\n" + content
-        self.app.openai.bead_insert(conversation_id)
+        openai_context = conversation["openai_context"]
+        bead_content = openai_context.bead
+        bead_content[-1]["content"] += "\n" + content
+        openai_context.insert_bead()
         return f"'{content}' have been written into the memo!" 

@@ -6,13 +6,16 @@ import os
 import time
 from dataclasses import asdict
 
+from agere.commander import Callback
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
 from ..gptui_kernel.manager import ManagerInterface
-from ..models.context import OpenaiContext
-from ..models.openai_chat import OpenaiChatInterface
+from ..models.blinker_wrapper import async_wrapper_with_loop
+from ..models.context import BeadOpenaiContext
+from ..models.jobs import GroupTalkManager
+from ..models.openai_chat import OpenaiChatInterface, OpenAIGroupTalk
+from ..models.signals import notification_signal
 from ..models.utils.openai_settings_from_dot_env import openai_settings_from_dot_env
-from ..models.utils.tokens_num import tokens_num_from_chat_context
 from ..utils.my_text import MyText as Text
 from ..views.animation import AnimationRequest
 from ..views.screens import InputDialog
@@ -24,16 +27,21 @@ gptui_logger = logging.getLogger("gptui_logger")
 class OpenaiChatManage:
     """
     Schema for conversations:
-    {conversation_id:{
-        "tab_name": tab_name,
-        "file_id": file_id,
-        "openai_context": openai_context,
-        "bead": {
-                "positions": index list of beads,
-                "content": dict or list[dict], openai message or list of message which express the bead content,
-                "length": list of bead's tokens num,
-            },
-        "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
+    {
+        conversation_id: {
+            "tab_name": tab_name,
+            "file_id": file_id,
+            "openai_context": BeadOpenaiContext,
+            "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
+        }
+    }
+    Schema for group talk conversations:
+    {
+        conversation_id: {
+            "tab_name": tab_name,
+            "file_id": file_id,
+            "group_talk_manager": GroupTalkManager,
+            "max_sending_tokens_ratio": the proportion or the maximum number of tokens sent to the total tokens window,
         }
     }
     """
@@ -47,6 +55,7 @@ class OpenaiChatManage:
         conversations_recover: bool = False,
         vector_memory: bool = True,
     ) -> None:
+        assert manager.dot_env_config_path is not None
         self.openai_api_key, self.openai_org_id = openai_settings_from_dot_env(manager.dot_env_config_path)
         # check if workpath is a valid directory
         if not os.path.isdir(workpath):
@@ -61,6 +70,7 @@ class OpenaiChatManage:
         self.conversation_dict = {}
         self.conversation_count = 0
         self.conversation_active = 0
+        self.group_talk_conversation_active = 0
         self.conversation_id_set = set()
         if conversations_recover:
             try:
@@ -80,7 +90,7 @@ class OpenaiChatManage:
                             plugin_path=app.config["PLUGIN_PATH"],
                             plugins_name_list=conversation_plugins_dict[key],
                         )
-                        value["openai_context"] = OpenaiContext(**openai_context_build)
+                        value["openai_context"] = BeadOpenaiContext(**openai_context_build)
                         # convert id to int
                         new_conversation_dict[int(key)] = value
                         self.conversation_id_set.add(int(key))
@@ -106,58 +116,53 @@ class OpenaiChatManage:
 
         if vector_memory is True:
             self.init_volatile_memory()
+        
+        self.openai_group_talk = OpenAIGroupTalk(manager=manager)
+        self.group_talk_conversation_dict = {}
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
         kernel.add_text_embedding_generation_service("ada", OpenAITextEmbedding("text-embedding-ada-002", self.openai_api_key, self.openai_org_id or ""))
         kernel.register_memory_store(memory_store=self.app.qdrant_vector)
 
-    def bead_insert(self, conversation_id: int | None = None) -> OpenaiContext:
+    def bead_insert(self, conversation_id: int | None = None) -> BeadOpenaiContext:
         "Insert the bead into the chat context."
         if conversation_id is None:
             conversation_id = self.conversation_active
         conversation = self.conversation_dict[conversation_id]
         openai_context = conversation["openai_context"]
-        bead = conversation["bead"]
-        bead_content = bead["content"]
-        if openai_context.chat_context is None:
-            bead["positions"] = [0]
-            bead["length"] = []
-        else:
-            bead["positions"].append(len(openai_context.chat_context))
-        if isinstance(bead_content, dict):
-            self.openai_chat.chat_message_append(context=openai_context, message=bead_content)
-            bead["length"].append(tokens_num_from_chat_context(chat_context=[bead_content], model=openai_context.parameters["model"]))
-        else:
-            self.openai_chat.chat_messages_extend(context=openai_context, messages_list=bead_content)
-            bead["length"].append(tokens_num_from_chat_context(chat_context=bead_content, model=openai_context.parameters["model"]))
+        openai_context.insert_bead()
         return openai_context
 
-    def auto_bead_insert(self, conversation_id: int | None = None) -> tuple[OpenaiContext, bool]:
+    def auto_bead_insert(self, conversation_id: int | None = None) -> tuple[BeadOpenaiContext, bool]:
         "Auto insert the bead into the chat context."
         if conversation_id is None:
             conversation_id = self.conversation_active
         conversation = self.conversation_dict[conversation_id]
-        if bead_positions := conversation["bead"]["positions"]:
-            last_position = bead_positions[-1]
-        else:
-            last_position = 0
+        openai_context = conversation["openai_context"]
+        do_insert = openai_context.auto_insert_bead()
         
-        tokens_num_without_bead = sum(conversation["openai_context"].tokens_num_list[last_position:])
-        max_sending_tokens_ratio = conversation["max_sending_tokens_ratio"]
-        model = conversation["openai_context"].parameters["model"]
-        tokens_window = self.app.config["openai_model_info"][model]["tokens_window"]
-        max_sending_tokens_num = conversation["openai_context"].max_sending_tokens_num
-        
-        if tokens_num_without_bead >= max_sending_tokens_num * 0.95:
+        if do_insert:
             app = self.app
-            openai_context = self.bead_insert(conversation_id=conversation_id)
             app.query_one("#status_region").update(Text("Bead inserted.","green"))
             #refresh dashboard
             model = conversation["openai_context"].parameters["model"]
             app.dash_board.dash_board_display(tokens_num_window=app.get_tokens_window(model))
             return openai_context, True
-        return conversation["openai_context"], False
+        return openai_context, False
+    
+    def bead_init(self, bead_id: int) -> dict:
+        """
+        Generate a initial template bead.
+        """
+        bead = {
+            "role": "system",
+            "content": (
+                "Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\n"
+                f"CONVERSATION ID: {bead_id}"
+            )
+        }
+        return bead
     
     def open_conversation(
         self,
@@ -175,7 +180,7 @@ class OpenaiChatManage:
             assert True, "The conversation_id is duplicated."
             self.conversation_count += 1
         bead_init = self.bead_init(self.conversation_count)
-        openai_context = OpenaiContext()
+        openai_context = BeadOpenaiContext(bead=[bead_init])
         openai_context.id = self.conversation_count
         openai_context.chat_context = []
         openai_context.plugins = plugins_from_name(manager=self.manager, plugin_path=self.app.config["PLUGIN_PATH"], plugins_name_list=self.app.config["default_plugins_used"])
@@ -206,7 +211,6 @@ class OpenaiChatManage:
             "tab_name": "New",
             "file_id": None,
             "openai_context": openai_context,
-            "bead":{"content":bead_init, "positions": [], "length": []},
             "max_sending_tokens_ratio": max_sending_tokens_ratio,
         }
         
@@ -232,15 +236,8 @@ class OpenaiChatManage:
         if mode == "Normal":
             pass
         return conversation_id
-    
-    def bead_init(self, bead_id: int) -> dict:
-        """
-        Generate a initial template bead.
-        """
-        bead = {"role":"user", "content":f"Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\nCONVERSATION ID: {bead_id}"}
-        return bead
 
-    def conversation_delete(self, conversation_id: int = 0) -> None:
+    def delete_conversation(self, conversation_id: int = 0) -> None:
         "delete a conversation from conversation dict"
         if conversation_id == 0:
             conversation_id = self.conversation_active
@@ -309,7 +306,7 @@ class OpenaiChatManage:
                 return False, e
             else:
                 openai_context_build = conversation["openai_context"]
-                openai_context = OpenaiContext(**openai_context_build)
+                openai_context = BeadOpenaiContext(**openai_context_build)
                 openai_parameters = openai_context.parameters
                 model = openai_parameters.get("model")
                 if model is None:
@@ -359,6 +356,97 @@ class OpenaiChatManage:
 
         tab_name = self.conversation_dict[conversation_id]["tab_name"]
         self.app.push_screen(InputDialog(prompt=input_dialog_prompt or "Enter a name for the conversation:", default_input=tab_name), input_handle)
+
+    def open_group_talk_conversation(
+        self,
+        id: int | str | None = None,
+        max_sending_tokens_ratio: float | None = None,
+    ) -> int:
+        """
+        Open a empty group talk conversation, and return the conversation's id.
+        Conversation active id should be handle manually
+        """
+        self.conversation_count = id or time.time() * 1000
+        self.conversation_count = int(self.conversation_count)
+        while self.conversation_count in self.conversation_id_set or self.conversation_count == 0:
+            assert True, "The conversation_id is duplicated."
+            self.conversation_count += 1
+        group_talk_manager = GroupTalkManager(manager=self.manager)
+        group_talk_manager.group_talk_manager_id = self.conversation_count
+        callback = Callback(
+            at_job_start=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": True, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
+            at_terminate=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": False, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
+            at_job_end=[
+                {
+                    "function": notification_signal.send,
+                    "params": {
+                        "args": (self,),
+                        "kwargs": {
+                            "_async_wrapper": async_wrapper_with_loop,
+                            "message": {
+                                "content": {
+                                    "content": {"status": False, "group_talk_manager": group_talk_manager},
+                                    "description": "GroupTalkManager status changed",
+                                },
+                                "flag": "info",
+                            },
+                        },
+                    },
+                },
+            ],
+        )
+        group_talk_manager.add_callback(callback)
+        self.group_talk_conversation_dict[self.conversation_count] = {
+            "tab_name": "Group-Talk",
+            "file_id": None,
+            "group_talk_manager": group_talk_manager,
+            "max_sending_tokens_ratio": max_sending_tokens_ratio or self.app.config["default_conversation_parameters"]["max_sending_tokens_ratio"],
+        }
+        self.conversation_id_set.add(self.conversation_count)
+        self.group_talk_conversation_active = self.conversation_count
+        return self.conversation_count
+
+    def delete_group_talk_conversation(self, group_talk_conversation_id: int = 0) -> None:
+        """delete a group talk conversation from group_talk_conversation_dict"""
+        if group_talk_conversation_id == 0:
+            group_talk_conversation_id = self.group_talk_conversation_active
+        group_talk_manager = self.group_talk_conversation_dict[group_talk_conversation_id]["group_talk_manager"]
+        group_talk_manager.close_group_talk()
+        del self.group_talk_conversation_dict[group_talk_conversation_id]
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:

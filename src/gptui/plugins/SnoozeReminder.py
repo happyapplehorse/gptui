@@ -3,10 +3,10 @@ import json
 import threading
 import time
 
+from agere.commander import Callback
 from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.skill_definition import sk_function, sk_function_context_parameter
 
-from gptui.gptui_kernel.kernel import Callback
 from gptui.gptui_kernel.manager import ManagerInterface, auto_init_params
 from gptui.models.blinker_wrapper import async_wrapper_with_loop, sync_wrapper
 from gptui.models.openai_chat_inner_service import chat_service_for_inner

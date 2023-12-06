@@ -1,3 +1,4 @@
+""" wait for open-interpreter to be compatible with openai version 1.1.1
 import asyncio
 import logging
 
@@ -62,3 +63,5 @@ class OpenInterpreter:
         self.interpreter.reset()
         gptui_logger.info("Open interpreter reset.")
         return "Successfully terminated the interaction with the open interpreter."
+
+"""

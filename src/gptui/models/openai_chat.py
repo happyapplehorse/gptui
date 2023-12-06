@@ -3,15 +3,17 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Literal
 
+from agere.commander import Callback
+from openai.types.chat import ChatCompletionMessageParam
+
 from .blinker_wrapper import async_wrapper_without_loop, async_wrapper_with_loop, sync_wrapper
 from .context import OpenaiContext
-from .jobs import ResponseJob
+from .jobs import ResponseJob, GroupTalkManager
 from .openai_error import OpenaiErrorHandler
 from .openai_tokens_truncate import trim_excess_tokens
 from .signals import notification_signal, chat_context_extend_for_sending_signal
-from .utils.openai_api import openai_api
+from .utils.openai_api import openai_api_client
 from .utils.tokens_num import tokens_num_for_functions_call
-from ..gptui_kernel.kernel import Callback
 from ..gptui_kernel.manager import ManagerInterface
 
 
@@ -43,7 +45,7 @@ class OpenaiChatInterface(metaclass=ABCMeta):
 class OpenaiChat(OpenaiChatInterface):
     def __init__(self, manager: ManagerInterface):
         self.manager = manager
-        self.openai_api = openai_api(manager.dot_env_config_path)
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
 
     def chat_message_append(self, context: OpenaiContext, message: dict | list[dict], tokens_num_update: bool = True) -> None:
         "Append chat message to the end of the chat_context of the context"
@@ -58,7 +60,7 @@ class OpenaiChat(OpenaiChatInterface):
         for message in messages_list:
             context.chat_context_append(message=message, tokens_num_update=tokens_num_update)
     
-    def chat_message_pop(self, context: OpenaiContext, pop_index: int = -1) -> dict:
+    def chat_message_pop(self, context: OpenaiContext, pop_index: int = -1) -> ChatCompletionMessageParam:
         "Pop a message from context"
         if context.chat_context is None:
             raise ValueError(f"Field 'chat_context' in {context.chat_context} has not been set.")
@@ -98,19 +100,27 @@ class OpenaiChat(OpenaiChatInterface):
             }
         )
         try:
-            function_para = {}
+            tools_para = {}
             if available_functions := self.manager.available_functions_meta:
-                function_para = {"functions": available_functions, "function_call": "auto"}
+                tools_para = {"tools": available_functions, "tool_choice": "auto"}
                 response_mode = "function_call"
             else:
                 response_mode = "no_function_call"
             
-            offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
+            offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
-            
-            response = self.openai_api.ChatCompletion.create(
+
+            # Delete the tool reply messages at the beginning of the information list.
+            # This is because if the information starts with a function reply message,
+            # it indicates that the function call information has already been truncated.
+            # The OpenAI API requires that function reply messages must be responses to function calls.
+            # Therefore, if the function reply messages are not removed, it will result in an OpenAI API error.
+            while trim_messages and trim_messages[0].get("role") == "tool":
+                trim_messages.pop(0)
+
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages=trim_messages,
-                **function_para,
+                **tools_para,
                 **context.parameters,
             )
         except Exception as e:
@@ -140,8 +150,8 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"status":True},
-                                    "description":"Commander status changed",
+                                    "content":{"status": True, "context": context},
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -149,25 +159,7 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_receiving_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message":{
-                                "content":{
-                                    "content":{"context":context},
-                                    "description":"Starting to receive the original response message to the user",
-                                },
-                                "flag":"info",
-                            },
-                        },
-                    },
-                },
-            ],
-            at_commander_end=[
+            at_job_end=[
                 {
                     "function": notification_signal.send_async,
                     "params": {
@@ -176,8 +168,8 @@ class OpenaiChat(OpenaiChatInterface):
                             "_sync_wrapper": sync_wrapper,
                             "message":{
                                 "content":{
-                                    "content":{"status":False},
-                                    "description":"Commander status changed",
+                                    "content":{"status": False, "context": context},
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -187,8 +179,33 @@ class OpenaiChat(OpenaiChatInterface):
             ],
         )
 
-        job = ResponseJob(manager=self.manager, response=response_stream_format, context=context, callback=callback)
-        self.manager.gk_kernel.commander.async_commander_run(job)
+        at_receiving_start = [
+            {
+                "function": notification_signal.send,
+                "params": {
+                    "args": (self,),
+                    "kwargs": {
+                        "_async_wrapper": async_wrapper_with_loop,
+                        "message":{
+                            "content":{
+                                "content":{"context": context},
+                                "description":"Starting to receive the original response message to the user",
+                            },
+                            "flag":"info",
+                        },
+                    },
+                },
+            },
+        ]
+
+        job = ResponseJob(
+            manager=self.manager,
+            response=response_stream_format,
+            context=context,
+            callback=callback,
+            at_receiving_start=at_receiving_start,
+        )
+        self.manager.gk_kernel.commander.put_job_threadsafe(job)
     
     def chat_stream(self, context: OpenaiContext, message: dict | list[dict]) -> None:
         "stream version of chat function with openai"
@@ -224,19 +241,29 @@ class OpenaiChat(OpenaiChatInterface):
             }
         )
         try:
-            function_para = {}
+            tools_para = {}
             if available_functions := self.manager.available_functions_meta:
-                function_para = {"functions": available_functions, "function_call": "auto"}
+                tools_para = {"tools": available_functions, "tool_choice": "auto"}
             
-            offset_tokens_num = -tokens_num_for_functions_call(function_para["functions"], model=context.parameters["model"])
+            offset_tokens_num = -tokens_num_for_functions_call(tools_para["tools"], model=context.parameters["model"])
             trim_messages = trim_excess_tokens(context, offset=offset_tokens_num)
-            
-            response = self.openai_api.ChatCompletion.create(
+
+            # Delete the tool reply messages at the beginning of the information list.
+            # This is because if the information starts with a function reply message,
+            # it indicates that the function call information has already been truncated.
+            # The OpenAI API requires that function reply messages must be responses to function calls.
+            # Therefore, if the function reply messages are not removed, it will result in an OpenAI API error.
+            while trim_messages and trim_messages[0].get("role") == "tool":
+                trim_messages.pop(0)
+
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 messages = trim_messages,
-                **function_para,
+                **tools_para,
                 **context.parameters,
                 )
         except Exception as e:
+            gptui_logger.debug('----trim_messages----in chat----')
+            gptui_logger.debug(trim_messages)
             notification_signal.send(
                 self,
                 _async_wrapper=async_wrapper_without_loop,
@@ -261,8 +288,8 @@ class OpenaiChat(OpenaiChatInterface):
                             "_async_wrapper": async_wrapper_with_loop,
                             "message":{
                                 "content":{
-                                    "content":{"status":True},
-                                    "description":"Commander status changed",
+                                    "content":{"status": True, "context": context},
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -270,25 +297,7 @@ class OpenaiChat(OpenaiChatInterface):
                     },
                 },
             ],
-            at_receiving_start=[
-                {
-                    "function": notification_signal.send,
-                    "params": {
-                        "args": (self,),
-                        "kwargs": {
-                            "_async_wrapper": async_wrapper_with_loop,
-                            "message":{
-                                "content":{
-                                    "content":{"context":context},
-                                    "description":"Starting to receive the original response message to the user",
-                                },
-                                "flag":"info",
-                            },
-                        },
-                    },
-                },
-            ],
-            at_commander_end=[
+            at_job_end=[
                 {
                     "function": notification_signal.send_async,
                     "params": {
@@ -297,8 +306,8 @@ class OpenaiChat(OpenaiChatInterface):
                             "_sync_wrapper": sync_wrapper,
                             "message":{
                                 "content":{
-                                    "content":{"status":False},
-                                    "description":"Commander status changed",
+                                    "content":{"status": False, "context": context},
+                                    "description":"Job status changed",
                                 },
                                 "flag":"info",
                             },
@@ -307,9 +316,34 @@ class OpenaiChat(OpenaiChatInterface):
                 },
             ],
         )
+        
+        at_receiving_start = [
+            {
+                "function": notification_signal.send,
+                "params": {
+                    "args": (self,),
+                    "kwargs": {
+                        "_async_wrapper": async_wrapper_with_loop,
+                        "message":{
+                            "content":{
+                                "content":{"context": context},
+                                "description":"Starting to receive the original response message to the user",
+                            },
+                            "flag":"info",
+                        },
+                    },
+                },
+            },
+        ]
 
-        job = ResponseJob(manager=self.manager, response=response, context=context, callback=callback)
-        self.manager.gk_kernel.commander.async_commander_run(job)
+        job = ResponseJob(
+            manager=self.manager,
+            response=response,
+            context=context,
+            callback=callback,
+            at_receiving_start=at_receiving_start,
+        )
+        self.manager.gk_kernel.commander.put_job_threadsafe(job)
 
 
 def response_to_stream_format(mode: Literal["no_function_call", "function_call"], response) -> list:
@@ -335,3 +369,18 @@ def response_to_stream_format(mode: Literal["no_function_call", "function_call"]
                                          {"choices":[{"delta":{"content":reply_content}, "finish_reason":"null"}]},
                                          {"choices":[{"delta":{}, "finish_reason":finish_reason}]}]
     return result
+
+
+class OpenAIGroupTalk:
+    def __init__(self, manager: ManagerInterface):
+        self.manager = manager
+        self.openai_api_client = openai_api_client(manager.dot_env_config_path)
+
+    def talk_stream(self, group_talk_manager: GroupTalkManager, message_content: str) -> None:
+        if group_talk_manager.state != "ACTIVE":
+            group_talk_manager.speaking = None
+            group_talk_manager.running = True
+            group_talk_manager.user_talk_buffer.append(message_content)
+            self.manager.gk_kernel.commander.put_job_threadsafe(group_talk_manager)
+        else:
+            group_talk_manager.user_talk_buffer.append(message_content)

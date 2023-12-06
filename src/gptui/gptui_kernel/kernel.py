@@ -1,45 +1,33 @@
 from __future__ import annotations
-import asyncio
-import itertools
 import json
 import logging
 import sys
-import weakref
 from abc import ABCMeta, abstractmethod
-from asyncio import Task
-from functools import wraps
 from importlib import import_module
-from inspect import iscoroutinefunction
-from typing import Coroutine, Sequence, Iterable, Literal, cast
 
+import agere.commander as ac
 import semantic_kernel as sk
 from dotenv import dotenv_values
 from semantic_kernel.connectors.ai.open_ai import OpenAITextCompletion
 from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.orchestration.sk_function_base import SKFunctionBase
 
-from .kernel_error import (
-    AttributeNotSetError,
-    NotHandlerError,
-    NotTaskerError,
+from .kernel_exceptions import (
     PluginInfoError,
     PluginsMatchError,
 )
 from .null_logger import get_null_logger
 
 
-PASS_WORD = "I assure all time-consuming tasks are delegated externally."
-
-
 class KernelInterface(metaclass=ABCMeta):
     @property
     @abstractmethod
-    def commander(self) -> CommanderAsyncInterface:
+    def commander(self) -> ac.CommanderAsyncInterface:
         ...
     
     @commander.setter
     @abstractmethod
-    def commander(self, commander: CommanderAsyncInterface) -> None:
+    def commander(self, commander: ac.CommanderAsyncInterface) -> None:
         ...
     
     @property
@@ -82,7 +70,7 @@ class KernelInterface(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def make_commander(self, logger: logging.Logger | None = None) -> CommanderAsyncInterface:
+    def make_commander(self, logger: logging.Logger | None = None) -> ac.CommanderAsyncInterface:
         ...
 
     @abstractmethod
@@ -118,11 +106,11 @@ class Kernel(KernelInterface):
         self._plugins_in_kernel = []
 
     @property
-    def commander(self) -> CommanderAsyncInterface:
+    def commander(self) -> ac.CommanderAsyncInterface:
         return self._commander
 
     @commander.setter
-    def commander(self, commander: CommanderAsyncInterface) -> None:
+    def commander(self, commander: ac.CommanderAsyncInterface) -> None:
         self._commander = commander
 
     @property
@@ -186,8 +174,8 @@ class Kernel(KernelInterface):
         kernel.set_default_text_completion_service("OpenAI_davinci")
         return kernel
 
-    def make_commander(self, logger: logging.Logger | None = None) -> CommanderAsyncInterface:
-        return CommanderAsync(logger or get_null_logger())
+    def make_commander(self, logger: logging.Logger | None = None) -> ac.CommanderAsyncInterface:
+        return ac.CommanderAsync(logger or get_null_logger())
 
     def add_plugins(self, plugins_list: list[tuple]) -> None:
         self.register_plugins(plugins_list)
@@ -268,10 +256,10 @@ class Kernel(KernelInterface):
             to_user: bool = True,
             auto_remove_input: bool = True
         ) -> tuple[list[dict], dict]:
-            """
-            Retrieve the meta and links of the specified function registered in the kernel for use in LLM function calls.
+            """Retrieve the meta and links of the specified function registered in the kernel for use in LLM function calls.
             If both plugins_list and functions are not specified, all functions registered in the kenel will be returned.
-            args:
+            
+            Args:
                 plugins_list: Add specified plugins
                 functions: Add specified functions
                 to_user: Add to user ability
@@ -280,7 +268,8 @@ class Kernel(KernelInterface):
                     The conditions for automatically removing 'input' arg is:
                         There are more than two args in the args list.
                         The description of 'input' is empty.
-            return:
+            
+            Return:
                 (
                     available_functions_meta: list,
                     available_functions_link: dict,
@@ -316,14 +305,20 @@ class Kernel(KernelInterface):
             available_functions_meta = []
             available_functions_link = {}
             for function in functions_meta:
-                available_functions_meta.append({"name": function["name"],
-                                            "description": function["description"],
-                                            "parameters": {
-                                                    "type": "object",
-                                                    "properties": (parameters:={}),
-                                                    "required": (required:=[]),
-                                                }
-                                            })
+                available_functions_meta.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": function["name"],
+                            "description": function["description"],
+                            "parameters": {
+                                "type": "object",
+                                "properties": (parameters := {}),
+                                "required": (required := []),
+                            },
+                        },
+                    }
+                )
                 if to_user is True:
                     parameters["to_user"] = {
                         "type": "string",
@@ -344,575 +339,6 @@ class Kernel(KernelInterface):
                 available_functions_link[function["name"]] = self.kenel.functions_link_in_kernel[function["name"]]
                 
             return available_functions_meta, available_functions_link
-
-
-class TaskNode(metaclass=ABCMeta):
-    def __init__(self):
-        self._id: int | None = None
-        self._commander: CommanderAsync | None = None
-        self._parent: TaskNode | None | Literal["Null"] = None
-        self._children: list = [self]
-    
-    def add_child(self, child: TaskNode) -> None:
-        self._children.append(child)
-        child._parent = self
-    
-    async def del_child(self, child: TaskNode) -> None:
-        self._children.remove(child)
-        if not self._children:
-            await self._do_at_done()
-            parent = self.parent
-            if parent != "Null":
-                await parent.del_child(self)
-
-    @abstractmethod
-    async def _do_at_done(self):
-        ...
-
-    @property
-    def id(self) -> int | None:
-        if self._id is None:
-            raise AttributeNotSetError(obj=self, attr="_id")
-        return self._id
-
-    @property
-    def commander(self) -> CommanderAsync:
-        if self._commander is None:
-            raise AttributeNotSetError(obj=self, attr="_commander")
-        return self._commander
-
-    @property
-    def parent(self) -> TaskNode | Literal["Null"]:
-        if self._parent is None:
-            raise AttributeNotSetError(obj=self, attr="_parent")
-        return self._parent
-
-    @property
-    def children(self) -> list[TaskNode]:
-        return self._children
-
-    @property
-    def children_num(self) -> int:
-        return len(self._children)
-
-
-class CommanderAsyncInterface(TaskNode):
-    @abstractmethod
-    def async_commander_run(self, job: Job | Sequence[Job]) -> None:
-        ...
-
-    @abstractmethod
-    async def put_job(self, job: Job, parent: TaskNode | None = None) -> None:
-        ...
-
-    @abstractmethod
-    def call_handler(self, handler: HandlerCoroutine, parent: Job | HandlerCoroutine) -> Task:
-        ...
-
-
-class CommanderAsync(CommanderAsyncInterface):
-    _commander_instances = weakref.WeakSet()
-    def __init__(self, logger: logging.Logger | None = None):
-        super().__init__()
-        CommanderAsync._commander_instances.add(self)
-        self.callbacks_at_commander_end_list = []
-        self.background_tasks = []
-        self.unique_id = itertools.count(1)
-        self._children = []
-        self._parent = "Null"
-        self.logger = logger or get_null_logger()
-
-    def async_commander_run(self, job: Job | Sequence[Job]) -> None:
-        self.__job_queue = asyncio.Queue()
-        asyncio.run(self.commander(job))
-
-    async def commander(self, init_job: Job | Sequence[Job]) -> None:
-        # initial job
-        if not isinstance(init_job, Iterable):
-            init_job = [init_job]
-        for job in init_job:
-            self.add_child(job)
-            await self.__job_queue.put(job)
-
-        while True:
-            # stop condition
-            if self.__job_queue.empty() and not self._children:
-                break
-            
-            job = await self.__job_queue.get()
-
-            callback = getattr(job, "callback", None)
-            if callback is not None:
-                await self._callback_handle(callback=callback, which="at_job_start", task_node=job)
-                at_commander_end = callback.at_commander_end
-                if at_commander_end:
-                    self.callbacks_at_commander_end_list.append(callback)
-            
-            job._id = next(self.unique_id)
-            job._commander = self
-            job_task = job.task
-            if getattr(job_task, "_tasker_", None) is not True:
-                raise NotTaskerError(job)
-            await job_task()
-
-        await asyncio.gather(*self.background_tasks)
-        for callback in self.callbacks_at_commander_end_list:
-            await self._callback_handle(callback=callback, which="at_commander_end")
-        self.callback_at_commander_end = Callback(at_commander_end=[])
-
-    def task_keeper(self, task: Task) -> None:
-        "keep task alive until finished"
-        self.background_tasks.append(task)
-        task.add_done_callback(self.background_tasks.remove)
-
-    async def _callback_handle(
-        self,
-        callback: Callback,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
-        task_node: TaskNode | None = None,
-    ) -> None:
-        try:
-            callbact_list = getattr(callback, which)
-        except AttributeError:
-            raise ValueError(f"Callback have no '{which}' callback.")
-        for callback_job in callbact_list:
-            function = callback_job["function"]
-            params = callback_job.get("params")
-            inject_job = callback_job.get("inject_task_node", False)
-            if task_node is None:
-                task_node = callback._task_node
-            if params is None:
-                if inject_job:
-                    if iscoroutinefunction(function):
-                        await function(task_node)
-                    else:
-                        function(task_node)
-                else:
-                    if iscoroutinefunction(function):
-                        await function()
-                    else:
-                        function()
-            else:
-                args = params.get("args", ())
-                kwargs = params.get("kwargs", {})
-                if inject_job:
-                    if iscoroutinefunction(function):
-                        await function(task_node, *args, **kwargs)
-                    else:
-                        function(task_node, *args, **kwargs)
-                else:
-                    if iscoroutinefunction(function):
-                        await function(*args, **kwargs)
-                    else:
-                        function(*args, **kwargs)
-
-    async def _do_at_done(self) -> None:
-        job = ComEnd()
-        job._parent = "Null"
-        await self.__job_queue.put(job)
-
-    async def put_job(self, job: Job, parent: TaskNode | None = None) -> None:
-        if parent is None:
-            parent = self
-        job._parent = parent
-        parent.add_child(job)
-        await self.__job_queue.put(job)
-
-    def call_handler(self, handler: HandlerCoroutine, parent: Job | HandlerCoroutine) -> Task:
-        if getattr(handler, "_handler_", None) is not True:
-            raise NotHandlerError(parent)
-        parent.add_child(handler)
-        handler._parent = parent
-        handler._commander = parent.commander
-        task = asyncio.create_task(handler.wrap_coroutine())
-        self.task_keeper(task)
-        return task
-
-
-def tasker(password):
-    assert password == PASS_WORD, ("The password is incorrect, "
-        "you should ensure that all time-consuming tasks are placed outside of the commander. "
-        "The correct password is: I assure all time-consuming tasks are delegated externally")
-    def decorator(func):
-        """
-        Decorate a task in a job.
-        It Dose:
-            If the task return a Coroutine object, create task to run it.
-            Remove it self from the job when it is done automatically.
-        "self_job" refers to the job instance.
-        """
-        func._tasker_ = True
-        @wraps(func)
-        async def wrap_function(self_job):
-            try:
-                if iscoroutinefunction(func):
-                    result = await func(self_job)
-                else:
-                    result = func(self_job)
-            except Exception as e:
-                self_job.commander.logger.error(f"Encountered an error in the job task. Error: {e}, job: {self_job}")
-            else:
-                if result is not None:
-                    assert isinstance(result, HandlerCoroutine)
-                    if isinstance(result, HandlerCoroutine):
-                        self_job.call_handler(handler=result)
-                return result
-            finally:
-                await self_job.del_child(self_job)
-        return wrap_function
-    return decorator
-
-
-class HandlerCoroutine(TaskNode):
-    def __init__(self):
-        super().__init__()
-        self._handler_ = True
-        self.coro = None
-        self._callback: Callback | None = None
-
-    async def _do_at_done(self):
-        if self._callback is not None:
-            await self.commander._callback_handle(callback=self._callback, which="at_handler_end", task_node=self)
-    
-    async def wrap_coroutine(self):
-        # handle "at_handler_start" callback
-        if self._callback is not None:
-            await self.commander._callback_handle(callback=self._callback, which="at_handler_start", task_node=self)
-
-        assert self.coro is not None
-        coro = cast(Coroutine, self.coro)
-        try:
-            result = await coro
-        except Exception as e:
-            self.commander.logger.error(f"Encountered an error in the handler. Error: {e}, handler: {self}")
-        else:
-            return result
-        finally:
-            await self.del_child(self)
-
-    def __await__(self):
-        return self.wrap_coroutine().__await__()
-
-    async def put_job(self, job: Job):
-        commander = self.commander
-        await commander.put_job(job=job, parent=self)
-
-    def call_handler(self, handler: HandlerCoroutine):
-        commander = self.commander
-        commander.call_handler(handler=handler, parent=self)
-    
-    @property
-    def callback(self) -> Callback | None:
-        return self._callback
-
-    def add_callback_functions(
-        self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
-        functions_info: dict | list[dict],
-    ) -> None:
-        if self._callback is None:
-            self._callback = Callback()
-        when_callback = getattr(self._callback, which)
-        if functions_info is list:
-            when_callback.extend(functions_info)
-        else:
-            when_callback.append(functions_info)
-        self._callback._task_node = self
-
-    def add_callback(self, callback: Callback | list[Callback | None]) -> None:
-        if isinstance(callback, list):
-            callback_ = Callback.merge(callback)
-        else:
-            callback_ = callback
-        if self._callback is None:
-            self._callback = callback_
-        else:
-            self._callback.update(callback_)
-        self._callback._task_node = self
-
-
-def handler(coro_func):
-    """
-    Decorate a handler.
-    It Dose:
-        put a JobDone() at end of the task;
-        subtrack one from the job's _children_count, and trigger the down_check of this job.
-    """
-    if not iscoroutinefunction(coro_func):
-        raise TypeError("Handler function must to be a coroutine function.")
-
-    @wraps(coro_func)
-    def decorator(*args, **kwargs):
-        handler_coroutine = HandlerCoroutine()
-        if '.' in coro_func.__qualname__:
-            # coro_func is a method
-            coro = coro_func(args[0], handler_coroutine, *args[1:], **kwargs)
-            for arg in args:
-                if isinstance(arg, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = arg
-                    else:
-                        handler_coroutine._callback.update(arg)
-                    arg._task_node = handler_coroutine
-            for value in kwargs.values():
-                if isinstance(value, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = value
-                    else:
-                        handler_coroutine._callback.update(value)
-                    value._task_node = handler_coroutine
-        else:
-            # coro_func is a function
-            coro = coro_func(handler_coroutine, *args, **kwargs)
-            for arg in args:
-                if isinstance(arg, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = arg
-                    else:
-                        handler_coroutine._callback.update(arg)
-                    arg._task_node = handler_coroutine
-            for value in kwargs.values():
-                if isinstance(value, Callback):
-                    if handler_coroutine._callback is None:
-                        handler_coroutine._callback = value
-                    else:
-                        handler_coroutine._callback.update(value)
-                    value._task_node = handler_coroutine
-        handler_coroutine.coro = coro
-        return handler_coroutine
-   
-    return decorator
-
-
-class Callback:
-    def __init__(
-        self,
-        at_job_start: list | None = None,
-        at_handler_start: list | None = None,
-        at_receiving_start: list | None = None,
-        at_receiving_end: list | None = None,
-        at_handler_end: list | None = None,
-        at_job_end: list | None = None,
-        at_commander_end: list | None = None,
-        task_node: TaskNode | None = None,
-        task_node_auto_lock_num: int | None = None,
-    ):
-        """
-        args:
-            at_job_start: [
-                # callback when this job is going to run
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": position arguments of callback function
-                        "kwargs": key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-            at_handler_start: [
-                # callback when this handler is going to run
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": position arguments of callback function
-                        "kwargs": key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-            at_receiving_start: [
-                # callback at receiving message from LLM starts
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": position arguments of callback function
-                        "kwargs": key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task_node into callback function automatically
-                },
-            ]
-            at_receiving_end: [
-                # callback at receiving message from LLM finish 
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": tuple, position arguments of callback function
-                        "kwargs": dict, key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-            at_handler_end: [
-                # callback when this handler is finished
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": tuple, position arguments of callback function
-                        "kwargs": dict, key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-            at_job_end: [
-                # callback when this job is finished
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": tuple, position arguments of callback function
-                        "kwargs": dict, key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-            at_commander_end: [
-                # callback when the commander finish
-                {
-                    "function": callback_function,
-                    "params": {
-                        "args": tuple, position arguments of callback function
-                        "kwargs": dict, key-values arguments of callback function
-                    },
-                    "inject_task_node": bool, whether pass back task node into callback function automatically
-                },
-            ]
-        """
-        self.at_job_start = at_job_start or []
-        self.at_handler_start = at_handler_start or []
-        self.at_receiving_start = at_receiving_start or []
-        self.at_receiving_end = at_receiving_end or []
-        self.at_handler_end = at_handler_end or []
-        self.at_job_end = at_job_end or []
-        self.at_commander_end = at_commander_end or []
-        if task_node is None:
-            self.__task_node = task_node  # consume task_node_auto_lock_num
-        else:
-            self._task_node = task_node  # do not consume task_node_auto_lock_num
-        self.__task_node_auto_lock_num = task_node_auto_lock_num
-        self._task_node_lock = False
-
-    @property
-    def task_node(self) -> TaskNode | None:
-        return self._task_node
-
-    def task_node_lock(self) -> None:
-        self._task_node_lock = True
-
-    def task_node_unlock(self) -> None:
-        self._task_node_lock = False
-
-    @property
-    def _task_node(self) -> TaskNode | None:
-        return self.__task_node
-
-    @_task_node.setter
-    def _task_node(self, value: TaskNode) -> None:
-        # check whether need to autolock
-        if self.__task_node_auto_lock_num is not None:
-            if not isinstance(self.__task_node_auto_lock_num, int):
-                raise TypeError(f"{self.__task_node_auto_lock_num} is not int, parameter 'task_node_auto_lock_num' passed to Callback have to be int or None.")
-            if self.__task_node_auto_lock_num > 0:
-                self.__task_node_auto_lock_num -= 1
-            else:
-                self._task_node_lock = True
-        
-        if self._task_node_lock is True:
-            return
-        self.__task_node = value
-
-    def update(self, callbacks: Callback | None | list[Callback | None]) -> Callback:
-        fields = ["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"]
-        if callbacks is None:
-            return self
-        elif isinstance(callbacks, Callback):
-            callbacks_list = [callbacks]
-        else:
-            callbacks_list = [callback for callback in callbacks if callback is not None]
-        for field in fields:
-            for callback in callbacks_list:
-                getattr(self, field).extend(getattr(callback, field))
-        return self
-    
-    @classmethod
-    def merge(cls, callbacks: list[Callback | None]) -> Callback:
-        return Callback().update(callbacks)
-
-
-class Job(TaskNode):
-
-    def __init__(self, callback: Callback | None = None):
-        super().__init__()
-        self._callback = callback
-        if callback is not None:
-            callback._task_node = self
-
-    @abstractmethod
-    async def task(self) -> HandlerCoroutine | None:
-        ...
-
-    async def _do_at_done(self):
-        if self._callback is not None:
-            await self.commander._callback_handle(callback=self._callback, which="at_job_end", task_node=self)
-
-    async def put_job(self, job: Job):
-        commander = self.commander
-        await commander.put_job(job=job, parent=self)
-
-    def call_handler(self, handler: HandlerCoroutine):
-        commander = self.commander
-        commander.call_handler(handler=handler, parent=self)
-
-    @property
-    def callback(self) -> Callback | None:
-        return getattr(self, "_callback", None)
-
-    def add_callback_functions(
-        self,
-        which: Literal["at_job_start", "at_handler_start", "at_receiving_start", "at_receiving_end", "at_handler_end", "at_job_end", "at_commander_end"],
-        functions_info: dict | list[dict],
-    ) -> None:
-        if self._callback is None:
-            self._callback = Callback()
-        when_callback = getattr(self._callback, which)
-        if functions_info is list:
-            when_callback.extend(functions_info)
-        else:
-            when_callback.append(functions_info)
-        self._callback._task_node = self
-
-    def add_callback(self, callback: Callback | list[Callback | None]) -> None:
-        if isinstance(callback, list):
-            callback_ = Callback.merge(callback)
-        else:
-            callback_ = callback
-        if self._callback is None:
-            self._callback = callback_
-        else:
-            self._callback.update(callback_)
-        self._callback._task_node = self
-
-
-class ComEnd(Job):
-    """
-    A empty Job with None parent.
-    Put a empty Job to prevent the commander from waiting indefinitely for a job that will never arrive.
-    """
-    def __init__(self):
-        super().__init__()
-    
-    @tasker(PASS_WORD)
-    async def task(self) -> None:
-        pass
-
-
-class BasicJob(Job):
-    def __init__(self, job_content: Coroutine):
-        super().__init__()
-        self.job_content = job_content
-    
-    @tasker(PASS_WORD)
-    async def task(self) -> Coroutine:
-        return self.job_content
 
 
 class PluginMeta:

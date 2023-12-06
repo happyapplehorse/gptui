@@ -86,3 +86,16 @@ chat_context_extend_for_sending_signal = signal("chat_context_extend_for_sending
         """
     )
 )
+common_message_signal = signal("common_message",
+    doc=textwrap.dedent(
+        """
+        Designed to send general messages.
+        Different message structures can be achieved through flexible use of 'content' and 'flag'.
+        position arg: sender
+        kwargs:
+            message {dict}:
+                content: message content
+                flag {str}: type of the common message
+        """
+    )
+)
