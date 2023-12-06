@@ -26,7 +26,7 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 - Group talk functionality[^recommend_better_model].
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
   - Internet search.
-  - Open interpreter[^open_interpreter].
+  - Open interpreter[^open_interpreter]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
   - Reminders[^recommend_better_model].
   - Recollecting memories from vectorized conversation history.
 

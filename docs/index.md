@@ -8,7 +8,7 @@ The top-level TUI application is decoupled from the underlying Kernel, allowing 
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
 
 
-# Demo
+## Demo
 
 Below is a demonstration:
 
