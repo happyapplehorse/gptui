@@ -77,6 +77,11 @@ def gptui_run(config_path: str) -> None:
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,
     }
+    
+    log_dir = os.path.dirname(log_path)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     logging.basicConfig(
             filename=log_path,
             filemode='w',
