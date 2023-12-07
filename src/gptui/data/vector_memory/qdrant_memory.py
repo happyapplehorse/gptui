@@ -30,16 +30,16 @@ class QdrantVector(QdrantMemoryStore):
         if local:
             if url:
                 try:
-                    self._qdrant_client = QdrantClient(path=url)
+                    self._qdrantclient = QdrantClient(path=url)
                 except KeyError as e:
                     gptui_logger.error(
                         f"An error occurred while initializing the local vector database. Database path: {url}. Error: {repr(e)} "
                         "Warning: Rebuilding of the vector database may be required."
                     )
             else:
-                self._qdrant_client = QdrantClient(location=":memory:")
+                self._qdrantclient = QdrantClient(location=":memory:")
         else:
-            self._qdrant_client = QdrantClient(url=url, port=port)
+            self._qdrantclient = QdrantClient(url=url, port=port)
 
         self._logger = logger or NullLogger()
         self._default_vector_size = vector_size
@@ -79,7 +79,7 @@ class QdrantVector(QdrantMemoryStore):
             ]
         )
 
-        update_result = self._qdrant_client.set_payload(
+        update_result = self._qdrantclient.set_payload(
             collection_name=str(collection_name),
             payload={"storage_status": "saved"},
             points=filter,
@@ -97,7 +97,7 @@ class QdrantVector(QdrantMemoryStore):
             ]
         )
         
-        update_result = self._qdrant_client.set_payload(
+        update_result = self._qdrantclient.set_payload(
             collection_name=str(collection_name),
             payload={"storage_status": "cached"},
             points=filter,
@@ -115,7 +115,7 @@ class QdrantVector(QdrantMemoryStore):
             ]
         )
 
-        update_result = self._qdrant_client.delete(
+        update_result = self._qdrantclient.delete(
             collection_name=collection_name,
             points_selector=qdrant_models.FilterSelector(filter=filter),
         )
@@ -134,19 +134,19 @@ class QdrantVector(QdrantMemoryStore):
             )
             return filter
 
-        count_saved = self._qdrant_client.count(
+        count_saved = self._qdrantclient.count(
             collection_name=collection_name,
             count_filter=make_filter("saved"),
             exact=True,
         )
 
-        count_cached = self._qdrant_client.count(
+        count_cached = self._qdrantclient.count(
             collection_name=collection_name,
             count_filter=make_filter("cached"),
             exact=True,
         )
 
-        count_unsaved = self._qdrant_client.count(
+        count_unsaved = self._qdrantclient.count(
             collection_name=collection_name,
             count_filter=make_filter("unsaved"),
             exact=True,
