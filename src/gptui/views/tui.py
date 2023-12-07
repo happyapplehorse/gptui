@@ -1338,6 +1338,10 @@ class MainApp(App[str]):
     
     async def app_init_process(self, init_log: RichLog) -> bool:
         end_status = False
+
+        init_log.write("Preparing the Qdrant vector database ...")
+        await asyncio.sleep(0.01)
+
         init_log.write("Import tiktoken ...")
         await asyncio.sleep(0.01)
         try:
@@ -1355,6 +1359,14 @@ class MainApp(App[str]):
         if end_status is True:
             # The 'return' is to prevent the statements below from being executed, because App.exit() does not exit immediately.
             return False
+
+        init_log.write("Waiting for the Qdrant service to be ready ...")
+        await asyncio.sleep(0.01)
+
+        self.qdrant_ready.wait()
+        init_log.write(Text("Qdrant service is ready.", "green"))
+        await asyncio.sleep(0.01)
+
         init_log.write("Setting up the OpenAI service ...")
         await asyncio.sleep(0.01)
         try:
@@ -1378,14 +1390,6 @@ class MainApp(App[str]):
         if end_status is True:
             # The 'return' is to prevent the statements below from being executed, because App.exit() does not exit immediately.
             return False
-        init_log.write("Preparing the Qdrant vector database ...")
-        await asyncio.sleep(0.01)
-        init_log.write("Waiting for the Qdrant service to be ready ...")
-        await asyncio.sleep(0.01)
-
-        self.qdrant_ready.wait()
-        init_log.write(Text("Qdrant service is ready.", "green"))
-        await asyncio.sleep(0.01)
         
         init_log.write("Clean Qdrant collections ...")
         await asyncio.sleep(0.01)
