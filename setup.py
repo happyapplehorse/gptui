@@ -11,11 +11,6 @@ setuptools.setup(
             "help.md",
             "**/*.txt",
             "**/*.tcss",
-        ]
-    },
-    entry_points={
-        'console_scripts': [
-            'gptui=gptui.__main__:gptui',
         ],
     },
 )

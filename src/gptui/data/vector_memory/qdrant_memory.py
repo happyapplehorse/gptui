@@ -29,7 +29,13 @@ class QdrantVector(QdrantMemoryStore):
         """
         if local:
             if url:
-                self._qdrantclient = QdrantClient(path=url)
+                try:
+                    self._qdrantclient = QdrantClient(path=url)
+                except KeyError as e:
+                    gptui_logger.error(
+                        f"An error occurred while initializing the local vector database. Database path: {url}. Error: {repr(e)} "
+                        "Warning: Rebuilding of the vector database may be required."
+                    )
             else:
                 self._qdrantclient = QdrantClient(location=":memory:")
         else:

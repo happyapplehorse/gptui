@@ -33,6 +33,8 @@ class TextToSpeak(DriverInterface):
 
     def __init__(self, dot_env_path: str, temp_dir: str, *args, **kwargs):
         self.openai_api_client = openai_api_client(dot_env_path=dot_env_path)
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
         self.temp_dir = temp_dir
         self._unique_id = itertools.count(1)
         self._audio_dict = {}

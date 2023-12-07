@@ -24,6 +24,9 @@ pip install maturin
 ```
 
 ### Installation of grpcio is required
+Make sure you have the header `ares.h` in `/data/data/com.termux/files/usr/include`.
+You can install it using: `pkg install c-ares`.
+Then:
 
 ```
 GRPC_PYTHON_DISABLE_LIBC_COMPATIBILITY=1 \
@@ -34,6 +37,8 @@ CFLAGS+=" -U__ANDROID_API__ -D__ANDROID_API__=26 -include unistd.h" \
 LDFLAGS+=" -llog" \
 pip install grpcio
 ```
+If it still doesn't work, refer to [here](https://github.com/termux/termux-packages/issues/17583).
+
 
 ### When installing or updating semantic-kernel to version 0.3.11.dev0 or later, the ruamel.yaml.clib library is required. If you encounter the "failed build wheel" error, the solution is as follows:
 

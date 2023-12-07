@@ -55,6 +55,9 @@ dependencies = [
 "Homepage" = "https://github.com/happyapplehorse/gptui"
 "Bug Tracker" = "https://github.com/happyapplehorse/gptui/issues"
 
+[project.entry-points."console_scripts"]
+gptui = "gptui.__main__:gptui"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
