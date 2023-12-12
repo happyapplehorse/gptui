@@ -33,6 +33,7 @@ pip install maturin
 ```
 
 ### Installation of grpcio is required
+
 Make sure you have the header `ares.h` in `/data/data/com.termux/files/usr/include`.
 You can install it using: `pkg install c-ares`.
 Then:
@@ -48,15 +49,18 @@ pip install grpcio
 ```
 If it still doesn't work, refer to [here](https://github.com/termux/termux-packages/issues/17583).
 
-## When installing or updating semantic-kernel to version 0.3.11.dev0 or later, the ruamel.yaml.clib library is required. If you encounter the "failed build wheel" error, the solution is as follows:
+## Failed to build wheel when installing ruamel.yaml.clib
 
+When installing or updating semantic-kernel to version 0.3.11.dev0 or later, the ruamel.yaml.clib library is required.
+If you encounter a "failed to build wheel" error, the solution is as follows:
 ```
 pkg upgrade
 pkg install build-essential python
 CFLAGS="-Wno-incompatible-function-pointer-types" pip install ruamel.yaml.clib
 ```
 
-## Failed building wheel for `playsound`
+## Failed to build wheel for `playsound`
+
 If you encounter a 'Failed to build wheel' error during the installation of playsound,
 please ensure that `wheel` and `setuptools` are installed on your system.
 You can install these build tools by running the command
@@ -69,6 +73,7 @@ in your terminal or command prompt.
 # Potential issues and solutions on MacOS
 
 ## The audio playback function is not working properly
+
 ```
 pip3 install PyObjC
 ```
