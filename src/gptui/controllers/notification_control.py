@@ -55,9 +55,13 @@ class Notification:
                         commander_status_display.update(Text('\u260c', 'yellow'))
                         await self.app.chat_context.chat_context_vectorize()
                         commander_status_display.update(Text('\u260c', 'green'))
-                        # Tab rename
+                        
                         conversation = self.app.openai.conversation_dict.get(context_id)
                         if conversation is not None:
+                            # AICare
+                            if self.app.query_one("#ai_care_switch").value is True:
+                                self.app.openai.ai_care.chat_update(conversation["openai_context"])
+                            # Tab rename
                             context = conversation["openai_context"]
                             self.app.conversation_tab_rename(context)
             elif description == "grouptalkmanager status changed":

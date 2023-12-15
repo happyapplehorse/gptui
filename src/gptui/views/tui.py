@@ -56,7 +56,7 @@ from .screens import CheckDialog, HotKey, MarkdownPreview
 from .voice import Voice
 from .wink_wink import Horse
 from ..controllers.assistant_tube_control import AssistantTube
-from ..controllers.chat_context_control import ChatContext
+from ..controllers.chat_context_control import ChatContextControl
 from ..controllers.chat_response_control import ChatResponse
 from ..controllers.dash_board_control import DashBoard
 from ..controllers.decorate_display_control import DecorateDisplay
@@ -240,6 +240,8 @@ class MainApp(App[str]):
                         yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
                         yield Static(Text(" S", "yellow"), classes="switch_label")
                         yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
+                        yield Static(Text(" C", "yellow"), classes="switch_label")
+                        yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
                         yield Static(Text(" F", "yellow"), classes="switch_label")
                         yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
                     yield NoPaddingButton("|Exit|", id="exit")
@@ -491,7 +493,10 @@ class MainApp(App[str]):
         assert tab_id is not None
         id = int(tab_id[3:])
         tab_mode = tab_id[:3]
+        if tab_mode != "ncc":
+            self.openai.ai_care.reset()
         if tab_mode == "lxt":
+            # lxt: Group talk.
             # Update commander_status_display
             commander_status_display = self.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
@@ -526,6 +531,7 @@ class MainApp(App[str]):
             self.plugin_refresh()
             self.chat_parameters_display()
         elif tab_mode == "lqt":
+            # lqt: Normal chat.
             # Update commander_status_display
             commander_status_display = self.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
@@ -547,6 +553,7 @@ class MainApp(App[str]):
             self.plugin_refresh()
             self.chat_parameters_display()
         elif tab_mode == "ncc":
+            # ncc: No chat context
             self.no_context_manager.no_context_chat_active = id
             self.context_to_chat_window(self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active])
             dashboard = self.query_one("#dash_board")
@@ -914,7 +921,7 @@ class MainApp(App[str]):
             | s -> command_input       9 -> left chat           0 -> right chat      |
             | f -> focus conversation  h -> help                z -> file_wrap       |
             | k -> toggle speak        v -> toggle voice        q -> return          |
-            | m -> focus input                                                       |
+            | m -> focus input         b -> toggle ai_care                           |
             """
             )
         )
@@ -965,6 +972,8 @@ class MainApp(App[str]):
             self.query_one("#voice_switch").toggle()
         elif key == "m":
             self.query_one("#message_region").focus()
+        elif key == "b":
+            self.query_one("#ai_care_switch").toggle()
 
     ###############################################################################################################
 
@@ -1321,7 +1330,7 @@ class MainApp(App[str]):
         self.chat_display = ChatResponse(self)
         self.voice_service = VoiceService(self, self.query_one("#speak_switch").value)
         self.notification = Notification(self)
-        self.chat_context = ChatContext(self)
+        self.chat_context = ChatContextControl(self)
         self.assistant_tube = AssistantTube(self)
         self.dash_board = DashBoard(self)
         self.group_talk = GroupTalkControl(self)
@@ -1568,7 +1577,7 @@ class MainApp(App[str]):
         try:
             gptui_logger.debug(f"----####----count:{group_talk_manager.loop_count}")
         except:
-            pass
+            pass 
 
 
 def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:

@@ -124,7 +124,7 @@ class OpenaiHandler:
                 self,
                 _sync_wrapper=sync_wrapper,
                 message={
-                    "content":{
+                    "content": {
                         "messages": [{"role": "assistant", "content": collected_messages}],
                         "context": self.context,
                     },

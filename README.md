@@ -23,10 +23,10 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 - A dedicated channel to display internal process calls.
 - Offers a file channel through which you can upload to or download from GPT.
 - Voice functionality.
-- Group talk functionality[^recommend_better_model].
+- Group talk functionality[^recommend_better_model][^token_cost].
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
   - Internet search.
-  - Open interpreter[^open_interpreter]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
+  - Open interpreter[^open_interpreter][^token_cost]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
   - Reminders[^recommend_better_model].
   - Recollecting memories from vectorized conversation history.
 
@@ -34,6 +34,7 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 first follow the instructions provided by open-interpreter to properly set up the environment and API.
 It is recommended to use this under the GPT-4 model.
 [^recommend_better_model]: Recommended for use with the GPT-4 model.
+[^token_cost]: Note: This feature may incur a significant token cost.
 
 # Compatibility
 GPTUI runs in a command line environment and is compatible with Linux, macOS, Windows and Android[^compatibility].
