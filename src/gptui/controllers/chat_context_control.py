@@ -7,7 +7,7 @@ from ..views.common_message import CommonMessage
 gptui_logger = logging.getLogger("gptui_logger")
 
 
-class ChatContext:
+class ChatContextControl:
     def __init__(self, app):
         self.app = app
         self.dash_board = DashBoard(app)

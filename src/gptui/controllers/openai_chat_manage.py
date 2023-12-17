@@ -5,17 +5,26 @@ import math
 import os
 import time
 from dataclasses import asdict
+from typing import Literal, Generator, Iterable
 
 from agere.commander import Callback
+from ai_care import AICare, AICareContext
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
 from ..gptui_kernel.manager import ManagerInterface
-from ..models.blinker_wrapper import async_wrapper_with_loop
-from ..models.context import BeadOpenaiContext
+from ..models.blinker_wrapper import async_wrapper_with_loop, async_wrapper_without_loop
+from ..models.context import BeadOpenaiContext, OpenaiContext
 from ..models.jobs import GroupTalkManager
 from ..models.openai_chat import OpenaiChatInterface, OpenAIGroupTalk
-from ..models.signals import notification_signal
+from ..models.openai_chat_inner_service import chat_service_for_inner
+from ..models.signals import (
+    notification_signal,
+    response_to_user_message_stream_signal,
+    chat_context_extend_signal,
+    response_to_user_message_sentence_stream_signal,
+)
 from ..models.utils.openai_settings_from_dot_env import openai_settings_from_dot_env
+from ..models.utils.openai_api import openai_api_client
 from ..utils.my_text import MyText as Text
 from ..views.animation import AnimationRequest
 from ..views.screens import InputDialog
@@ -119,6 +128,16 @@ class OpenaiChatManage:
         
         self.openai_group_talk = OpenAIGroupTalk(manager=manager)
         self.group_talk_conversation_dict = {}
+        self.openai_client = openai_api_client(manager.dot_env_config_path)
+        self.ai_care = AICare()
+        self._set_ai_care(self.ai_care)
+        self.accept_ai_care: bool = True
+
+    def _set_ai_care(self, ai_care: AICare):
+        ai_care.set_config(key="delay", value=60)
+        ai_care.set_guide("You are a very considerate person who cares about others and is willing to inntiate conversations")
+        ai_care.register_to_llm_method(self.ai_care_to_openai)
+        ai_care.register_to_user_method(self.ai_care_to_user)
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
@@ -222,13 +241,13 @@ class OpenaiChatManage:
     def open_conversation_with_mode(
         self,
         id: int | str | None = None,
-        mode: str | None = None,
+        mode: Literal["Normal"] | None = None,
         openai_params: dict | None = None,
         max_sending_tokens_ratio: float | None = None
         ) -> int:
         """
         open a conversation with mode:
-            "Normal": 
+            "Normal"
         """
         if mode is None:
             mode = "Normal"
@@ -447,6 +466,90 @@ class OpenaiChatManage:
         group_talk_manager = self.group_talk_conversation_dict[group_talk_conversation_id]["group_talk_manager"]
         group_talk_manager.close_group_talk()
         del self.group_talk_conversation_dict[group_talk_conversation_id]
+
+    def ai_care_to_openai(
+        self,
+        chat_context: OpenaiContext,
+        to_llm_messages: list[AICareContext]
+    ) -> Generator[str, None, None]:
+        messages_list = [
+            {"role": "user", "name": "Aicarey", "content": message["content"]} if message["role"] == "ai_care"
+            else {"role": "assistant", "content": message["content"]}
+            for message in to_llm_messages
+        ]
+        openai_response = chat_service_for_inner(
+            messages_list=messages_list,
+            context=chat_context,
+            openai_api_client=self.openai_client,
+        )
+        def response_gen(response: Iterable):
+            for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content is None:
+                    continue
+                yield content
+        return response_gen(openai_response)
+
+    def ai_care_to_user(self, to_user_message: Generator[str, None, None]) -> None:
+        if self.accept_ai_care is False:
+            return
+        context_id = self.conversation_active
+        char_list = []
+        voice_buffer = ""
+        first_times = True
+        for char in to_user_message:
+            response_to_user_message_stream_signal.send(
+                self,
+                _async_wrapper=async_wrapper_without_loop,
+                message={"content": {"content": char.lstrip() if first_times else char, "context_id": context_id}, "flag": "content"},
+            )
+            char_list.append(char)
+            first_times = False
+            
+            # Send voice signal
+            if response_to_user_message_sentence_stream_signal.receivers:
+                voice_buffer += char
+                if char.startswith((".","!","?",";",":","。","！","？","；","：","\n")):
+                    response_to_user_message_sentence_stream_signal.send(
+                        self,
+                        _async_wrapper=async_wrapper_without_loop,
+                        message={"content": voice_buffer, "flag": "content"},
+                    )
+                    voice_buffer = ""
+
+        response_to_user_message_stream_signal.send(
+            self,
+            _async_wrapper=async_wrapper_without_loop,
+            message={"content": {"content": "", "context_id": context_id}, "flag": "end"},
+        )
+
+        chat_context_extend_signal.send(
+            self,
+            _async_wrapper=async_wrapper_without_loop,
+            message={
+                "content": {
+                    "messages": [{"role": "assistant", "content": ''.join(char_list)}],
+                    "context": self.conversation_dict[self.conversation_active]["openai_context"]
+                },
+                "flag": "",
+            }
+        )
+        
+        if voice_buffer:
+            response_to_user_message_sentence_stream_signal.send(
+                self,
+                _async_wrapper=async_wrapper_without_loop,
+                message={"content": voice_buffer, "flag": "content"},
+            )
+            voice_buffer = ""
+
+        # Send voice end signal
+        if response_to_user_message_sentence_stream_signal.receivers:
+            response_to_user_message_sentence_stream_signal.send(
+                self,
+                _async_wrapper=async_wrapper_without_loop,
+                message={"content":"", "flag":"end"}
+            )
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:

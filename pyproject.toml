@@ -22,6 +22,7 @@ classifiers = [
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     'Operating System :: OS Independent',
     'Operating System :: POSIX :: Linux',
     'Operating System :: MacOS :: MacOS X',
@@ -30,6 +31,7 @@ classifiers = [
 keywords = ["TUI", "terminal", "GPT", "CLI", "textual user interface"]
 dependencies = [
     'agere>=0.1.1,<1',
+    'ai-care>=0.1.0,<1',
     'aiofiles>=23.1.0,<24',
     'beautifulsoup4>=4.12.2,<5',
     'blinker>=1.6.2,<2',
