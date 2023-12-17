@@ -42,6 +42,7 @@ default_openai_parameters:
 #  voice_switch: false
 #  speak_switch: false
 #  file_wrap_display: true
+#  ai_care_switch: false
 #  status_region_default:
 
 #log_path:
