@@ -921,7 +921,7 @@ class MainApp(App[str]):
             | s -> command_input       9 -> left chat           0 -> right chat      |
             | f -> focus conversation  h -> help                z -> file_wrap       |
             | k -> toggle speak        v -> toggle voice        q -> return          |
-            | m -> focus input         b -> toggle ai_care                           |
+            | m -> focus input         b -> toggle ai_care      u -> fold right      |
             """
             )
         )
@@ -974,6 +974,8 @@ class MainApp(App[str]):
             self.query_one("#message_region").focus()
         elif key == "b":
             self.query_one("#ai_care_switch").toggle()
+        elif key == "u":
+            self.query_one("#fold_no_text_region").press()
 
     ###############################################################################################################
 
@@ -1013,6 +1015,7 @@ class MainApp(App[str]):
         def run(self) -> None:
             piece = {"role":"user", "content":self.input}
             self.app.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
+            self.app.openai.accept_ai_care = False
             self.app.openai.openai_chat.chat(message=piece, context=self.context)
             # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
             # moved into 'notification_control.py'.
@@ -1026,6 +1029,7 @@ class MainApp(App[str]):
     def chat_stream(self, input_text: str, context: OpenaiContext) -> None:
         piece = {"role": "user", "content": input_text}
         self.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
+        self.openai.accept_ai_care = False
         self.openai.openai_chat.chat_stream(message=piece, context=context)
         # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
         # moved into 'notification_control.py'.

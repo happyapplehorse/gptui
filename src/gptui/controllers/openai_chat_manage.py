@@ -130,9 +130,10 @@ class OpenaiChatManage:
         self.group_talk_conversation_dict = {}
         self.openai_client = openai_api_client(manager.dot_env_config_path)
         self.ai_care = AICare()
-        self._ai_care_set(self.ai_care)
+        self._set_ai_care(self.ai_care)
+        self.accept_ai_care: bool = True
 
-    def _ai_care_set(self, ai_care: AICare):
+    def _set_ai_care(self, ai_care: AICare):
         ai_care.set_config(key="delay", value=60)
         ai_care.set_guide("You are a very considerate person who cares about others and is willing to inntiate conversations")
         ai_care.register_to_llm_method(self.ai_care_to_openai)
@@ -490,6 +491,8 @@ class OpenaiChatManage:
         return response_gen(openai_response)
 
     def ai_care_to_user(self, to_user_message: Generator[str, None, None]) -> None:
+        if self.accept_ai_care is False:
+            return
         context_id = self.conversation_active
         char_list = []
         voice_buffer = ""

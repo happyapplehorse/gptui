@@ -6,7 +6,7 @@
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
-<img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
+<img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI is a GPT conversational TUI (Textual User Interface) tool that runs within the terminal.
 Using the Textual framework for its TUI interface and equipping the plugin framework provided by Semantic Kernel.
 GPTUI offers a lightweight <a href="#gptui_kernel">Kernel</a> to power AI applications.
@@ -14,7 +14,7 @@ The top-level TUI application is decoupled from the underlying Kernel, allowing 
 At present, only the GPT model of OpenAI is supported, and other LLM interfaces will be added later.
 
 &nbsp;
-![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
+![gptui_demo](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI Features
 - Create and manage conversations with GPT.
@@ -24,17 +24,20 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 - Offers a file channel through which you can upload to or download from GPT.
 - Voice functionality.
 - Group talk functionality[^recommend_better_model][^token_cost].
+- AI-Care. Your AI can propactively care for you[^ai_care].
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
   - Internet search.
-  - Open interpreter[^open_interpreter][^token_cost]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
+  - Open interpreter[^open_interpreter][^token_cost][^recommend_better_model]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
   - Reminders[^recommend_better_model].
   - Recollecting memories from vectorized conversation history.
 
 [^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to
 first follow the instructions provided by open-interpreter to properly set up the environment and API.
-It is recommended to use this under the GPT-4 model.
-[^recommend_better_model]: Recommended for use with the GPT-4 model.
+The open-interpreter has the permission to execute code, please ensure that you are already aware of the associated risk before
+enabling this feature.
+[^recommend_better_model]: It is recommended to use this under the GPT-4 model or a better one.
 [^token_cost]: Note: This feature may incur a significant token cost.
+[^ai_care]: Powered by [AI-Care](https://github.com/happyapplehorse/ai-care).
 
 # Compatibility
 GPTUI runs in a command line environment and is compatible with Linux, macOS, Windows and Android[^compatibility].
@@ -51,7 +54,7 @@ you need to install [Termux-API](https://github.com/termux/termux-api) and grant
 
 GPTUI offers a lightweight Kernel for building AI applications, allowing you to easily expand GPTUI's capabilities or construct your own AI application.
 
-<p align="center"><img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
 
 The **kernel** relies on **jobs** and **handlers** to perform specific functions.
 To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
@@ -140,7 +143,7 @@ Otherwise, some features may not work properly, such as code copy and voice rela
 
 ## Interface Layout
 
-![gptui-layout](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_layout.jpg)
+![gptui-layout](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_layout.jpg)
 
 - **chat area**: Display area for chat content.
 - **status area**： Program status display area, displaying response animations and notifications.

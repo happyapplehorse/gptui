@@ -6,7 +6,7 @@
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
-< img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
+< img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI是一个在终端中运行的GPT对话TUI工具。
 你可以使用快捷键高效掌控你的节奏。
 GPTUI使用Textual构建TUI界面，使用Semantic Kernel提供的插件框架；您可以快速灵活地为自己的需求自定义插件。
@@ -14,7 +14,7 @@ GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，驱动AI应用。上�
 目前仅支持OpenAI的GPT模型，后续会增加对其它大语言模型接口的支持。
 
 &nbsp;
-![gptui_demo](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_demo.gif)
+![gptui_demo](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_demo.gif)
 
 ## TUI功能
 - 创建并管理与GPT的对话。
@@ -24,15 +24,19 @@ GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，驱动AI应用。上�
 - 提供一个文件通道，您可以通过此通道给GPT上传文件或下载文件。
 - 语音功能。
 - 群聊功能[^recommend_better_model][^token_cost]。
+- AI-Care。你的AI可以主动关心你[^ai_care]。
 - 可自选的插件功能，包括（可自定义，持续增加与优化中，部分插件的prompt还不完善）：
   - 搜索互联网。
-  - open interpreter[^open_interpreter][^token_cost]。（暂时被移除，等待它支持openai v1.x后再被添加回来。）
+  - open interpreter[^open_interpreter][^token_cost][^recommend_better_model]。（暂时被移除，等待它支持openai v1.x后再被添加回来。）
   - 提醒[^recommend_better_model]。
   - 从矢量化的对话历史记录中回想记忆。
 
-[^open_interpreter]: 本插件使用了[open-interpreter](https://github.com/KillianLucas/open-interpreter) ，需要先按open-interpreter的说明配置好open-interpreter的环境和API，推荐在GPT-4模型下使用。
-[^recommend_better_model]: 推荐在GPT-4模型下使用。
+[^open_interpreter]: 本插件使用了[open-interpreter](https://github.com/KillianLucas/open-interpreter) ，
+需要先按open-interpreter的说明配置好open-interpreter的环境和API。
+Open-interpreter具有执行代码的权限，在开启此功能前请确保你已经了解其中的风险。
+[^recommend_better_model]: 推荐使用GPT-4或更好的模型。
 [^token_cost]: 注意：该功能可能产生较多的tokens花费。
+[^ai_care]: 由[AI-Care](https://github.com/happyapplehorse/ai-care)提供该能力。
 
 # 兼容性
 
@@ -47,7 +51,7 @@ GPTUI在命令行环境下运行，支持Linux，macOS，Windows和Android平台
 
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
 
-<p align="center">< img src="https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+<p align="center">< img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
 
 **kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
 GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
@@ -123,7 +127,7 @@ python main.py
 
 ## 界面区域
 
-![gptui-layout](https://github.com/happyapplehorse/gptui-assets/blob/main/imgs/gptui_layout.jpg)
+![gptui-layout](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_layout.jpg)
 
 - **chat area**: 聊天内容的显示区域。
 - **status area**： 程序状态显示区域。显示响应动画以及通知等。
