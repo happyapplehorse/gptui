@@ -37,7 +37,7 @@ from textual.widgets import (
 )
 from textual.widgets._tabs import Underline
 
-from .animation import AnimationManager, AnimationRequest, DefaultAnimation, StaticDisplayAnimation, SettingMemoryAnimation
+from .animation import AnimationManager, AnimationRequest
 from .common_message import CommonMessage
 from .fun_zone import FunZone, JustBeing, BombBoom, RotatingCube
 from .mywidgets import (
@@ -1326,7 +1326,6 @@ class MainApp(App[str]):
     def service_init(self) -> None:
         self.animation_manager = AnimationManager(
             displayer={"default":self.query_one("#status_region")},
-            ani_links={"default": DefaultAnimation, "static": StaticDisplayAnimation, "setting_memory": SettingMemoryAnimation},
             ani_end_display=self.status_region_default,
         )
         self.decorate_display = DecorateDisplay(self)

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import inspect
 import math
 import logging
 import time
@@ -16,6 +17,7 @@ gptui_logger = logging.getLogger("gptui_logger")
 
 
 class Animation(metaclass=ABCMeta):
+    animation_name: str
     @abstractmethod
     def run(self, animation_instance: AnimationManager.AnimationThread, message: AnimationRequest) -> None:
         ...
@@ -53,11 +55,20 @@ class AnimationRequest(Message):
         super().__init__()
 
 
+def find_animations():
+    current_module = inspect.getmodule(inspect.currentframe())
+    animations = {}
+    for _, obj in inspect.getmembers(current_module, predicate=inspect.isclass):
+        if issubclass(obj, Animation) and not inspect.isabstract(obj):
+            animations[obj.animation_name] = obj
+    return animations
+
+
 class AnimationManager:
-    def __init__(self, displayer: dict, ani_links: dict | None = None, ani_end_display: str | Text = ''):
+    def __init__(self, displayer: dict, ani_end_display: str | Text = '', ani_links: dict | None = None):
         self.ani_id_dict = weakref.WeakValueDictionary()
         self.priority_dict = {}
-        self.ani_links = ani_links or {}
+        self.ani_links = ani_links or find_animations()
         self.displayer = displayer
         for key, _ in displayer.items():
             self.priority_dict[key] = weakref.WeakKeyDictionary()
@@ -81,7 +92,6 @@ class AnimationManager:
     
 
     class AnimationThread(Thread):
-        "animations"
         def __init__(self, animation_manager: AnimationManager, message: AnimationRequest) -> None:
             super().__init__()
             self.animation_status = True
@@ -104,7 +114,7 @@ def play_animation(
     animation_instance: AnimationManager.AnimationThread,
     message: AnimationRequest,
     keep_time,
-    frames_list: Iterable,
+    frames: Iterable,
     ) -> None:
     time_start = time.time()
     animation_manager = animation_instance.animation_manager
@@ -119,7 +129,7 @@ def play_animation(
     else:
         end_display = message.ani_end_display
     while True:
-        for frame in frames_list:
+        for frame in frames:
             if not animation_instance.animation_status or time.time() - time_start >= keep_time:
                 display_object.update(end_display)
                 return
@@ -131,6 +141,9 @@ def play_animation(
 
 
 class DefaultAnimation(Animation):
+    
+    animation_name = "default"
+    
     def run(
         self,
         animation_instance: AnimationManager.AnimationThread,
@@ -138,10 +151,75 @@ class DefaultAnimation(Animation):
     ) -> None:
         frames_list = ["-- -- -- -- -- -- -- -- -- -- ", " -- -- -- -- -- -- -- -- -- --", "- -- -- -- -- -- -- -- -- -- -"]
         keep_time = message.keep_time or math.inf
-        play_animation(animation_instance=animation_instance, message=message, keep_time=keep_time, frames_list=frames_list)
+        play_animation(
+            animation_instance=animation_instance,
+            message=message,
+            keep_time=keep_time,
+            frames=frames_list,
+        )
+
+
+class DefaultAnimation2(Animation):
+    
+    animation_name = "default_2"
+    
+    def run(
+        self,
+        animation_instance: AnimationManager.AnimationThread,
+        message: AnimationRequest,
+    ) -> None:
+        frames_list = [
+            "// // // // // // // // // // ",
+            "// // // // // // // // // // ",
+            " // // // // // // // // // //",
+            " // // // // // // // // // //",
+            "/ // // // // // // // // // /",
+            "/ // // // // // // // // // /",
+        ]
+        keep_time = message.keep_time or math.inf
+        play_animation(
+            animation_instance=animation_instance,
+            message=message,
+            keep_time=keep_time,
+            frames=frames_list,
+        )
+
+
+class DefaultAnimation3(Animation):
+    
+    animation_name = "default_3"
+    
+    def run(
+        self,
+        animation_instance: AnimationManager.AnimationThread,
+        message: AnimationRequest,
+    ) -> None:
+        frames_list = [
+            "|  |  |  |  |  |  |  |  |  |",
+            " / |  |  |  |  |  |  |  |  |",
+            "  __/ |  |  |  |  |  |  |  |",
+            "  __ __/ |  |  |  |  |  |  |",
+            "  __ __ __/ |  |  |  |  |  |",
+            "  __ __ __ __/ |  |  |  |  |",
+            "  __ __ __ __ __/ |  |  |  |",
+            "  __ __ __ __ __ __/ |  |  |",
+            "  __ __ __ __ __ __ __/ |  |",
+            "  __ __ __ __ __ __ __ __/ |",
+            "  __ __ __ __ __ __ __ __ __",
+        ]
+        keep_time = message.keep_time or math.inf
+        play_animation(
+            animation_instance=animation_instance,
+            message=message,
+            keep_time=keep_time,
+            frames=frames_list,
+        )
 
 
 class StaticDisplayAnimation(Animation):
+    
+    animation_name = "static"
+    
     def run(
         self,
         animation_instance: AnimationManager.AnimationThread,
@@ -150,10 +228,18 @@ class StaticDisplayAnimation(Animation):
         static_content = message.others
         keep_time = message.keep_time or 0
         frames_list = [static_content]
-        play_animation(animation_instance=animation_instance, message=message, keep_time=keep_time, frames_list=frames_list)
+        play_animation(
+            animation_instance=animation_instance,
+            message=message,
+            keep_time=keep_time,
+            frames=frames_list,
+        )
 
 
 class SettingMemoryAnimation(Animation):
+    
+    animation_name = "setting_memory"
+    
     def run(
         self,
         animation_instance: AnimationManager.AnimationThread,
@@ -165,4 +251,9 @@ class SettingMemoryAnimation(Animation):
                 Text("Setting memory... |", "yellow"),
                 Text("Setting memory... /", "yellow"),
                 ]
-        play_animation(animation_instance=animation_instance, message=message, keep_time=math.inf, frames_list=frames_list)
+        play_animation(
+            animation_instance=animation_instance,
+            message=message,
+            keep_time=math.inf,
+            frames=frames_list,
+        )

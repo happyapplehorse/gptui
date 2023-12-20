@@ -37,7 +37,13 @@ class Notification:
                 self.displayer.update(Text(info_content, "green"))
             elif description == "starting to send the original chat message from the user":
                 context = info_content["context"]
-                self.app.post_message(AnimationRequest(ani_id=context.id, action="start"))
+                self.app.post_message(
+                    AnimationRequest(
+                        ani_id=context.id,
+                        action="start",
+                        ani_type=self.app.config["tui_config"]["waiting_receive_animation"],
+                    )
+                )
             elif description == "an error occurred in communication with openai initiated by user":
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
