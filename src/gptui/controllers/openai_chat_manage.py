@@ -11,6 +11,7 @@ from agere.commander import Callback
 from ai_care import AICare, AICareContext
 from semantic_kernel.connectors.ai.open_ai import OpenAITextEmbedding
 
+from .ai_care_sensors import time_now
 from ..gptui_kernel.manager import ManagerInterface
 from ..models.blinker_wrapper import async_wrapper_with_loop, async_wrapper_without_loop
 from ..models.context import BeadOpenaiContext, OpenaiContext
@@ -138,6 +139,14 @@ class OpenaiChatManage:
         ai_care.set_guide("You are a very considerate person who cares about others and is willing to inntiate conversations")
         ai_care.register_to_llm_method(self.ai_care_to_openai)
         ai_care.register_to_user_method(self.ai_care_to_user)
+        self._register_sensors(ai_care)
+
+    def _register_sensors(self, ai_care: AICare):
+        ai_care.register_sensor(
+            name="time_now",
+            function=time_now,
+            annotation="Get the current date and time in the local time zone"
+        )
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
