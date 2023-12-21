@@ -31,6 +31,8 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
   - Reminders[^recommend_better_model].
   - Recollecting memories from vectorized conversation history.
 
+![gptui_img](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_img.jpg)
+
 [^open_interpreter]: This plugin utilizes [open-interpreter](https://github.com/KillianLucas/open-interpreter), you need to
 first follow the instructions provided by open-interpreter to properly set up the environment and API.
 The open-interpreter has the permission to execute code, please ensure that you are already aware of the associated risk before

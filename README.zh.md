@@ -31,6 +31,8 @@ GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，驱动AI应用。上�
   - 提醒[^recommend_better_model]。
   - 从矢量化的对话历史记录中回想记忆。
 
+![gptui_img](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_img.jpg)
+
 [^open_interpreter]: 本插件使用了[open-interpreter](https://github.com/KillianLucas/open-interpreter) ，
 需要先按open-interpreter的说明配置好open-interpreter的环境和API。
 Open-interpreter具有执行代码的权限，在开启此功能前请确保你已经了解其中的风险。

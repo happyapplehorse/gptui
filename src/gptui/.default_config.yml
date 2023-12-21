@@ -29,6 +29,7 @@ tui_config:
   file_wrap_display: true
   ai_care_switch: false
   status_region_default:
+  waiting_receive_animation: "default_3"
 
 # List of plugin's name of default used
 default_plugins_used: []

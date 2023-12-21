@@ -4,7 +4,7 @@ import os
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Grid
-from textual.screen import ModalScreen, Screen
+from textual.screen import ModalScreen
 from textual.widgets import Button, Label, Input, DirectoryTree, MarkdownViewer
 
 from ..utils.my_text import MyText as Text

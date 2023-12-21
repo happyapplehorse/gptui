@@ -44,6 +44,7 @@ default_openai_parameters:
 #  file_wrap_display: true
 #  ai_care_switch: false
 #  status_region_default:
+#  waiting_receive_animation: "default_3"
 
 #log_path:
 #  ~/.gptui/logs.log

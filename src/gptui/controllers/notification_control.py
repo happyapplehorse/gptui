@@ -9,6 +9,7 @@ from ..models.signals import notification_signal
 from ..models.openai_chat import OpenaiContext
 from ..utils.my_text import MyText as Text
 from ..views.animation import AnimationRequest
+from ..views.theme import theme_color as tc
 
 
 if TYPE_CHECKING:
@@ -34,7 +35,7 @@ class Notification:
             info_content = content["content"]
             description = remove_punctuation(content["description"]).lower()
             if description == "raw":
-                self.displayer.update(Text(info_content, "green"))
+                self.displayer.update(Text(info_content, tc("green") or "green"))
             elif description == "starting to send the original chat message from the user":
                 context = info_content["context"]
                 self.app.post_message(
@@ -52,7 +53,7 @@ class Notification:
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
             elif description == "commander exit":
                 commander_status_display = self.app.query_one("#commander_status_display")
-                commander_status_display.update(Text('\u260a', 'cyan'))
+                commander_status_display.update(Text("\u260a", tc("cyan") or "cyan"))
             elif description == "job status changed":
                 await self._handle_job_status_changed(info_content=info_content)
             elif description == "grouptalkmanager status changed":
@@ -63,11 +64,11 @@ class Notification:
                 self.commander_status[group_talk_manager_id] = status
                 if tab_id == group_talk_manager_id:
                     if status is True:
-                        commander_status_display.update(Text('\u2725', 'green'))
-                        self.displayer.update(Text("Group talk created.", "green"))
+                        commander_status_display.update(Text("\u2725", tc("green") or "green"))
+                        self.displayer.update(Text("Group talk created.", tc("green") or "green"))
                     else:
-                        commander_status_display.update(Text('\u2668', 'red'))
-                        self.displayer.update(Text("Group talk closed.", "green"))
+                        commander_status_display.update(Text("\u2668", tc("red") or "red"))
+                        self.displayer.update(Text("Group talk closed.", tc("green") or "green"))
 
         elif flag == "warning":
             ani_id = uuid.uuid4()
@@ -78,7 +79,7 @@ class Notification:
                     ani_type="static",
                     keep_time=3,
                     ani_end_display=self.app.status_region_default,
-                    others=Text(f"{content}", "yellow"),
+                    others=Text(f"{content}", tc("yellow") or "yellow"),
                 )
             )
 
@@ -91,7 +92,7 @@ class Notification:
                     ani_type="static",
                     keep_time=3,
                     ani_end_display=self.app.status_region_default,
-                    others=Text(f"{content}", "red"),
+                    others=Text(f"{content}", tc("red") or "red"),
                 )
             )
         
@@ -111,13 +112,13 @@ class Notification:
             return
         
         if status is True:
-            commander_status_display.update(Text('\u260d', 'red'))
+            commander_status_display.update(Text("\u260d", tc("red") or "red"))
             return
         
         self.displayer.update(self.app.status_region_default)
-        commander_status_display.update(Text('\u260c', 'yellow'))
+        commander_status_display.update(Text("\u260c", tc("yellow") or "yellow"))
         await self.app.chat_context.chat_context_vectorize()
-        commander_status_display.update(Text('\u260c', 'green'))
+        commander_status_display.update(Text("\u260c", tc("green") or "green"))
         
         conversation = self.app.openai.conversation_dict.get(context_id)
         if conversation is None:
@@ -137,19 +138,19 @@ class Notification:
         keep_time = 1
         ani_id = context.id
         if isinstance(error, openai.APIStatusError):
-            text = Text(f"OpenAI APIStatusError: {error}", "red")
+            text = Text(f"OpenAI APIStatusError: {error}", tc("red") or "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
             gptui_logger.error(f"OpenAI APIStatusError: {error}")
         elif isinstance(error, openai.APITimeoutError):
-            text = Text(f"OpenAI APITimeoutError: {error}", "red")
+            text = Text(f"OpenAI APITimeoutError: {error}", tc("red") or "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
             gptui_logger.error(f"OpenAI APITimeoutError: {error}")
         elif isinstance(error, openai.APIConnectionError):
-            text = Text(f"OpenAI APIConnectionError: {error}", "red")
+            text = Text(f"OpenAI APIConnectionError: {error}", tc("red") or "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
             gptui_logger.error(f"OpenAI APIConnectionError: {error}")
         else:
-            text = Text(f"Unknown error occurred: {error}", "red")
+            text = Text(f"Unknown error occurred: {error}", tc("red") or "red")
             app.post_message(AnimationRequest(ani_id = ani_id, action = "start", ani_type="static", keep_time=keep_time, priority=0, ani_end_display=text, others=text))
             gptui_logger.error(f"Unknown error occurred: {error}")
 
