@@ -15,19 +15,19 @@ from textual.containers import Horizontal, Vertical, Grid
 from textual.css.query import NoMatches
 from textual.geometry import Size, Offset
 from textual.message import Message
+from textual.message_pump import _MessagePumpMeta
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import (
+    Button,
+    DirectoryTree,
     Input,
     Label,
-    Button,
+    Markdown,
+    RichLog,
     Switch,
     Static,
-    Markdown,
-    DirectoryTree,
-    RichLog,
 )
-from textual.message_pump import _MessagePumpMeta
 
 from .screens import SelectPathDialog, MarkdownPreview
 from .theme import ThemeColor
@@ -610,14 +610,30 @@ class Tube(Widget):
         file_type = document.ext
         file_description = document_name + file_type
         up_tube = self.query_one("#up_tube")
-        up_tube.add_children(FileIcon(pointer=document, file_type=file_type, file_label=document_name, file_description=file_description, previewer=self.myapp))
+        up_tube.add_children(
+            FileIcon(
+                pointer=document,
+                file_type=file_type,
+                file_label=document_name,
+                file_description=file_description,
+                previewer=self.myapp,
+            )
+        )
 
     def add_document_to_down_tube(self, document: Doc) -> None:
         self.down_tube_list.append(document)
         doc_ext = document.ext
         doc_name = document.name
         down_tube = self.query_one("#down_tube")
-        down_tube.add_children(FileIcon(pointer=document, file_type=doc_ext, file_label=doc_name, file_description=doc_name+doc_ext, previewer=self.myapp))
+        down_tube.add_children(
+            FileIcon(
+                pointer=document,
+                file_type=doc_ext,
+                file_label=doc_name,
+                file_description = doc_name + doc_ext,
+                previewer=self.myapp,
+            )
+        )
     
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -635,9 +651,17 @@ class Tube(Widget):
                 self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.export_content = focused_file.pointer.content
-                self.myapp.push_screen(SelectPathDialog(prompt="Determine the file path and name (including extension):", placeholder="filename"), self._save_file)
+                self.myapp.push_screen(
+                    SelectPathDialog(
+                        root_directory_path=self.myapp.config["directory_tree_path"],
+                        prompt="Determine the file path and name (including extension):",
+                        placeholder="filename"
+                    ),
+                    self._save_file,
+                )
         if button_id == "down_clear":
             self.query_one("#down_tube").clear()
+            self.down_tube_list = []
         if button_id == "down_delete":
             try:
                 focused_file = self.query("#down_tube > FileIcon:focus").first()
@@ -647,6 +671,7 @@ class Tube(Widget):
                 self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.query_one("#down_tube").remove_child(focused_file)
+                self.down_tube_list.remove(focused_file.pointer)
 
     async def _save_file(self, selected_path: tuple[bool, str]) -> None:
         status, path = selected_path
@@ -671,6 +696,18 @@ class Tube(Widget):
     def get_upload_files(self) -> list[Doc]:
         return self.up_tube_list
 
+    def refresh_display(self) -> None:
+        up_tube_list = self.up_tube_list.copy()
+        down_tube_list = self.down_tube_list.copy()
+        self.query_one("#up_tube").clear()
+        self.query_one("#down_tube").clear()
+        self.up_tube_list = []
+        self.down_tube_list = []
+        for doc in up_tube_list:
+            self.add_document_to_up_tube(doc)
+        for doc in down_tube_list:
+            self.add_document_to_down_tube(doc)
+
 
 class MultiGridContent(Widget):
     DEFAULT_CSS = """
@@ -681,6 +718,7 @@ class MultiGridContent(Widget):
     }
     MultiGridContent MyFillIn {
         height: 1;
+        color: rgb(100,100,100);
         background: rgb(30, 35, 50);
         opacity: 0.5;
     }
@@ -696,7 +734,7 @@ class MultiGridContent(Widget):
     def compose(self) -> ComposeResult:
         yield self.init_grid_list[0]
         for grid_content in self.init_grid_list[1:]:
-            yield MyFillIn(char="\u2500", width="80%", x_start="10%", color="rgb(100,100,100)")
+            yield MyFillIn(char="\u2500", width="80%", x_start="10%")
             yield grid_content
 
     def add_grid_content(
@@ -885,9 +923,15 @@ class MyCheckBox(Widget, Generic[CheckBoxPointer]):
         def display(self):
             icon_display = Text()
             if self.status is True:
-                icon_display.append_text(Text(u"\u2705"))
+                if ThemeColor._theme == "monochrome":
+                    icon_display.append_text(Text("◉", tc("green") or "green"))
+                else:
+                    icon_display.append_text(Text(u"\u2705"))
             else:
-                icon_display.append_text(Text(u"\u2B1C"))
+                if ThemeColor._theme == "monochrome":
+                    icon_display.append_text(Text("○", tc("green") or "green"))
+                else:
+                    icon_display.append_text(Text(u"\u2B1C"))
             icon_display.append_text(self.icon)
             self.update(icon_display)
         
@@ -919,13 +963,13 @@ class MyCheckBox(Widget, Generic[CheckBoxPointer]):
 
 class FileIcon(Static, can_focus=True):
     
-    DEFAULT_CSS = f"""
-    FileIcon {{
+    DEFAULT_CSS = """
+    FileIcon {
         width: 6;
-    }}
-    FileIcon:focus {{
-        background: {tc("blue") or "blue"};
-    }}
+    }
+    FileIcon:focus {
+        background: blue;
+    }
     """
 
     BINDINGS = [
