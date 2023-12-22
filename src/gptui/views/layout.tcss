@@ -1,9 +1,11 @@
 /* styles for layout */
 
+$monochrome_green: $success-lighten-2;
+
 Screen {
-  background: $boost;
   layers: below above top;
   align: center middle;
+  background: $boost;
 }
 
 Widget {
@@ -34,6 +36,10 @@ Widget {
   content-align: center middle;
 }
 
+.monochrome #status_region {
+  color: $monochrome_green;
+}
+
 #chat_region {
   border: none;
   width: 1fr;
@@ -49,12 +55,33 @@ Widget {
 
 #message_region {
   height: 1fr;
+}
+
+#message_region {
   border: round white;
+}
+
+.monochrome #message_region {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+  border: round $monochrome_green;
+}
+
+.monochrome Input > .input--cursor {
+  color: $monochrome_green;
+}
+
+.monochrome Input > .input--placeholder {
+  color: $monochrome_green 50%;
 }
 
 #line_between_chat_status {
   border: none;
   height: 1;
+}
+
+.monochrome #line_between_chat_status {
+  color: $monochrome_green;
 }
 
 #chat_region_scroll_bar {
@@ -91,11 +118,21 @@ Widget {
   min-width: 3;
 }
 
+.monochrome .arrow_button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
 .tab_arrow {
   border: none;
   height: 1;
   width: 1;
   min-width: 1;
+}
+
+.monochrome .tab_arrow {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
 }
 
 #tabs_region {
@@ -112,9 +149,18 @@ Widget {
   width: 1fr;
 }
 
+.monochrome Underline > .underline--bar {
+  color: $monochrome_green;
+  background: $monochrome_green 20%;
+}
+
 Tab {
   height: 1;
   padding: 0 1 0 2;
+}
+
+.monochrome Tab {
+  color: $monochrome_green;
 }
 
 Tabs #tabs-list {
@@ -124,7 +170,14 @@ Tabs #tabs-list {
 #control_panel {
   width: 1fr;
   height: 1fr;
+}
+
+#control_panel {
   border: round $accent-darken-1;
+}
+
+.monochrome #control_panel {
+  border: round $monochrome_green;
 }
 
 #middle_switch {
@@ -141,8 +194,8 @@ Tabs #tabs-list {
   border: round $accent-darken-1;
 }
 
-#directory_tree {
-  height: 2fr;
+.monochrome #assistant_tube {
+  border: round $monochrome_green;
 }
 
 #direct_control {
@@ -151,6 +204,13 @@ Tabs #tabs-list {
 
 #command_input {
   height: 1fr;
+}
+
+.monochrome #command_input {
+  color: $monochrome_green;
+  background: $monochrome_green 10%;
+  border: none;
+  padding: 0;
 }
 
 #control_region {
@@ -164,7 +224,16 @@ Tabs #tabs-list {
   height: 1;
   padding: 0;
   margin: 0;
-  text-style: reverse;
+}
+
+#exit {
+  text-style: bold reverse;
+}
+
+.monochrome #exit {
+  color: black;
+  background: $monochrome_green;
+  text-style: bold;
 }
 
 #plugin_refresh {
@@ -174,12 +243,29 @@ Tabs #tabs-list {
   height: 1;
   padding: 0;
   margin: 0;
+}
+
+#plugin_refresh {
   text-style: reverse;
+}
+
+.monochrome #plugin_refresh {
+  text-style: none;
+  color: black;
+  background: $monochrome_green;
 }
 
 #plugin_label {
   width: 1fr;
+}
+
+#plugin_label {
   background: rgb(30, 35, 50);
+}
+
+.monochrome #plugin_label {
+  color: $monochrome_green 70%;
+  background: $monochrome_green 2%;
 }
 
 .min_switch {
@@ -223,6 +309,197 @@ Voice #control_region {
   height: 1;
 }
 
+.switch_label {
+  color: $secondary-lighten-2;
+}
+
+.monochrome .switch_label {
+  color: $monochrome_green;
+}
+
 #direct_control_switch {
   width: 1fr;
+}
+
+.monochrome .min_switch > .switch--slider {
+  color: $monochrome_green 20%;
+  background: $monochrome_green 10%;
+}
+
+.monochrome .min_switch.-on > .switch--slider {
+  color: $monochrome_green;
+}
+
+.monochrome #info_display {
+  color: $monochrome_green;
+}
+
+.monochrome Slider {
+  color: $monochrome_green;
+}
+
+.monochrome #conversation_tree {
+  background: $monochrome_green 2%;
+  scrollbar-color: $monochrome_green 40%;
+}
+
+.monochrome #conversation_tree > .tree--label {
+  color: $monochrome_green;
+}
+
+.monochrome #conversation_tree > .tree--cursor {
+  color: $monochrome_green;
+  background: $monochrome_green 30%;
+}
+
+.monochrome #conversation_tree > .tree--guides {
+  color: $monochrome_green;
+}
+
+.monochrome #conversation_tree > .tree--guides-selected {
+  color: $monochrome_green;
+}
+
+#directory_tree {
+  height: 2fr;
+}
+
+.monochrome DirectoryTree {
+  background: $monochrome_green 2%;
+  scrollbar-color: $monochrome_green 40%;
+}
+
+.monochrome DirectoryTree > .tree--label {
+  color: $monochrome_green;
+}
+
+.monochrome DirectoryTree > .tree--cursor {
+  color: $monochrome_green;
+  background: $monochrome_green 30%;
+}
+
+.monochrome DirectoryTree > .tree--guides {
+  color: $monochrome_green;
+}
+
+.monochrome DirectoryTree > .tree--guides-selected {
+  color: $monochrome_green;
+}
+
+.monochrome #plugins_control {
+  background: rgb(30,30,30);
+}
+
+.monochrome #plugins_control UserPluginsUp {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome #plugins_control UserPluginsDown {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome #plugins_control MyFillIn {
+  color: $monochrome_green;
+  background: $monochrome_green 8%;
+}
+
+.monochrome Tube Button {
+  color: $monochrome_green;
+  background: $monochrome_green 10%;
+}
+
+.monochrome Tube GridContentUp {
+  background: $monochrome_green 2%;
+}
+
+.monochrome Tube GridContentDown {
+  background: $monochrome_green 2%;
+}
+
+.monochrome FileIcon:focus {
+  background: $monochrome_green;
+}
+
+.monochrome HotKey Label {
+  border: ascii $monochrome_green;
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome CheckDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome InputDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome InputDialog Label {
+  color: $monochrome_green;
+  background: $monochrome_green 0%;
+}
+
+.monochrome InputDialog Input {
+  color: $monochrome_green;
+  border: heavy $monochrome_green 80%;
+  background: $monochrome_green 0%;
+}
+
+.monochrome SelectPathDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome SelectPathDialog Label {
+  color: $monochrome_green;
+  background: $monochrome_green 0%;
+}
+
+.monochrome SelectPathDialog Input {
+  color: $monochrome_green;
+  border: heavy $monochrome_green 80%;
+  background: $monochrome_green 0%;
+}
+
+.monochrome MarkdownViewer {
+  color: $monochrome_green;
+  border: ascii $monochrome_green;
+  scrollbar-color: $monochrome_green 40%;
+}
+
+.monochrome MarkdownViewer * {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Markdown .code_inline {
+  color: $monochrome_green;
+  background: black;
+}
+
+.monochrome Voice {
+  border: round $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Voice Button {
+  color: $monochrome_green;
+  background: $monochrome_green 40%;
+}
+
+.monochrome Voice ProgressBar * {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Voice Static {
+  color: $monochrome_green;
+}
+
+.monochrome Voice .started {
+  background: $monochrome_green 10%;
 }

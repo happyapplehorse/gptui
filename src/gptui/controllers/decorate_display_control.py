@@ -10,6 +10,7 @@ from pygments.formatters import TerminalTrueColorFormatter
 from rich.console import Console
 from rich.style import Style
 
+from ..views.theme import theme_color as tc
 from ..utils.file_icon import file_icon
 from ..utils.my_text import MyText as Text
 from ..utils.my_text import MyLines as Lines
@@ -31,7 +32,7 @@ class DecorateDisplay:
         inp_string: str,
         stream: bool = False,
         copy_code: bool = False,
-        wrap: dict = {"file_wrap": {"wrap": True, "wrap_num": 4}, "words_color": "white"}
+        wrap: dict | None = None,
     ) -> Text:
         """Wrap and highlight a string that might contain a file.
 
@@ -78,11 +79,12 @@ class DecorateDisplay:
         Example:
             wrap={"file_wrap": {"wrap: True", "wrap_num": 4}, "words_color": "white"}
         """
-
+        wrap = wrap or {"file_wrap": {"wrap": True, "wrap_num": 4}, "words_color": tc("white") or "white"}
+        
         file_wrap = wrap.get("file_wrap", {"wrap":True, "wrap_num":4})
         wrap_bool = file_wrap["wrap"]
         wrap_num = file_wrap["wrap_num"]
-        words_color = wrap.get("words_color", "white")
+        words_color = wrap.get("words_color", tc("white") or "white")
         if wrap_bool is True:
             out = self.wrap_files_in_string(extract_files_from_string(inp_string), wrap_num=wrap_num, stream=stream, copy_code=copy_code, words_color=words_color)
             return out
@@ -100,7 +102,7 @@ class DecorateDisplay:
                 # This is content before file begin
                 out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:file_start], stream=stream, copy_code=copy_code, words_color=words_color))
                 # file begin flag
-                out_string_list.append(Text(file_start_flag, "cyan"))
+                out_string_list.append(Text(file_start_flag, tc("cyan") or "cyan"))
                 start = file_start + len(file_start_flag)
                 file_end = inp_string.find(file_end_flag, start)
                 if file_end == -1:
@@ -109,7 +111,7 @@ class DecorateDisplay:
                 # content in file block
                 out_string_list.append(self.highlight_code_block_from_plain_text(inp_string[start:file_end], stream=stream, copy_code=copy_code, words_color=words_color))
                 # file finish flag
-                out_string_list.append(Text(file_end_flag, "cyan"))
+                out_string_list.append(Text(file_end_flag, tc("cyan") or "cyan"))
                 start = file_end + len(file_end_flag)
 
             out_string = Text('').join(out_string_list)
@@ -121,7 +123,7 @@ class DecorateDisplay:
         wrap_num: int = 4,
         stream: bool = False,
         copy_code: bool = False,
-        words_color: str = "white",
+        words_color: str | None = None,
     ) -> Text:
         """Translate the content within the string to the corresponding file icon.
         
@@ -133,6 +135,7 @@ class DecorateDisplay:
                 Switch in highlight_code_block_from_plain_text.
             words_color: Specify the color of the text outside of files.
         """
+        words_color = words_color or tc("white") or "white"
         part_list = []
 
         def group_files_icon_by(files_icon: list, wrap_num: int) -> Text:
@@ -155,9 +158,9 @@ class DecorateDisplay:
                     file_icon_string = file_icon(file_label=file_label, file_type=file_ext, file_description=file_name, icon_color="yellow")
                     files_icon.append(file_icon_string)
                 
-                files_text = Text("\n******************** FILE CONTENT BEGIN ********************\n", "cyan")\
+                files_text = Text("\n******************** FILE CONTENT BEGIN ********************\n", tc("cyan") or "cyan")\
                     + group_files_icon_by(files_icon, wrap_num=wrap_num) + \
-                    Text("******************** FILE CONTENT FINISH *******************\n", "cyan")
+                    Text("******************** FILE CONTENT FINISH *******************\n", tc("cyan") or "cyan")
                 part_list.append(files_text)
 
         return Text('\n').join(part_list)
@@ -167,8 +170,9 @@ class DecorateDisplay:
         inp_string: str,
         stream: bool = False,
         copy_code: bool = False,
-        words_color: str = "white",
+        words_color: str | None = None,
     ) -> Text:
+        words_color = words_color or tc("white") or "white"
         output_text = Text()
         while True:
             # Find the start of a code block, indicated by "```".
@@ -203,7 +207,7 @@ class DecorateDisplay:
             if lexer is not None:
                 # language name display
                 lang_display = ' ' + lang + ' '
-                lang_display_text = Text(lang_display.upper(), 'reverse italic bold white')
+                lang_display_text = Text(lang_display.upper(), f"reverse italic bold {tc('white') or 'white'}")
                 if copy_code:
                     action_string = f"app.copy_code({len(self.code_block_list)})"
                     lang_display_text.on(click=action_string)

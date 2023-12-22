@@ -4,9 +4,10 @@ import os
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Grid
-from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Label, Input, DirectoryTree, MarkdownViewer
+from textual.screen import ModalScreen
+from textual.widgets import Button, Label, Input, MarkdownViewer
 
+from .custom_tree import MyDirectoryTree
 from ..utils.my_text import MyText as Text
 
 
@@ -36,7 +37,7 @@ class CheckDialog(ModalScreen[bool]):
         width: 1fr;
         content-align: center middle;
     }
-    CheckDialog Button{
+    CheckDialog Button {
         width: 100%;
     }
     """
@@ -146,7 +147,7 @@ class SelectPathDialog(ModalScreen[tuple[bool, str]]):
         height: 1;
         width: 1fr;
     }
-    SelectPathDialog #directory_tree {
+    SelectPathDialog #select_path_directory_tree {
         column-span: 2;
         height: 1fr;
         width: 1fr;
@@ -164,6 +165,7 @@ class SelectPathDialog(ModalScreen[tuple[bool, str]]):
 
     def __init__(
         self,
+        root_directory_path: str,
         prompt: str | Text = "Input:",
         placeholder: str = "",
         ok_label: str = "OK",
@@ -171,6 +173,7 @@ class SelectPathDialog(ModalScreen[tuple[bool, str]]):
         *args,
         **kwargs
         ):
+        self.root_directory_path = root_directory_path
         self.prompt = prompt
         self.placeholder = placeholder
         self.ok_label = ok_label
@@ -182,7 +185,7 @@ class SelectPathDialog(ModalScreen[tuple[bool, str]]):
         yield Grid(
             Label(self.prompt, id="prompt"),
             self.input,
-            DirectoryTree("./user", id="directory_tree"),
+            MyDirectoryTree(self.root_directory_path, self.root_directory_path, id="select_path_directory_tree"),
             Button(self.ok_label, id="ok"),
             Button(self.cancel_label, id="cancel"),
             id="dialog",

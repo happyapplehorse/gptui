@@ -26,19 +26,18 @@ from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import (
     Static,
     Label,
-    DirectoryTree,
     Button,
     Tabs,
     Tab,
-    Tree,
     ContentSwitcher,
     Switch,
     RichLog,
 )
 from textual.widgets._tabs import Underline
 
-from .animation import AnimationManager, AnimationRequest, DefaultAnimation, StaticDisplayAnimation, SettingMemoryAnimation
+from .animation import AnimationManager, AnimationRequest
 from .common_message import CommonMessage
+from .custom_tree import ConversationTree, MyDirectoryTree
 from .fun_zone import FunZone, JustBeing, BombBoom, RotatingCube
 from .mywidgets import (
     GridContent,
@@ -53,6 +52,8 @@ from .mywidgets import (
     NoPaddingButton,
 )
 from .screens import CheckDialog, HotKey, MarkdownPreview
+from .theme import ThemeColor
+from .theme import theme_color as tc
 from .voice import Voice
 from .wink_wink import Horse
 from ..controllers.assistant_tube_control import AssistantTube
@@ -98,7 +99,7 @@ def preprocess_config_path(config: dict) -> dict:
 
 class MainApp(App[str]):
 
-    CSS_PATH="layout.tcss"
+    CSS_PATH = "layout.tcss"
 
     BINDINGS = [
         Binding("escape,ctrl+underscore", "hot_key", "active hot key"),
@@ -106,10 +107,10 @@ class MainApp(App[str]):
         Binding("ctrl+n", "add_conversation", "add a conversation"),
         Binding("ctrl+s", "save_conversation", "save a conversation"),
         Binding("ctrl+r", "delete_conversation", "delete a conversation"),
-        Binding("ctrl+o", "new_disposable_chat", "open a disposable chat"),
         Binding("ctrl+t", "change_to_assistant_tube", "change_to_assistant_tube"),
         Binding("ctrl+g", "change_to_file_tube", "change_to_file_tube"),
         Binding("ctrl+p", "change_to_plugins_region", "change_to_plugins_region"),
+        Binding("ctrl+o", "toggle_monochrome", "toggle_monochrome"),
     ]
 
     def __init__(self, config_path: str, app_version: str):
@@ -157,6 +158,7 @@ class MainApp(App[str]):
         self.qdrant_ready = threading.Event()
         self.qdrant_thread.start()
         self.app_exited = False # It will be used when exiting from app_init
+        self.color_theme: str = "default"
 
     def compose(self) -> ComposeResult:
         yield AppStart(self, classes="top_layer")
@@ -165,7 +167,7 @@ class MainApp(App[str]):
                 with Horizontal(id = "tabs_region"):
                     with Vertical(classes="dot_display"):
                         yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
-                        yield Label(Text("1", 'yellow'), id="tabs_num_display")
+                        yield Label(Text("1", tc("yellow") or "yellow"), id="tabs_num_display")
                     yield Tabs(id="chat_tabs")
                     with Vertical(classes="dot_display"):
                         yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
@@ -232,17 +234,17 @@ class MainApp(App[str]):
                 
                 with Horizontal(id="direct_control"):
                     with Horizontal(id="direct_control_switch"):
-                        yield Static(Text(" R", "yellow"), classes="switch_label")
+                        yield Static(" R", classes="switch_label")
                         tui_config = self.config["tui_config"]
                         assert isinstance(tui_config, dict)
                         yield Switch(value=tui_config["conversations_recover"], id="conversations_recover", classes="min_switch")
-                        yield Static(Text(" V", "yellow"), classes="switch_label")
+                        yield Static(" V", classes="switch_label")
                         yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
-                        yield Static(Text(" S", "yellow"), classes="switch_label")
+                        yield Static(" S", classes="switch_label")
                         yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
-                        yield Static(Text(" C", "yellow"), classes="switch_label")
+                        yield Static(" C", classes="switch_label")
                         yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
-                        yield Static(Text(" F", "yellow"), classes="switch_label")
+                        yield Static(" F", classes="switch_label")
                         yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
                     yield NoPaddingButton("|Exit|", id="exit")
     
@@ -268,7 +270,7 @@ class MainApp(App[str]):
         self.run_worker(self.conversations_display_init(conversation_active=self.openai.conversation_active))
         self.service_init()
         self.query_one("#conversation_tree").conversation_refresh()
-
+    
     async def on_button_pressed(self, event) -> None:
 
         if event.button.id == "add_conversation":
@@ -321,7 +323,7 @@ class MainApp(App[str]):
                         ani_type="static",
                         keep_time=3,
                         ani_end_display=self.status_region_default,
-                        others=Text("Selected file type is not suppported.", "yellow"),
+                        others=Text("Selected file type is not suppported.", tc("yellow") or "yellow"),
                     )
                 )
                 return
@@ -407,7 +409,7 @@ class MainApp(App[str]):
                         ani_type="static",
                         keep_time=3,
                         ani_end_display=self.status_region_default,
-                        others=Text(f"Unable to parse the command: {message.value}", "yellow"),
+                        others=Text(f"Unable to parse the command: {message.value}", tc("yellow") or "yellow"),
                     )
                 )
 
@@ -500,9 +502,9 @@ class MainApp(App[str]):
             # Update commander_status_display
             commander_status_display = self.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
-                commander_status_display.update(Text('\u2725', 'green'))
+                commander_status_display.update(Text('\u2725', tc("green") or "green"))
             else:
-                commander_status_display.update(Text('\u2668', 'red'))
+                commander_status_display.update(Text('\u2668', tc("red") or "red"))
             
             self.openai.group_talk_conversation_active = id
             group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
@@ -535,9 +537,9 @@ class MainApp(App[str]):
             # Update commander_status_display
             commander_status_display = self.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
-                commander_status_display.update(Text('\u260d', 'red'))
+                commander_status_display.update(Text("\u260d", tc("red") or "red"))
             else:
-                commander_status_display.update(Text('\u260c', 'green'))
+                commander_status_display.update(Text("\u260c", tc("green") or "green"))
             
             self.openai.conversation_active = id
             openai_context = self.openai.conversation_dict[id]["openai_context"]
@@ -558,14 +560,14 @@ class MainApp(App[str]):
             self.context_to_chat_window(self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active])
             dashboard = self.query_one("#dash_board")
             height = dashboard.content_size.height
-            dashboard.update(Text(" X \n" * height,"red"))
-            self.query_one("#status_region").update(Text("Disposable chat now.", "yellow"))
+            dashboard.update(Text(" X \n" * height, tc("red") or "red"))
+            self.query_one("#status_region").update(Text("Disposable chat now.", tc("yellow") or "yellow"))
             self.query_one("#message_region").focus()
         # Refresh the tabs number.
         tab_num = self.query_one("#chat_tabs").tab_count
         if tab_num > 9:
             tab_num = u'\u21DE'
-        self.query_one("#tabs_num_display").update(Text(str(tab_num), 'yellow'))
+        self.query_one("#tabs_num_display").update(Text(str(tab_num), tc("yellow") or "yellow"))
 
     async def on_tabs_cleared(self, event: Tabs.Cleared) -> None:
         self.openai.conversation_active = 0
@@ -596,7 +598,7 @@ class MainApp(App[str]):
                         ani_type="static",
                         keep_time=3,
                         ani_end_display=self.status_region_default,
-                        others=Text("There is no conversation currently available for plugins.", "yellow"),
+                        others=Text("There is no conversation currently available for plugins.", tc("yellow") or "yellow"),
                     )
                 )
                 return
@@ -646,7 +648,7 @@ class MainApp(App[str]):
     def action_set_chat_parameters(self, parameters: dict) -> None:
         # valid check
         if not isinstance(parameters, dict):
-            self.query_one("#status_region").update(Text("'parameters' have to be a dict."), "red")
+            self.query_one("#status_region").update(Text("'parameters' have to be a dict.", tc("red") or "red"))
             return
 
         self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].parameters.update(parameters)
@@ -656,10 +658,10 @@ class MainApp(App[str]):
     def action_set_max_sending_tokens_ratio(self, ratio: float) -> None:
         # valid check
         if not isinstance(ratio, float):
-            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be a flat number."), "red")
+            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be a flat number."), tc("red") or "red")
             return
         if not 0.0 < ratio < 1.0:
-            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be in range from 0.0 to 1.0."), "red")
+            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be in range from 0.0 to 1.0."), tc("red") or "red")
             return
         
         self.openai.conversation_dict[self.openai.conversation_active]["max_sending_tokens_ratio"] = ratio
@@ -727,7 +729,7 @@ class MainApp(App[str]):
                     )
                     cache_event.wait()
                     cache_event.clear()
-                self.query_one("#status_region").update(Text("Conversation vectors cached.", "green"))
+                self.query_one("#status_region").update(Text("Conversation vectors cached.", tc("green") or "green"))
                 await asyncio.sleep(0.1)
             
             except Exception as e:
@@ -778,7 +780,7 @@ class MainApp(App[str]):
                     ani_type="static",
                     keep_time=3,
                     ani_end_display=self.status_region_default,
-                    others=Text("Conversations are cleared.", "yellow"),
+                    others=Text("Conversations are cleared.", tc("yellow") or "yellow"),
                 )
             )
             return
@@ -829,7 +831,7 @@ class MainApp(App[str]):
             await asyncio.sleep(0.2)
             self.query_one("#chat_tabs").active = tab_id
         else:
-            self.query_one("#status_region").update(Text("No conversation selected.", "yellow"))
+            self.query_one("#status_region").update(Text("No conversation selected.", tc("yellow") or "yellow"))
 
     async def action_delete_conversation_file(self):
         conversation_tree = self.query_one("#conversation_tree")
@@ -842,7 +844,11 @@ class MainApp(App[str]):
                     ani_type="static",
                     keep_time=3,
                     ani_end_display=self.status_region_default,
-                    others=Text("Only conversation files can be deleted. Switch to the conversation list first.", "yellow"),
+                    others=Text(
+                        "Only conversation files can be deleted. "
+                        "Switch to the conversation list first.",
+                        tc("yellow") or "yellow"
+                    ),
                 )
             )
             return
@@ -857,7 +863,7 @@ class MainApp(App[str]):
                     ani_type="static",
                     keep_time=3,
                     ani_end_display=self.status_region_default,
-                    others=Text("No conversation is selected.", "yellow"),
+                    others=Text("No conversation is selected.", tc("yellow") or "yellow"),
                 )
             )
             return
@@ -875,7 +881,7 @@ class MainApp(App[str]):
                             ani_type="static",
                             keep_time=3,
                             ani_end_display=self.status_region_default,
-                            others=Text("The conversation selected does not exist", "red"),
+                            others=Text("The conversation selected does not exist", tc("red") or "red"),
                         )
                     )
                 except Exception as e:
@@ -887,7 +893,7 @@ class MainApp(App[str]):
                             ani_type="static",
                             keep_time=3,
                             ani_end_display=self.status_region_default,
-                            others=Text(f"An error occurred while deleting conversation file: {e}", "red"),
+                            others=Text(f"An error occurred while deleting conversation file: {e}", tc("red") or "red"),
                         )
                     )
                 else:
@@ -897,7 +903,12 @@ class MainApp(App[str]):
 
         self.push_screen(
             CheckDialog(
-                prompt=Text("Are you sure you want to delete this conversation file?\nNote: Once deleted, it cannot be recovered.", "yellow")),
+                prompt=Text(
+                    "Are you sure you want to delete this conversation file?\n"
+                    "Note: Once deleted, it cannot be recovered.",
+                    tc("yellow") or "yellow"
+                )
+            ),
             check_dialog_handle,
         )
 
@@ -911,8 +922,7 @@ class MainApp(App[str]):
         self.query_one("#middle_switch").change_to_pointer("plugins_region")
     
     def action_hot_key(self):
-        hot_key_display = Text(
-            textwrap.dedent(
+        hot_key_display = textwrap.dedent(
             """
             | n -> new chat            w -> save chat           l -> load chat       |
             | r -> remove chat         x -> delete chat file    o -> disposable chat |
@@ -923,7 +933,6 @@ class MainApp(App[str]):
             | k -> toggle speak        v -> toggle voice        q -> return          |
             | m -> focus input         b -> toggle ai_care      u -> fold right      |
             """
-            )
         )
         self.push_screen(HotKey(hot_key_display), self.hot_key_handle)
 
@@ -1044,7 +1053,7 @@ class MainApp(App[str]):
                 ani_type="static",
                 keep_time=2,
                 ani_end_display=self.status_region_default,
-                others=Text("The message will be sent as soon as possible.", "green"),
+                others=Text("The message will be sent as soon as possible.", tc("green") or "green"),
             )
         )
         self.openai.openai_group_talk.talk_stream(group_talk_manager=group_talk_manager, message_content=input_text)
@@ -1064,7 +1073,12 @@ class MainApp(App[str]):
                 name = str(rename_function(conversation_str))
                 name = name.replace("\n", "") # '\n' may cause tab name display error, because tab have only one line.
             except Exception as e:
-                self.query_one("#status_region").update(Text("Rename error: " + type(e).__name__,'yellow'))
+                self.query_one("#status_region").update(
+                    Text(
+                        "Rename error: " + type(e).__name__,
+                        tc("yellow") or "yellow"
+                    )
+                )
                 gptui_logger.info("Rename failed.")
             else:
                 self.openai.conversation_dict[conversation_id]["tab_name"] = name
@@ -1078,9 +1092,9 @@ class MainApp(App[str]):
             content = Text()
         else:
             content = Text()
-            content.append_text(Text(u'\u00b7\n'*y_start, 'yellow'))
-            content.append_text(Text('-\n'*(y_end-y_start), 'blue'))
-            content.append_text(Text(u'\u00b7\n'*(height-y_end), 'yellow'))
+            content.append_text(Text(u'\u00b7\n'*y_start, tc("yellow") or "yellow"))
+            content.append_text(Text('-\n'*(y_end-y_start), tc("blue") or "blue"))
+            content.append_text(Text(u'\u00b7\n'*(height-y_end), tc("yellow") or "yellow"))
         return content
 
     # context to chat window
@@ -1116,14 +1130,23 @@ class MainApp(App[str]):
         else:
             end = '\n\n'
         if piece["role"] == "assistant_app":
-            chat_content = Text.from_markup("[black on white]Assistant:[/]\n") + Text(piece["content"] + end, "yellow")
+            chat_content = \
+                Text.from_markup(f"[black on {tc('white') or 'white'}]Assistant:[/]\n")\
+                + Text(piece["content"] + end, tc("yellow") or "yellow")
         elif piece["role"] == "gpt":
-            chat_content = Text.from_markup("[black on white]GPT:[/]\n") + Text(piece["content"] + end, "green")
+            chat_content = \
+                Text.from_markup(f"[black on {tc('white') or 'white'}]GPT:[/]\n")\
+                + Text(piece["content"] + end, tc("green") or "green")
         elif piece["role"] == "function":
             name = piece["name"]
-            chat_content = Text.from_markup("[black on white]Function:[/]") + Text.from_markup(f"[bold blue] {name}[/]\n") + Text(piece["content"] + end, "yellow")
+            chat_content = \
+                Text.from_markup(f"[black on {tc('white') or 'white'}]Function:[/]")\
+                + Text.from_markup(f"[bold {tc('blue') or 'blue'}] {name}[/]\n")\
+                + Text(piece["content"] + end, tc("yellow") or "yellow")
         elif piece["role"] == "other":
-            chat_content = Text.from_markup("[black on white]Other from gpt:[/]\n") + Text(piece["content"] + end, "red")
+            chat_content = \
+                Text.from_markup(f"[black on {tc('white') or 'white'}]Other from gpt:[/]\n")\
+                + Text(piece["content"] + end, tc("red") or "red")
         else:
             chat_content = None
         if chat_content is not None:
@@ -1188,13 +1211,13 @@ class MainApp(App[str]):
 
         if name is None:
             if role == "user":
-                color = "green"
+                color = tc("user_message") or "green"
             elif role == "assistant":
-                color = "red"
+                color = tc("assistant_message") or "red"
             elif role == "system":
-                color = "yellow"
+                color = tc("system_message") or "yellow"
             else:
-                color = "white"
+                color = tc("white") or "white"
             chain.panel_chain(panel_color=color).indicator_chain(indicator_color=color)
             return chain.chain_lines
         else:
@@ -1303,14 +1326,46 @@ class MainApp(App[str]):
         plugins_actived = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].plugins
         for plugin in native_plugins_list:
             if plugin.plugin_info[2] in self.config["user_plugins_up"]:
-                plugin_display_up.add_children(MyCheckBox(status=(plugin.plugin_info in plugins_actived), icon=Text("  \U000F0880 ", "blue"), label=Text(plugin.name), pointer=plugin, domain=plugin_display_up))
+                plugin_display_up.add_children(
+                    MyCheckBox(
+                        status=(plugin.plugin_info in plugins_actived),
+                        icon=Text("  \U000F0880 ", tc("blue") or "blue"),
+                        label=Text(plugin.name),
+                        pointer=plugin,
+                        domain=plugin_display_up
+                    )
+                )
             else:
-                plugin_display_down.add_children(MyCheckBox(status=(plugin.plugin_info in plugins_actived), icon=Text("  \U000F0880 ", "blue"), label=Text(plugin.name), pointer=plugin, domain=plugin_display_down))
+                plugin_display_down.add_children(
+                    MyCheckBox(
+                        status=(plugin.plugin_info in plugins_actived),
+                        icon=Text("  \U000F0880 ", tc("blue") or "blue"),
+                        label=Text(plugin.name),
+                        pointer=plugin,
+                        domain=plugin_display_down
+                    )
+                )
         for plugin in semantic_plugins_list:
             if plugin.plugin_info[1] in self.config["user_plugins_up"]:
-                plugin_display_up.add_children(MyCheckBox(status=(plugin.plugin_info in plugins_actived), icon=Text("  \U000F0C23 ", "purple"), label=Text(plugin.name), pointer=plugin, domain=plugin_display_up))
+                plugin_display_up.add_children(
+                    MyCheckBox(
+                        status=(plugin.plugin_info in plugins_actived),
+                        icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
+                        label=Text(plugin.name),
+                        pointer=plugin,
+                        domain=plugin_display_up
+                    )
+                )
             else:
-                plugin_display_down.add_children(MyCheckBox(status=(plugin.plugin_info in plugins_actived), icon=Text("  \U000F0C23 ", "purple"), label=Text(plugin.name), pointer=plugin, domain=plugin_display_down))
+                plugin_display_down.add_children(
+                    MyCheckBox(
+                        status=(plugin.plugin_info in plugins_actived),
+                        icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
+                        label=Text(plugin.name),
+                        pointer=plugin,
+                        domain=plugin_display_down
+                    )
+                )
     
     def manager_init(self, manager: Manager) -> None:
         commander_thread = threading.Thread(target=manager.gk_kernel.commander.run)
@@ -1326,7 +1381,6 @@ class MainApp(App[str]):
     def service_init(self) -> None:
         self.animation_manager = AnimationManager(
             displayer={"default":self.query_one("#status_region")},
-            ani_links={"default": DefaultAnimation, "static": StaticDisplayAnimation, "setting_memory": SettingMemoryAnimation},
             ani_end_display=self.status_region_default,
         )
         self.decorate_display = DecorateDisplay(self)
@@ -1360,13 +1414,13 @@ class MainApp(App[str]):
         try:
             import tiktoken
         except Exception as e:
-            init_log.write(Text(f"An error occurred during the import of tiktoken. Error: {e}", "red"))
+            init_log.write(Text(f"An error occurred during the import of tiktoken. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during the import of tiktoken. Error: {e}")
             await asyncio.sleep(0.1)
             await self.start_failed_exit(init_log, f"An error occurred during the import of tiktoken. Error: {e}")
             end_status = True
         else:
-            init_log.write(Text("Import tiktoken done.", "green"))
+            init_log.write(Text("Import tiktoken done.", tc("green") or "green"))
             await asyncio.sleep(0.01)
         
         if end_status is True:
@@ -1377,7 +1431,7 @@ class MainApp(App[str]):
         await asyncio.sleep(0.01)
 
         self.qdrant_ready.wait()
-        init_log.write(Text("Qdrant service is ready.", "green"))
+        init_log.write(Text("Qdrant service is ready.", tc("green") or "green"))
         await asyncio.sleep(0.01)
 
         init_log.write("Setting up the OpenAI service ...")
@@ -1391,13 +1445,13 @@ class MainApp(App[str]):
                 conversations_recover=self.query_one("#conversations_recover").value,
             )
         except Exception as e:
-            init_log.write(Text(f"An error occurred during setting up the OpenAI service. Error: {e}", "red"))
+            init_log.write(Text(f"An error occurred during setting up the OpenAI service. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during setting up the OpenAI service. Error: {e}")
             await asyncio.sleep(0.1)
             await self.start_failed_exit(init_log, f"An error occurred during setting up the OpenAI service. Error: {e}")
             end_status = True
         else:
-            init_log.write(Text("The OpenAI service is ready.", "green"))
+            init_log.write(Text("The OpenAI service is ready.", tc("green") or "green"))
             await asyncio.sleep(0.01)
         
         if end_status is True:
@@ -1432,11 +1486,11 @@ class MainApp(App[str]):
                     )
                     collections.remove(collection)
         except Exception as e:
-            init_log.write(Text(f"An error occurred during cleaning collections. Error: {e}", "red"))
+            init_log.write(Text(f"An error occurred during cleaning collections. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during cleaning collections. Error: {e}")
             await asyncio.sleep(1)
         else:
-            init_log.write(Text("Qdrant vector is clean.", "green"))
+            init_log.write(Text("Qdrant vector is clean.", tc("green") or "green"))
             await asyncio.sleep(0.1)
         
         try:    
@@ -1456,11 +1510,11 @@ class MainApp(App[str]):
                 event.wait()
                 event.clear()
         except Exception as e:
-            init_log.write(Text(f"An error occurred during cleaning conversations. Error: {e}", "red"))
+            init_log.write(Text(f"An error occurred during cleaning conversations. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during cleaning conversations. Error: {e}")
             await asyncio.sleep(1)
         else:
-            init_log.write(Text("Qdrant is ready.", "green"))
+            init_log.write(Text("Qdrant is ready.", tc("green") or "green"))
             await asyncio.sleep(0.1)
 
         return True
@@ -1522,9 +1576,19 @@ class MainApp(App[str]):
                         await self.qdrant_vector.collection_cache(collection_name=collection_name)
                     except ValueError as e:
                         gptui_logger.warning(f"Error occurred when cache vector collection. Have no collection named {collection_name}. Error: {e}")
-                        self.query_one("#status_region").update(Text(f"Have no collection named {collection_name}. Error: {e}", "yellow"))
+                        self.query_one("#status_region").update(
+                            Text(
+                                f"Have no collection named {collection_name}. Error: {e}",
+                                tc("yellow") or "yellow"
+                            )
+                        )
                     else:
-                        self.query_one("#status_region").update(Text("Conversation vectors cached successfully.", "green"))
+                        self.query_one("#status_region").update(
+                            Text(
+                                "Conversation vectors cached successfully.",
+                                tc("green") or "green"
+                            )
+                        )
                     finally:
                         if event is not None:
                             event.set()
@@ -1536,9 +1600,19 @@ class MainApp(App[str]):
                         await self.qdrant_vector.collection_save(collection_name=collection_name)
                     except ValueError as e:
                         gptui_logger.warning(f"Error occurred when save vector collection. Have no collection named {collection_name}. Error: {e}")
-                        self.query_one("#status_region").update(Text(f"Have no collection named {collection_name}. Error: {e}", "yellow"))
+                        self.query_one("#status_region").update(
+                            Text(
+                                f"Have no collection named {collection_name}. Error: {e}",
+                                tc("yellow") or "yellow"
+                            )
+                        )
                     else:
-                        self.query_one("#status_region").update(Text("Conversation vectors saved successfully.", "green"))
+                        self.query_one("#status_region").update(
+                            Text(
+                                "Conversation vectors saved successfully.",
+                                tc("green") or "green"
+                            )
+                        )
                     finally:
                         if event is not None:
                             event.set()
@@ -1554,13 +1628,19 @@ class MainApp(App[str]):
 
     async def start_failed_exit(self, init_log: RichLog, exit_log: str):
         self.qdrant_queue.put({"action": "STOP"})
-        init_log.write(Text("Please check the log and try restarting later. The system will automatically shut down in three seconds", "red"))
+        init_log.write(
+            Text(
+                "Please check the log and try restarting later. "
+                "The system will automatically shut down in three seconds",
+                tc("red") or "red",
+            )
+        )
         await asyncio.sleep(1)
-        init_log.write(Text("3", "red"))
+        init_log.write(Text("3", tc("red") or "red"))
         await asyncio.sleep(1)
-        init_log.write(Text("2", "red"))
+        init_log.write(Text("2", tc("red") or "red"))
         await asyncio.sleep(1)
-        init_log.write(Text("1", "red"))
+        init_log.write(Text("1", tc("red") or "red"))
         self.qdrant_thread.join()
         self.manager.gk_kernel.commander.exit()
         self.exit(exit_log)
@@ -1576,12 +1656,34 @@ class MainApp(App[str]):
 
     def action_test(self):
         # For test
-        group_talk_manager = self.openai.group_talk_conversation_dict[self.openai.group_talk_conversation_active]["group_talk_manager"]
-        gptui_logger.debug(f"----####----state={group_talk_manager.state},speaking={group_talk_manager.speaking}")
-        try:
-            gptui_logger.debug(f"----####----count:{group_talk_manager.loop_count}")
-        except:
-            pass 
+        pass
+
+    def action_toggle_monochrome(self):
+        self.toggle_class("monochrome")
+        if ThemeColor._theme == "monochrome":
+            ThemeColor.set_theme(self.color_theme)
+            try:
+                stop_button = self.query_one("Voice #stop")
+            except:
+                pass
+            else:
+                stop_button.variant = "error"
+        else:
+            self.color_theme = ThemeColor._theme
+            ThemeColor.set_theme("monochrome")
+            try:
+                stop_button = self.query_one("Voice #stop")
+            except:
+                pass
+            else:
+                stop_button.variant = "success"
+        chat_tabs = self.query_one("#chat_tabs")
+        active_tab = chat_tabs.active_tab
+        if active_tab is not None:
+            self.on_tabs_tab_activated(Tabs.TabActivated(chat_tabs, active_tab))
+        for slider_switch in self.query("SlideSwitch"):
+            slider_switch.set_sliders(slider_switch.index)
+        self.query_one("#file_tube").refresh_display()
 
 
 def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:
@@ -1607,49 +1709,6 @@ def change_role_view(context: list[dict], from_view: str, to_view: str = "admin"
             continue
         changed_context.append(changed_message)
     return changed_context
-
-
-class MyDirectoryTree(DirectoryTree):
-    def __init__(self, root_path: str, *args, **kwargs):
-        self.root_path = root_path
-        self.file_path_now = self.root_path
-        super().__init__(*args, **kwargs)
-
-    def on_directory_tree_file_selected(self, event) -> None:
-        self.file_path_now = event.path
-
-    def on_directory_tree_directory_selected(self, event) -> None:
-        self.file_path_now = event.path
-        if str(event.path) == self.root_path:
-            self.reload()
-
-
-class ConversationTree(Tree):
-    def __init__(self, conversation_path: str, *args, **kwargs):
-        self.conversation_path = conversation_path
-        super().__init__(*args, **kwargs)
-        
-    @property
-    def file_path_now(self):
-        if self.cursor_node:
-            return self.cursor_node.data
-        else:
-            return None
-
-    def on_tree_node_selected(self, event):
-        if event.node is self.root:
-            self.conversation_refresh()
-    
-    def conversation_refresh(self):
-        self.clear()
-        self.root.expand()
-        conversation_path = self.conversation_path
-        try:
-            for filename in os.listdir(conversation_path):
-                if filename.endswith(".json") and (filename != "_conversations_cache.json"):
-                    self.root.add_leaf(f"{filename}", data=os.path.join(conversation_path, filename))
-        except FileNotFoundError:
-            pass
 
 
 class NoContextChat:
@@ -1704,10 +1763,10 @@ class NoContextChat:
                 if chunk.choices[0].finish_reason == "stop":
                     break
                 elif chunk.choices[0].finish_reason == "length":
-                    app.query_one("#status_region").update(Text("Response exceeds tokens limit", "red"))
+                    app.query_one("#status_region").update(Text("Response exceeds tokens limit", tc("red") or "red"))
                     break
                 elif chunk.choices[0].finish_reason == "content_filter":
-                    app.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", "red"))
+                    app.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
                     continue
                 chunk_message = chunk['choices'][0]['delta']['content']
                 collected_messages += chunk_message

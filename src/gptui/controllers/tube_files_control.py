@@ -1,11 +1,11 @@
 import logging
-import os
 
 import aiofiles
 
-from ..utils.my_text import MyText as Text
 from ..models.doc import Doc
 from ..models.skills import UploadFile
+from ..utils.my_text import MyText as Text
+from ..views.theme import theme_color as tc
 
 
 gptui_logger = logging.getLogger("gptui_logger")
@@ -34,23 +34,23 @@ class TubeFiles:
                 content = await fp.read()
         except FileNotFoundError:
             gptui_logger.error("File or directory not found")
-            self.displayer.update(Text("File or directory not found", "yellow"))
+            self.displayer.update(Text("File or directory not found", tc("yellow") or "yellow"))
             return
         except IsADirectoryError:
             gptui_logger.error("Specified path is a directory, not a file")
-            self.displayer.update(Text("Specified path is a directory, not a file", "yellow"))
+            self.displayer.update(Text("Specified path is a directory, not a file", tc("yellow") or "yellow"))
             return
         except UnicodeDecodeError:
             gptui_logger.error("File is not encoded properly")
-            self.displayer.update(Text("File is not encoded properly", "yellow"))
+            self.displayer.update(Text("File is not encoded properly", tc("yellow") or "yellow"))
             return
         except IOError as e:
             gptui_logger.error(f"An I/O error occurred: {e}")
-            self.displayer.update(Text("An I/O error occurred", "yellow"))
+            self.displayer.update(Text("An I/O error occurred", tc("yellow") or "yellow"))
             return
         except Exception as e:
             gptui_logger.error(f"Read file failed. An unexpected error occurred: {e}")
-            self.displayer.update(Text(f"Read file failed. An unexpected error occurred: {e}", "yellow"))
+            self.displayer.update(Text(f"Read file failed. An unexpected error occurred: {e}", tc("yellow") or "yellow"))
             return
         else:
             return content
@@ -66,19 +66,19 @@ class TubeFiles:
                 await fp.write(file_content)
         except FileNotFoundError:
             gptui_logger.error("File or directory not found")
-            self.displayer.update(Text("File or directory not found", "yellow"))
+            self.displayer.update(Text("File or directory not found", tc("yellow") or "yellow"))
             return False
         except IsADirectoryError:
             gptui_logger.error("Specified path is a directory, not a file")
-            self.displayer.update(Text("Specified path is a directory, not a file", "yellow"))
+            self.displayer.update(Text("Specified path is a directory, not a file", tc("yellow") or "yellow"))
             return False
         except IOError as e:
             gptui_logger.error(f"An I/O error occurred: {e}")
-            self.displayer.update(Text("An I/O error occurred", "yellow"))
+            self.displayer.update(Text("An I/O error occurred", tc("yellow") or "yellow"))
             return False
         except Exception as e:
             gptui_logger.error(f"Read file failed. An unexpected error occurred: {e}")
-            self.displayer.update(Text(f"Read file failed. An unexpected error occurred: {e}", "yellow"))
+            self.displayer.update(Text(f"Read file failed. An unexpected error occurred: {e}", tc("yellow") or "yellow"))
             return False
         else:
             return True

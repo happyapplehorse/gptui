@@ -1,13 +1,21 @@
+import logging
+
 from .my_text import MyText as Text
+from ..views.theme import theme_color as tc
+
+gptui_logger = logging.getLogger("gptui_logger")
 
 
 def file_icon(
     file_label: str,
     file_type: str,
     file_description: str,
-    icon_color: str = "yellow",
-    description_color: str = "white"
+    icon_color: str | None = None,
+    description_color: str | None = None,
 ) -> Text:
+    icon_color = icon_color or tc("yellow") or "yellow"
+    description_color = description_color or tc("white") or "white"
+
     display = Text('', icon_color)
     if file_type == ".txt":
         display += Text('\u2595'+'\u2056\u0305'+'\u2056\u0305'+'\u2056\u0305'+'\u2572'+' \n')

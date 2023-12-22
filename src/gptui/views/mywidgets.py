@@ -15,21 +15,23 @@ from textual.containers import Horizontal, Vertical, Grid
 from textual.css.query import NoMatches
 from textual.geometry import Size, Offset
 from textual.message import Message
+from textual.message_pump import _MessagePumpMeta
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import (
+    Button,
+    DirectoryTree,
     Input,
     Label,
-    Button,
+    Markdown,
+    RichLog,
     Switch,
     Static,
-    Markdown,
-    DirectoryTree,
-    RichLog,
 )
-from textual.message_pump import _MessagePumpMeta
 
 from .screens import SelectPathDialog, MarkdownPreview
+from .theme import ThemeColor
+from .theme import theme_color as tc
 from ..controllers.tube_files_control import TubeFiles
 from ..models.doc import Doc
 from ..utils.file_icon import file_icon
@@ -608,14 +610,30 @@ class Tube(Widget):
         file_type = document.ext
         file_description = document_name + file_type
         up_tube = self.query_one("#up_tube")
-        up_tube.add_children(FileIcon(pointer=document, file_type=file_type, file_label=document_name, file_description=file_description, previewer=self.myapp))
+        up_tube.add_children(
+            FileIcon(
+                pointer=document,
+                file_type=file_type,
+                file_label=document_name,
+                file_description=file_description,
+                previewer=self.myapp,
+            )
+        )
 
     def add_document_to_down_tube(self, document: Doc) -> None:
         self.down_tube_list.append(document)
         doc_ext = document.ext
         doc_name = document.name
         down_tube = self.query_one("#down_tube")
-        down_tube.add_children(FileIcon(pointer=document, file_type=doc_ext, file_label=doc_name, file_description=doc_name+doc_ext, previewer=self.myapp))
+        down_tube.add_children(
+            FileIcon(
+                pointer=document,
+                file_type=doc_ext,
+                file_label=doc_name,
+                file_description = doc_name + doc_ext,
+                previewer=self.myapp,
+            )
+        )
     
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -628,23 +646,32 @@ class Tube(Widget):
             try:
                 focused_file = self.query("#down_tube > FileIcon:focus").first()
             except NoMatches:
-                self.myapp.query_one("#status_region").update(Text("No file is selected.", "yellow"))
+                self.myapp.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
             except Exception as e:
-                self.myapp.query_one("#status_region").update(Text(f"{e}", "yellow"))
+                self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.export_content = focused_file.pointer.content
-                self.myapp.push_screen(SelectPathDialog(prompt="Determine the file path and name (including extension):", placeholder="filename"), self._save_file)
+                self.myapp.push_screen(
+                    SelectPathDialog(
+                        root_directory_path=self.myapp.config["directory_tree_path"],
+                        prompt="Determine the file path and name (including extension):",
+                        placeholder="filename"
+                    ),
+                    self._save_file,
+                )
         if button_id == "down_clear":
             self.query_one("#down_tube").clear()
+            self.down_tube_list = []
         if button_id == "down_delete":
             try:
                 focused_file = self.query("#down_tube > FileIcon:focus").first()
             except NoMatches:
-                self.myapp.query_one("#status_region").update(Text("No file is selected.", "yellow"))
+                self.myapp.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
             except Exception as e:
-                self.myapp.query_one("#status_region").update(Text(f"{e}", "yellow"))
+                self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.query_one("#down_tube").remove_child(focused_file)
+                self.down_tube_list.remove(focused_file.pointer)
 
     async def _save_file(self, selected_path: tuple[bool, str]) -> None:
         status, path = selected_path
@@ -658,16 +685,28 @@ class Tube(Widget):
             path = os.path.join(self.myapp.config["workpath"], filename)
 
         if os.path.isfile(path):
-            status_region.update(Text("File is not exported beacause file name have existed!", "red"))
+            status_region.update(Text("File is not exported beacause file name have existed!", tc("red") or "red"))
             return
         if not self.export_content:
-            status_region.update(Text("File is empty! Not exported.", "yellow"))
+            status_region.update(Text("File is empty! Not exported.", tc("yellow") or "yellow"))
             return
         tf = TubeFiles(status_region)
         await tf.write_file_async(file_path=path, file_content=self.export_content)
 
     def get_upload_files(self) -> list[Doc]:
         return self.up_tube_list
+
+    def refresh_display(self) -> None:
+        up_tube_list = self.up_tube_list.copy()
+        down_tube_list = self.down_tube_list.copy()
+        self.query_one("#up_tube").clear()
+        self.query_one("#down_tube").clear()
+        self.up_tube_list = []
+        self.down_tube_list = []
+        for doc in up_tube_list:
+            self.add_document_to_up_tube(doc)
+        for doc in down_tube_list:
+            self.add_document_to_down_tube(doc)
 
 
 class MultiGridContent(Widget):
@@ -679,6 +718,7 @@ class MultiGridContent(Widget):
     }
     MultiGridContent MyFillIn {
         height: 1;
+        color: rgb(100,100,100);
         background: rgb(30, 35, 50);
         opacity: 0.5;
     }
@@ -694,7 +734,7 @@ class MultiGridContent(Widget):
     def compose(self) -> ComposeResult:
         yield self.init_grid_list[0]
         for grid_content in self.init_grid_list[1:]:
-            yield MyFillIn(char="\u2500", width="80%", x_start="10%", color="rgb(100,100,100)")
+            yield MyFillIn(char="\u2500", width="80%", x_start="10%")
             yield grid_content
 
     def add_grid_content(
@@ -823,11 +863,11 @@ class GridContentMeta(_MessagePumpMeta):
         ) -> None:
             self.move_child(child, before=before, after=after)
         
-        attrs["DEFAULT_CSS"] = """
-        .box {
+        attrs["DEFAULT_CSS"] = f"""
+        .box {{
             height: 100%;
-            border: solid green;
-        }
+            border: solid {tc("green") or "green"};
+        }}
         """
         attrs["__init__"] = __init__
         attrs["add_children"] = add_children
@@ -883,9 +923,15 @@ class MyCheckBox(Widget, Generic[CheckBoxPointer]):
         def display(self):
             icon_display = Text()
             if self.status is True:
-                icon_display.append_text(Text(u"\u2705"))
+                if ThemeColor._theme == "monochrome":
+                    icon_display.append_text(Text("◉", tc("green") or "green"))
+                else:
+                    icon_display.append_text(Text(u"\u2705"))
             else:
-                icon_display.append_text(Text(u"\u2B1C"))
+                if ThemeColor._theme == "monochrome":
+                    icon_display.append_text(Text("○", tc("green") or "green"))
+                else:
+                    icon_display.append_text(Text(u"\u2B1C"))
             icon_display.append_text(self.icon)
             self.update(icon_display)
         
@@ -1065,39 +1111,39 @@ class SlideSwitch(Widget):
             else:
                 display_content = self.label.copy()
             if self.status in ("on_down", "on_up", "on_down_last", "on_down_first", "on_up_last", "on_up_first"):
-                display_content.stylize('red')
+                display_content.stylize(tc("red") or "red")
             if self.status == "on_down":
-                display_content.append_text(Text('\u2501\u2513', 'red'))
+                display_content.append_text(Text("\u2501\u2513", tc("red") or "red"))
             elif self.status == "upper_down":
-                display_content.append_text(Text('\u2574\u2502', 'green'))
+                display_content.append_text(Text("\u2574\u2502", tc("green") or "green"))
             elif self.status == "lower_down":
-                display_content.append_text(Text('\u2574', 'green'))
-                display_content.append_text(Text('\u2503', 'red'))
+                display_content.append_text(Text("\u2574", tc("green") or "green"))
+                display_content.append_text(Text("\u2503", tc("red") or "red"))
             elif self.status == "on_up":
-                display_content.append_text(Text('\u2501\u251b', 'red'))
+                display_content.append_text(Text("\u2501\u251b", tc("red") or "red"))
             elif self.status == "upper_up":
-                display_content.append_text(Text('\u2574', 'green'))
-                display_content.append_text(Text('\u2503', 'red'))
+                display_content.append_text(Text("\u2574", tc("green") or "green"))
+                display_content.append_text(Text("\u2503", tc("red") or "red"))
             elif self.status == "lower_up":
-                display_content.append_text(Text('\u2574\u2502', 'green'))
+                display_content.append_text(Text("\u2574\u2502", tc("green") or "green"))
             elif self.status == "on_down_last":
-                display_content.append_text(Text('\u2501\u2501', 'red'))
+                display_content.append_text(Text("\u2501\u2501", tc("red") or "red"))
             elif self.status == "off_down_last":
-                display_content.append_text(Text('\u2574', 'green'))
-                display_content.append_text(Text('\u2517', 'red'))
+                display_content.append_text(Text("\u2574", tc("green") or "green"))
+                display_content.append_text(Text("\u2517", tc("red") or "red"))
             elif self.status == "on_down_first":
-                display_content.append_text(Text('\u2501\u2513', 'red'))
+                display_content.append_text(Text("\u2501\u2513", tc("red") or "red"))
             elif self.status == "off_down_first":
-                display_content.append_text(Text('\u2574\u2577', 'green'))
+                display_content.append_text(Text("\u2574\u2577", tc("green") or "green"))
             elif self.status == "on_up_first":
-                display_content.append_text(Text('\u2501\u2501', 'red'))
+                display_content.append_text(Text("\u2501\u2501", tc("red") or "red"))
             elif self.status == "off_up_first":
-                display_content.append_text(Text('\u2574', 'green'))
-                display_content.append_text(Text('\u250f', 'red'))
+                display_content.append_text(Text("\u2574", tc("green") or "green"))
+                display_content.append_text(Text("\u250f", tc("red") or "red"))
             elif self.status == "on_up_last":
-                display_content.append_text(Text('\u2501\u251b', 'red'))
+                display_content.append_text(Text("\u2501\u251b", tc("red") or "red"))
             elif self.status == "off_up_last":
-                display_content.append_text(Text('\u2574\u2575', 'green'))
+                display_content.append_text(Text("\u2574\u2575", tc("green") or "green"))
             self.update(display_content)
 
         def set_status(self, status, refresh: bool = True):
