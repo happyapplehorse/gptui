@@ -6,11 +6,11 @@
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 
-< img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
+<img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_logo.png" alt="gptui_logo" align="left" width="70px" height="70px"/>
 GPTUI是一个在终端中运行的GPT对话TUI工具。
 你可以使用快捷键高效掌控你的节奏。
 GPTUI使用Textual构建TUI界面，使用Semantic Kernel提供的插件框架；您可以快速灵活地为自己的需求自定义插件。
-GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以替换掉TUI界面或拓展其它功能。如果您喜欢，您也可以轻松地在此Kenrel上开发您自己的AI应用。
+GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，用以驱动AI应用。上层的TUI应用与下层的Kernel解耦，使您可以轻松替换TUI界面或拓展其它功能。如果您喜欢，您也可以在此Kenrel上开发您自己的AI应用。
 目前仅支持OpenAI的GPT模型，后续会增加对其它大语言模型接口的支持。
 
 &nbsp;
@@ -53,7 +53,7 @@ GPTUI在命令行环境下运行，支持Linux，macOS，Windows和Android平台
 
 GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
 
-<p align="center">< img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
 
 **kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
 GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
@@ -174,13 +174,13 @@ python main.py
 
 在control area中切换到`S`，输入命令后回车。目前支持以下命令：
 - 设置聊天参数
- 命令：**set_chat_parameters()**
- 参数：字典形式的OpenAI聊天参数，参考[OpenAI Chat](https://platform.openai.com/docs/api-reference/chat/create)。
- 示例：**set_chat_parameters({"model": "gpt-4", "stream": True})**
+ 命令：**set_chat_parameters()**  
+ 参数：字典形式的OpenAI聊天参数，参考[OpenAI Chat](https://platform.openai.com/docs/api-reference/chat/create)。  
+ 示例：`set_chat_parameters({"model": "gpt-4", "stream": True})`
 - 设置最大发送token数量的比例
-命令：**set_max_sending_tokens_ratio()**
-参数：发送token数量占总的token窗口的比例，float的形式。剩余的token数量作为GPT返回token数的限制。
-示例：**set_max_sending_tokens_ratio(0.5)**
+命令：**set_max_sending_tokens_ratio()**  
+参数：发送token数量占总的token窗口的比例，float的形式。剩余的token数量作为GPT返回token数的限制。  
+示例：`set_max_sending_tokens_ratio(0.5)`
 
 ## 快捷键
 

@@ -191,12 +191,12 @@ Otherwise, some features may not work properly, such as code copy and voice rela
 
 Switch to `S` in the control area, enter the command and press enter. Currently supports the following commands:
 - Set chat parameters
-Command: **set_chat_parameters()**
-Parameters: OpenAI chat parameters in dictionary form, refer to [OpenAI Chat](https://platform.openai.com/docs/api-reference/chat/create).
+Command: **set_chat_parameters()**  
+Parameters: OpenAI chat parameters in dictionary form, refer to [OpenAI Chat](https://platform.openai.com/docs/api-reference/chat/create).  
 Example: `set_chat_parameters({"model": "gpt-4", "stream": True})`
 - Set max sending tokens ratio
-Command: **set_max_sending_tokens_ratio()**
-Parameters: The ratio of the number of sent tokens to the total token window, in float form. The remaining token count is used as the limit for the number of tokens GPT returns.
+Command: **set_max_sending_tokens_ratio()**  
+Parameters: The ratio of the number of sent tokens to the total token window, in float form. The remaining token count is used as the limit for the number of tokens GPT returns.  
 Example: `set_max_sending_tokens_ratio(0.5)`
 
 ## Hotkeys
