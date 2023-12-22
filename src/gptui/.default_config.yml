@@ -27,9 +27,9 @@ tui_config:
   voice_switch: false
   speak_switch: false
   file_wrap_display: true
-  ai_care_switch: false
+  ai_care_switch: true
   status_region_default:
-  waiting_receive_animation: "default_3"
+  waiting_receive_animation: "default"
 
 # List of plugin's name of default used
 default_plugins_used: []

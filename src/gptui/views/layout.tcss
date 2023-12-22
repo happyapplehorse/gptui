@@ -67,11 +67,11 @@ Widget {
   border: round $monochrome_green;
 }
 
-.monochrome #message_region > .input--cursor {
+.monochrome Input > .input--cursor {
   color: $monochrome_green;
 }
 
-.monochrome #message_region > .input--placeholder {
+.monochrome Input > .input--placeholder {
   color: $monochrome_green 50%;
 }
 
@@ -118,7 +118,7 @@ Widget {
   min-width: 3;
 }
 
-.monochrome.arrow_button {
+.monochrome .arrow_button {
   color: $monochrome_green;
   background: $monochrome_green 5%;
 }
@@ -130,7 +130,7 @@ Widget {
   min-width: 1;
 }
 
-.monochrome.tab_arrow {
+.monochrome .tab_arrow {
   color: $monochrome_green;
   background: $monochrome_green 5%;
 }
@@ -213,14 +213,6 @@ Tabs #tabs-list {
   padding: 0;
 }
 
-.monochrome #command_input > .input--cursor {
-  color: $monochrome_green;
-}
-
-.monochrome #command_input > .input--placeholder {
-  color: $monochrome_green 50%;
-}
-
 #control_region {
   height: 2fr;
 }
@@ -251,12 +243,29 @@ Tabs #tabs-list {
   height: 1;
   padding: 0;
   margin: 0;
+}
+
+#plugin_refresh {
   text-style: reverse;
+}
+
+.monochrome #plugin_refresh {
+  text-style: none;
+  color: black;
+  background: $monochrome_green;
 }
 
 #plugin_label {
   width: 1fr;
+}
+
+#plugin_label {
   background: rgb(30, 35, 50);
+}
+
+.monochrome #plugin_label {
+  color: $monochrome_green 70%;
+  background: $monochrome_green 2%;
 }
 
 .min_switch {
@@ -304,7 +313,7 @@ Voice #control_region {
   color: $secondary-lighten-2;
 }
 
-.monochrome.switch_label {
+.monochrome .switch_label {
   color: $monochrome_green;
 }
 
@@ -312,12 +321,12 @@ Voice #control_region {
   width: 1fr;
 }
 
-.monochrome.min_switch > .switch--slider {
+.monochrome .min_switch > .switch--slider {
   color: $monochrome_green 20%;
   background: $monochrome_green 10%;
 }
 
-.monochrome.min_switch.-on > .switch--slider {
+.monochrome .min_switch.-on > .switch--slider {
   color: $monochrome_green;
 }
 
@@ -331,6 +340,7 @@ Voice #control_region {
 
 .monochrome #conversation_tree {
   background: $monochrome_green 2%;
+  scrollbar-color: $monochrome_green 40%;
 }
 
 .monochrome #conversation_tree > .tree--label {
@@ -354,33 +364,142 @@ Voice #control_region {
   height: 2fr;
 }
 
-.monochrome #directory_tree {
+.monochrome DirectoryTree {
   background: $monochrome_green 2%;
+  scrollbar-color: $monochrome_green 40%;
 }
 
-.monochrome #directory_tree > .tree--label {
+.monochrome DirectoryTree > .tree--label {
   color: $monochrome_green;
 }
 
-.monochrome #directory_tree > .tree--cursor {
+.monochrome DirectoryTree > .tree--cursor {
   color: $monochrome_green;
   background: $monochrome_green 30%;
 }
 
-.monochrome #directory_tree > .tree--guides {
+.monochrome DirectoryTree > .tree--guides {
   color: $monochrome_green;
 }
 
-.monochrome #directory_tree > .tree--guides-selected {
+.monochrome DirectoryTree > .tree--guides-selected {
   color: $monochrome_green;
 }
 
-.monochrome ModalScreen {
+.monochrome #plugins_control {
+  background: rgb(30,30,30);
+}
+
+.monochrome #plugins_control UserPluginsUp {
   color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome #plugins_control UserPluginsDown {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome #plugins_control MyFillIn {
+  color: $monochrome_green;
+  background: $monochrome_green 8%;
+}
+
+.monochrome Tube Button {
+  color: $monochrome_green;
+  background: $monochrome_green 10%;
+}
+
+.monochrome Tube GridContentUp {
+  background: $monochrome_green 2%;
+}
+
+.monochrome Tube GridContentDown {
+  background: $monochrome_green 2%;
+}
+
+.monochrome FileIcon:focus {
   background: $monochrome_green;
 }
 
-.monochrome ModalScreen Button {
+.monochrome HotKey Label {
+  border: ascii $monochrome_green;
   color: $monochrome_green;
-  background: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome CheckDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome InputDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome InputDialog Label {
+  color: $monochrome_green;
+  background: $monochrome_green 0%;
+}
+
+.monochrome InputDialog Input {
+  color: $monochrome_green;
+  border: heavy $monochrome_green 80%;
+  background: $monochrome_green 0%;
+}
+
+.monochrome SelectPathDialog Button {
+  color: $monochrome_green;
+  background: $monochrome_green 5%;
+}
+
+.monochrome SelectPathDialog Label {
+  color: $monochrome_green;
+  background: $monochrome_green 0%;
+}
+
+.monochrome SelectPathDialog Input {
+  color: $monochrome_green;
+  border: heavy $monochrome_green 80%;
+  background: $monochrome_green 0%;
+}
+
+.monochrome MarkdownViewer {
+  color: $monochrome_green;
+  border: ascii $monochrome_green;
+  scrollbar-color: $monochrome_green 40%;
+}
+
+.monochrome MarkdownViewer * {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Markdown .code_inline {
+  color: $monochrome_green;
+  background: black;
+}
+
+.monochrome Voice {
+  border: round $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Voice Button {
+  color: $monochrome_green;
+  background: $monochrome_green 40%;
+}
+
+.monochrome Voice ProgressBar * {
+  color: $monochrome_green;
+  background: $monochrome_green 2%;
+}
+
+.monochrome Voice Static {
+  color: $monochrome_green;
+}
+
+.monochrome Voice .started {
+  background: $monochrome_green 10%;
 }

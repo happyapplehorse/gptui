@@ -37,9 +37,9 @@ class ThemeColor:
     def set_theme(cls, theme: ThemeName) -> None:
         cls._theme = theme
         if theme == "monochrome":
-            ThemeColor.color_map["user_message"] = "#2E7248"
+            ThemeColor.color_map["user_message"] = "#2E724B"
             ThemeColor.color_map["assistant_message"] = "#5CE495"
-            ThemeColor.color_map["system_message"] = "#173624"
+            ThemeColor.color_map["system_message"] = "#122E1E"
         if theme == "default":
             ThemeColor.color_map.pop("user_message", None)
             ThemeColor.color_map.pop("assistant_message", None)

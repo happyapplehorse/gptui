@@ -14,12 +14,10 @@ import textwrap
 import threading
 import uuid
 from threading import Thread
-from typing import Generic
 
 import yaml
 from dataclasses import asdict
 from rich.emoji import Emoji
-from rich.style import Style
 from textual import work
 from textual.app import App, ComposeResult
 from textual.actions import ActionError
@@ -28,21 +26,18 @@ from textual.containers import Horizontal, Vertical, Container
 from textual.widgets import (
     Static,
     Label,
-    DirectoryTree,
     Button,
     Tabs,
     Tab,
-    Tree,
     ContentSwitcher,
     Switch,
     RichLog,
 )
-from textual.widgets._directory_tree import DirEntry
 from textual.widgets._tabs import Underline
-from textual.widgets._tree import TreeNode, TreeDataType, TOGGLE_STYLE
 
 from .animation import AnimationManager, AnimationRequest
 from .common_message import CommonMessage
+from .custom_tree import ConversationTree, MyDirectoryTree
 from .fun_zone import FunZone, JustBeing, BombBoom, RotatingCube
 from .mywidgets import (
     GridContent,
@@ -927,8 +922,7 @@ class MainApp(App[str]):
         self.query_one("#middle_switch").change_to_pointer("plugins_region")
     
     def action_hot_key(self):
-        hot_key_display = Text(
-            textwrap.dedent(
+        hot_key_display = textwrap.dedent(
             """
             | n -> new chat            w -> save chat           l -> load chat       |
             | r -> remove chat         x -> delete chat file    o -> disposable chat |
@@ -939,7 +933,6 @@ class MainApp(App[str]):
             | k -> toggle speak        v -> toggle voice        q -> return          |
             | m -> focus input         b -> toggle ai_care      u -> fold right      |
             """
-            )
         )
         self.push_screen(HotKey(hot_key_display), self.hot_key_handle)
 
@@ -1666,18 +1659,31 @@ class MainApp(App[str]):
         pass
 
     def action_toggle_monochrome(self):
-        self.query().toggle_class("monochrome")
+        self.toggle_class("monochrome")
         if ThemeColor._theme == "monochrome":
             ThemeColor.set_theme(self.color_theme)
+            try:
+                stop_button = self.query_one("Voice #stop")
+            except:
+                pass
+            else:
+                stop_button.variant = "error"
         else:
             self.color_theme = ThemeColor._theme
             ThemeColor.set_theme("monochrome")
+            try:
+                stop_button = self.query_one("Voice #stop")
+            except:
+                pass
+            else:
+                stop_button.variant = "success"
         chat_tabs = self.query_one("#chat_tabs")
         active_tab = chat_tabs.active_tab
         if active_tab is not None:
             self.on_tabs_tab_activated(Tabs.TabActivated(chat_tabs, active_tab))
         for slider_switch in self.query("SlideSwitch"):
             slider_switch.set_sliders(slider_switch.index)
+        self.query_one("#file_tube").refresh_display()
 
 
 def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:
@@ -1703,133 +1709,6 @@ def change_role_view(context: list[dict], from_view: str, to_view: str = "admin"
             continue
         changed_context.append(changed_message)
     return changed_context
-
-
-class MyDirectoryTree(DirectoryTree):
-    def __init__(self, root_path: str, *args, **kwargs):
-        self.root_path = root_path
-        self.file_path_now = self.root_path
-        super().__init__(*args, **kwargs)
-
-    def on_directory_tree_file_selected(self, event) -> None:
-        self.file_path_now = event.path
-
-    def on_directory_tree_directory_selected(self, event) -> None:
-        self.file_path_now = event.path
-        if str(event.path) == self.root_path:
-            self.reload()
-    
-    def render_label(
-        self, node: TreeNode[DirEntry], base_style: Style, style: Style
-    ) -> Text:
-        """Render a label for the given node.
-
-        Args:
-            node: A tree node.
-            base_style: The base style of the widget.
-            style: The additional style for the label.
-
-        Returns:
-            A Rich Text object containing the label.
-        """
-        is_monochrome_theme = True if ThemeColor._theme == "monochrome" else False
-
-        node_label = node._label.copy()
-        node_label.stylize(style)
-        color_style = Style(color = tc("green") or "green")
-
-        if node._allow_expand:
-            if is_monochrome_theme:
-                prefix = ("➘ " if node.is_expanded else "➩ ", base_style + color_style + TOGGLE_STYLE)
-            else:
-                prefix = ("📂 " if node.is_expanded else "📁 ", base_style + TOGGLE_STYLE)
-            node_label.stylize_before(
-                self.get_component_rich_style("directory-tree--folder", partial=True)
-            )
-        else:
-            if is_monochrome_theme:
-                prefix = ("◉ ", base_style + color_style)
-            else:
-                prefix = (
-                    "📄 ",
-                    base_style,
-                )
-            node_label.stylize_before(
-                self.get_component_rich_style("directory-tree--file", partial=True),
-            )
-            node_label.highlight_regex(
-                r"\..+$",
-                self.get_component_rich_style(
-                    "directory-tree--extension", partial=True
-                ),
-            )
-
-        if node_label.plain.startswith("."):
-            node_label.stylize_before(
-                self.get_component_rich_style("directory-tree--hidden")
-            )
-
-        text = Text.assemble(prefix, node_label)
-        return text
-
-
-class ConversationTree(Tree, Generic[TreeDataType]):
-    def __init__(self, conversation_path: str, *args, **kwargs):
-        self.conversation_path = conversation_path
-        super().__init__(*args, **kwargs)
-        
-    @property
-    def file_path_now(self):
-        if self.cursor_node:
-            return self.cursor_node.data
-        else:
-            return None
-
-    def on_tree_node_selected(self, event):
-        if event.node is self.root:
-            self.conversation_refresh()
-    
-    def conversation_refresh(self):
-        self.clear()
-        self.root.expand()
-        conversation_path = self.conversation_path
-        try:
-            for filename in os.listdir(conversation_path):
-                if filename.endswith(".json") and (filename != "_conversations_cache.json"):
-                    self.root.add_leaf(f"{filename}", data=os.path.join(conversation_path, filename))
-        except FileNotFoundError:
-            pass
-
-    def render_label(
-        self, node: TreeNode[TreeDataType], base_style: Style, style: Style
-    ) -> Text:
-        """Render a label for the given node. Override this to modify how labels are rendered.
-
-        Args:
-            node: A tree node.
-            base_style: The base style of the widget.
-            style: The additional style for the label.
-
-        Returns:
-            A Rich Text object containing the label.
-        """
-        node_label = node._label.copy()
-        node_label.stylize(style)
-
-        if node._allow_expand:
-            if ThemeColor._theme == "monochrome":
-                color_style = Style(color = tc("green") or "green")
-                prefix = ("▼ " if node.is_expanded else "▶ ", base_style + color_style + TOGGLE_STYLE)
-            else:
-                prefix = (
-                    "▼ " if node.is_expanded else "▶ ",
-                    base_style + TOGGLE_STYLE,
-                )
-        else:
-            prefix = ("", base_style)
-        
-        text = Text.assemble(prefix, node_label)
-        return text
 
 
 class NoContextChat:

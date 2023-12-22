@@ -13,6 +13,8 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Button, ProgressBar, Static
 
+from .theme import ThemeColor
+from .theme import theme_color as tc
 from ..models.utils.openai_api import openai_api
 from ..utils.my_text import MyText as Text
 
@@ -150,7 +152,7 @@ class Voice(Static, can_focus=True):
         
         elif button_id == "send":
             self.progress_timer.pause()
-            self.query_one("#voice_status_region").update(Text("Transcribing ...", "green"))
+            self.query_one("#voice_status_region").update(Text("Transcribing ...", tc("green") or "green"))
             def blocking_transcribe():
                 try:
                     with open(os.path.join(self.myapp.config["workpath"], "temp/voice_temp.wav"), "rb") as audio_file:
@@ -160,17 +162,17 @@ class Voice(Static, can_focus=True):
                             response_format="text",
                         )
                 except FileNotFoundError:
-                    self.query_one("#voice_status_region").update(Text("Have no voice file", "red"))
+                    self.query_one("#voice_status_region").update(Text("Have no voice file", tc("red") or "red"))
                     return
                 except openai.APIConnectionError as e:
-                    self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", "red"))
+                    self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", tc("red") or "red"))
                     return
                 except Exception as e:
-                    self.query_one("#voice_status_region").update(Text(f"Unknown error: {e}", "red"))
+                    self.query_one("#voice_status_region").update(Text(f"Unknown error: {e}", tc("red") or "red"))
                     return
                 return transcript
             transcript = await asyncio.to_thread(blocking_transcribe)
-            self.query_one("#voice_status_region").update(Text("Transcription Completion!", "green"))
+            self.query_one("#voice_status_region").update(Text("Transcription Completion!", tc("green") or "green"))
             if transcript:
                 transcript_text = cast(str, transcript)
                 voice_text = transcript_text.strip()
@@ -194,13 +196,13 @@ class Voice(Static, can_focus=True):
             clear_button.variant = "default"
             send_button.disabled = True
             clear_button.disabled = True
-            self.query_one("#voice_status_region").update(Text("Cleared!", "green"))
+            self.query_one("#voice_status_region").update(Text("Cleared!", tc("green") or "green"))
 
     def compose(self) -> ComposeResult:
         """Create child widgets of a stopwatch."""
         with Horizontal(id="control_region"):
             yield Button("Start", id="start", variant="success")
-            yield Button("Stop", id="stop", variant="error")
+            yield Button("Stop", id="stop", variant = "success" if ThemeColor._theme == "monochrome" else "error")
             with Vertical(id="display_region"):
                 yield TimeDisplay()
                 yield ProgressBar(total=self.max_record_time, id="progress_bar", show_eta=False)
@@ -217,15 +219,15 @@ class Voice(Static, can_focus=True):
             time,
         )
         if exit_code:
-            self.query_one("#voice_status_region").update(Text(f"Record failed with exit code {exit_code}.", "red"))
+            self.query_one("#voice_status_region").update(Text(f"Record failed with exit code {exit_code}.", tc("red") or "red"))
         else:
-            self.query_one("#voice_status_region").update(Text(f"Recording ...", "green"))
+            self.query_one("#voice_status_region").update(Text(f"Recording ...", tc("green") or "green"))
 
     def voice_record_quit(self) -> None:
         assert self.voice_record_start_handle is not None
         exit_code = self.myapp.drivers.voice_record_quit(self.voice_record_start_handle)
         if exit_code:
-            self.query_one("#voice_status_region").update(Text(f"Record quit failed with exit code {exit_code}.", "red"))
+            self.query_one("#voice_status_region").update(Text(f"Record quit failed with exit code {exit_code}.", tc("red") or "red"))
 
     def action_record(self) -> None:
         if self.timer:
