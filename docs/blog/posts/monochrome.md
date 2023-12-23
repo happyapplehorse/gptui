@@ -7,6 +7,7 @@ authors:
   - happyapplehorse
 ---
 
+![gptui-monochrome](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/gptui/gptui_monochrome.jpeg)
 
 I've long longed to incorporate a monochrome mode into GPTUI, similar to those vintage single-color green
 fluorescent monitors. I find this style not only retro but also futuristic, adding an incredibly cool aesthetic.
