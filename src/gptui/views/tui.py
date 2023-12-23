@@ -1413,6 +1413,15 @@ class MainApp(App[str]):
         await asyncio.sleep(0.01)
         try:
             import tiktoken
+            enc = tiktoken.get_encoding("cl100k_base")
+            assert enc.decode(enc.encode("hello world")) == "hello world"
+        except AssertionError:
+            await self.start_failed_exit(
+                init_log,
+                f"An error occurred while downloading resources for tiktoken."
+                "Please ensure that the network connection to OpenAI is stable."
+                "If this problem persists, please reinstall tiktoken."
+            )
         except Exception as e:
             init_log.write(Text(f"An error occurred during the import of tiktoken. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during the import of tiktoken. Error: {e}")
