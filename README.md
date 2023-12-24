@@ -26,7 +26,7 @@ At present, only the GPT model of OpenAI is supported, and other LLM interfaces 
 - Group talk functionality[^recommend_better_model][^token_cost].
 - AI-Care. Your AI can propactively care for you[^ai_care].
 - Optional plugin features, including (customizable, continuously being added and refined, some plugin prompts are still under development):
-  - Internet search.
+  - Internet search[^google_key].
   - Open interpreter[^open_interpreter][^token_cost][^recommend_better_model]. (Temporarily removed, waiting to be added back after it supports openai v1.x.)
   - Reminders[^recommend_better_model].
   - Recollecting memories from vectorized conversation history.
@@ -40,6 +40,7 @@ enabling this feature.
 [^recommend_better_model]: It is recommended to use this under the GPT-4 model or a better one.
 [^token_cost]: Note: This feature may incur a significant token cost.
 [^ai_care]: Powered by [AI-Care](https://github.com/happyapplehorse/ai-care).
+[^google_key]: `GOOGLE_KEY` and `GOOGLE_CX` are required. Obtained free from [here](https://developers.google.com/custom-search/v1/introduction).
 
 # Compatibility
 GPTUI runs in a command line environment and is compatible with Linux, macOS, Windows and Android[^compatibility].

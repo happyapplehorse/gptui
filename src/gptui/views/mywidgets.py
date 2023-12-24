@@ -638,7 +638,7 @@ class Tube(Widget):
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
         if button_id == "up_import":
-            self.myapp.query_one("#middle_switch").change_to_pointer("directory_tree")
+            self.myapp.main_screen.query_one("#middle_switch").change_to_pointer("directory_tree")
         if button_id == "up_clear":
             self.query_one("#up_tube").clear()
             self.up_tube_list = []
@@ -646,9 +646,9 @@ class Tube(Widget):
             try:
                 focused_file = self.query("#down_tube > FileIcon:focus").first()
             except NoMatches:
-                self.myapp.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
+                self.myapp.main_screen.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
             except Exception as e:
-                self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
+                self.myapp.main_screen.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.export_content = focused_file.pointer.content
                 self.myapp.push_screen(
@@ -666,9 +666,9 @@ class Tube(Widget):
             try:
                 focused_file = self.query("#down_tube > FileIcon:focus").first()
             except NoMatches:
-                self.myapp.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
+                self.myapp.main_screen.query_one("#status_region").update(Text("No file is selected.", tc("yellow") or "yellow"))
             except Exception as e:
-                self.myapp.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
+                self.myapp.main_screen.query_one("#status_region").update(Text(f"{e}", tc("yellow") or "yellow"))
             else:
                 self.query_one("#down_tube").remove_child(focused_file)
                 self.down_tube_list.remove(focused_file.pointer)
@@ -677,7 +677,7 @@ class Tube(Widget):
         status, path = selected_path
         if status is False:
             return
-        status_region = self.myapp.query_one("#status_region")
+        status_region = self.myapp.main_screen.query_one("#status_region")
         
         # Check whether it includes a path name.
         dirname, filename = os.path.split(path)

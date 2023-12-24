@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import copy
 import hashlib
@@ -23,6 +24,7 @@ from textual.app import App, ComposeResult
 from textual.actions import ActionError
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, Container
+from textual.screen import Screen
 from textual.widgets import (
     Static,
     Label,
@@ -97,6 +99,100 @@ def preprocess_config_path(config: dict) -> dict:
     return config
 
 
+class MainScreen(Screen):
+    def __init__(self, main_app: MainApp, *args, **kwargs) -> None:
+        self.main_app = main_app
+        super().__init__(*args, **kwargs)
+
+    def compose(self) -> ComposeResult:
+        yield AppStart(self.main_app, classes="top_layer")
+        with Horizontal():
+            with Vertical(id = "text_region"):
+                with Horizontal(id = "tabs_region"):
+                    with Vertical(classes="dot_display"):
+                        yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
+                        yield Label(Text("1", tc("yellow") or "yellow"), id="tabs_num_display")
+                    yield Tabs(id="chat_tabs")
+                    with Vertical(classes="dot_display"):
+                        yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
+                        yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
+                
+                with Horizontal(id="chat_window"):
+                    yield MyChatWindow(id="chat_region")
+                    yield Static(id="chat_region_scroll_bar")
+                
+                yield MyFillIn(char=chr(0x2500), id="line_between_chat_status")
+                
+                yield Static(self.main_app.status_region_default, id="status_region")
+                
+                with ContentSwitcher(id="input_switcher"):
+                    yield MyMultiInput(placeholder="message region", id="message_region")
+                    yield Container(id="voice_input")
+            
+            with Vertical(id="middle_bar"):
+                with Container(id="tool_bar"):
+                    yield Button("+", classes="arrow_button", id="add_conversation")
+                    yield Button(">", classes="arrow_button", id="save_conversation")
+                    yield Button("<", classes="arrow_button", id="read_conversation")
+                    yield Button("-", classes="arrow_button", id="delete_conversation")
+                    yield Button("x", classes="arrow_button", id="delete_conversation_file")
+                    yield Button("n", classes="arrow_button", id="no_context")
+                    yield Button(u"\u21A5", classes="arrow_button", id="import_file_to_tube")
+                
+                with Container(id="middle_switch_container"):
+                    yield SlideSwitch([(Text("C"), "conversation_tree"),
+                                       (Text("D"), "directory_tree"),
+                                       (Text("A"), "assistant_tube"),
+                                       (Text("T"), "file_tube"),
+                                       (Text("P"), "plugins_region")], direction="up", id="middle_switch")
+                
+                yield Button("\u21a3", classes="arrow_button", id="fold_no_text_region")
+
+                yield Button("[underline]?[/]", classes="arrow_button", id="help")
+                
+                yield Static(id="dash_board")
+            
+            with Vertical(id="no_text_region"):
+                with ContentSwitcher(id="no_text_region_content_switcher"):
+                    yield ConversationTree(self.main_app.config["conversation_path"], "Conversations:", id="conversation_tree")
+                    yield MyDirectoryTree(self.main_app.config["directory_tree_path"], self.main_app.config["directory_tree_path"], id="directory_tree")
+                    yield MyChatWindow(id="assistant_tube")
+                    yield Tube(app=self.main_app, id="file_tube")
+                    with Vertical(id="plugins_region"):
+                        with Horizontal():
+                            yield Label("Plugins: ", id="plugin_label")
+                            yield NoPaddingButton("|Refresh|", id="plugin_refresh")
+                        user_plugins_up = GridContent(name="UserPluginsUp", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_up") 
+                        user_plugins_down = GridContent(name="UserPluginsDown", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_down")
+                        yield MultiGridContent(grid_list=[user_plugins_up, user_plugins_down], id="plugins_control")
+                
+                with Horizontal(id="control_region"):
+                    yield SlideSwitch(
+                        [
+                            (Text("I"), "info_display"),
+                            (Text("S"), "command_input"),
+                        ], id="control_switch", direction="down")
+                    with ContentSwitcher(id="control_panel"):
+                        yield Label("Chat Parameters", id="info_display")
+                        yield MyMultiInput(placeholder="Input command:", id="command_input")
+                
+                with Horizontal(id="direct_control"):
+                    with Horizontal(id="direct_control_switch"):
+                        yield Static(" R", classes="switch_label")
+                        tui_config = self.main_app.config["tui_config"]
+                        assert isinstance(tui_config, dict)
+                        yield Switch(value=tui_config["conversations_recover"], id="conversations_recover", classes="min_switch")
+                        yield Static(" V", classes="switch_label")
+                        yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
+                        yield Static(" S", classes="switch_label")
+                        yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
+                        yield Static(" C", classes="switch_label")
+                        yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
+                        yield Static(" F", classes="switch_label")
+                        yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
+                    yield NoPaddingButton("|Exit|", id="exit")
+
+
 class MainApp(App[str]):
 
     CSS_PATH = "layout.tcss"
@@ -159,117 +255,31 @@ class MainApp(App[str]):
         self.qdrant_thread.start()
         self.app_exited = False # It will be used when exiting from app_init
         self.color_theme: str = "default"
-
-    def compose(self) -> ComposeResult:
-        yield AppStart(self, classes="top_layer")
-        with Horizontal():
-            with Vertical(id = "text_region"):
-                with Horizontal(id = "tabs_region"):
-                    with Vertical(classes="dot_display"):
-                        yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
-                        yield Label(Text("1", tc("yellow") or "yellow"), id="tabs_num_display")
-                    yield Tabs(id="chat_tabs")
-                    with Vertical(classes="dot_display"):
-                        yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
-                        yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
-                
-                with Horizontal(id="chat_window"):
-                    yield MyChatWindow(id="chat_region")
-                    yield Static(id="chat_region_scroll_bar")
-                
-                yield MyFillIn(char=chr(0x2500), id="line_between_chat_status")
-                
-                yield Static(self.status_region_default, id="status_region")
-                
-                with ContentSwitcher(id="input_switcher"):
-                    yield MyMultiInput(placeholder="message region", id="message_region")
-                    yield Container(id="voice_input")
-            
-            with Vertical(id="middle_bar"):
-                with Container(id="tool_bar"):
-                    yield Button("+", classes="arrow_button", id="add_conversation")
-                    yield Button(">", classes="arrow_button", id="save_conversation")
-                    yield Button("<", classes="arrow_button", id="read_conversation")
-                    yield Button("-", classes="arrow_button", id="delete_conversation")
-                    yield Button("x", classes="arrow_button", id="delete_conversation_file")
-                    yield Button("n", classes="arrow_button", id="no_context")
-                    yield Button(u"\u21A5", classes="arrow_button", id="import_file_to_tube")
-                
-                with Container(id="middle_switch_container"):
-                    yield SlideSwitch([(Text("C"), "conversation_tree"),
-                                       (Text("D"), "directory_tree"),
-                                       (Text("A"), "assistant_tube"),
-                                       (Text("T"), "file_tube"),
-                                       (Text("P"), "plugins_region")], direction="up", id="middle_switch")
-                
-                yield Button("\u21a3", classes="arrow_button", id="fold_no_text_region")
-
-                yield Button("[underline]?[/]", classes="arrow_button", id="help")
-                
-                yield Static(id="dash_board")
-            
-            with Vertical(id="no_text_region"):
-                with ContentSwitcher(id="no_text_region_content_switcher"):
-                    yield ConversationTree(self.config["conversation_path"], "Conversations:", id="conversation_tree")
-                    yield MyDirectoryTree(self.config["directory_tree_path"], self.config["directory_tree_path"], id="directory_tree")
-                    yield MyChatWindow(id="assistant_tube")
-                    yield Tube(app=self, id="file_tube")
-                    with Vertical(id="plugins_region"):
-                        with Horizontal():
-                            yield Label("Plugins: ", id="plugin_label")
-                            yield NoPaddingButton("|Refresh|", id="plugin_refresh")
-                        user_plugins_up = GridContent(name="UserPluginsUp", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_up") 
-                        user_plugins_down = GridContent(name="UserPluginsDown", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_down")
-                        yield MultiGridContent(grid_list=[user_plugins_up, user_plugins_down], id="plugins_control")
-                
-                with Horizontal(id="control_region"):
-                    yield SlideSwitch(
-                        [
-                            (Text("I"), "info_display"),
-                            (Text("S"), "command_input"),
-                        ], id="control_switch", direction="down")
-                    with ContentSwitcher(id="control_panel"):
-                        yield Label("Chat Parameters", id="info_display")
-                        yield MyMultiInput(placeholder="Input command:", id="command_input")
-                
-                with Horizontal(id="direct_control"):
-                    with Horizontal(id="direct_control_switch"):
-                        yield Static(" R", classes="switch_label")
-                        tui_config = self.config["tui_config"]
-                        assert isinstance(tui_config, dict)
-                        yield Switch(value=tui_config["conversations_recover"], id="conversations_recover", classes="min_switch")
-                        yield Static(" V", classes="switch_label")
-                        yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
-                        yield Static(" S", classes="switch_label")
-                        yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
-                        yield Static(" C", classes="switch_label")
-                        yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
-                        yield Static(" F", classes="switch_label")
-                        yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
-                    yield NoPaddingButton("|Exit|", id="exit")
+        self.main_screen = MainScreen(self)
     
-    def on_mount(self):
-        self.query_one("#no_text_region_content_switcher").current = "conversation_tree"
-        self.query_one("#control_panel").current = "info_display"
-        self.query_one("#input_switcher").current = "message_region"
-        self.query_one("#message_region").focus()
+    async def on_mount(self):
+        await self.push_screen(self.main_screen)
+        self.main_screen.query_one("#no_text_region_content_switcher").current = "conversation_tree"
+        self.main_screen.query_one("#control_panel").current = "info_display"
+        self.main_screen.query_one("#input_switcher").current = "message_region"
+        self.main_screen.query_one("#message_region").focus()
 
     async def on_ready(self):
         status = await self.app_init()
         if status is False:
             return
-        message_region = self.query_one("#message_region")
-        message_region.border_title = u'\u2500' * self.query_one("#message_region").content_size.width
-        message_region.border_subtitle = u'\u2500' * self.query_one("#message_region").content_size.width
-        self.query_one("#control_panel").border_subtitle = "Control Panel"
-        assistant_tube = self.query_one("#assistant_tube")
+        message_region = self.main_screen.query_one("#message_region")
+        message_region.border_title = u'\u2500' * self.main_screen.query_one("#message_region").content_size.width
+        message_region.border_subtitle = u'\u2500' * self.main_screen.query_one("#message_region").content_size.width
+        self.main_screen.query_one("#control_panel").border_subtitle = "Control Panel"
+        assistant_tube = self.main_screen.query_one("#assistant_tube")
         assistant_tube.border_title = "Assistant Tube"
         assistant_tube.border_subtitle = "[@click=app.assistant_tube_clear]Clear Tube[/]"
         self.no_context_manager = NoContextChat(self)
         # rebuild conversations in last running.
         self.run_worker(self.conversations_display_init(conversation_active=self.openai.conversation_active))
         self.service_init()
-        self.query_one("#conversation_tree").conversation_refresh()
+        self.main_screen.query_one("#conversation_tree").conversation_refresh()
     
     async def on_button_pressed(self, event) -> None:
 
@@ -292,14 +302,14 @@ class MainApp(App[str]):
             await self.action_new_disposable_chat()
         
         elif event.button.id == "tab_left":
-            self.query_one("#chat_tabs").action_previous_tab()
+            self.main_screen.query_one("#chat_tabs").action_previous_tab()
         
         elif event.button.id == "tab_right":
-            self.query_one("#chat_tabs").action_next_tab()
+            self.main_screen.query_one("#chat_tabs").action_next_tab()
 
         elif event.button.id == "fold_no_text_region":
-            button = self.query_one("#fold_no_text_region")
-            no_text_region = self.query_one("#no_text_region")
+            button = self.main_screen.query_one("#fold_no_text_region")
+            no_text_region = self.main_screen.query_one("#no_text_region")
             if str(button.label) == "\u21a3":
                 no_text_region.add_class("folded")
                 button.label = "\u21a2"
@@ -311,7 +321,7 @@ class MainApp(App[str]):
             await self.action_exit_main_app()
         
         elif event.button.id == "import_file_to_tube":
-            file_path = self.query_one("#directory_tree").file_path_now
+            file_path = self.main_screen.query_one("#directory_tree").file_path_now
             try:
                 document = document_loader(file_path)
             except TypeError:
@@ -334,9 +344,9 @@ class MainApp(App[str]):
             document_name = os.path.basename(source)
             doc_name, doc_ext = os.path.splitext(document_name)
             doc = Doc(doc_name=doc_name, doc_ext=doc_ext, pointer=document[0])
-            file_tube = self.query_one("#file_tube")
+            file_tube = self.main_screen.query_one("#file_tube")
             file_tube.add_document_to_up_tube(document=doc)
-            self.query_one("#middle_switch").change_to_pointer("file_tube")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("file_tube")
         
         elif event.button.id == "plugin_refresh":
             self.plugin_refresh()
@@ -352,12 +362,12 @@ class MainApp(App[str]):
             input = message.value
             
             # If there is no chat window, then send the input to 'horse'.
-            if self.query_one("#chat_tabs").tab_count == 0:
+            if self.main_screen.query_one("#chat_tabs").tab_count == 0:
                 self.horse.refresh_input(input)
                 return
             
-            upload_file_switch = self.query_one("#file_tube #send_switch")
-            tab = self.query_one("#chat_tabs").active_tab
+            upload_file_switch = self.main_screen.query_one("#file_tube #send_switch")
+            tab = self.main_screen.query_one("#chat_tabs").active_tab
 
             if not tab:
                 Thread(target = self.no_context_manager.chat, args = (input,)).start()
@@ -378,9 +388,9 @@ class MainApp(App[str]):
 
             # If the upload_file_switch is on, append the content of the file to the prompt.
             if upload_file_switch.value:
-                displayer = self.query_one("#status_region")
+                displayer = self.main_screen.query_one("#status_region")
                 tf = TubeFiles(displayer=displayer)
-                tube = self.query_one("#file_tube")
+                tube = self.main_screen.query_one("#file_tube")
                 files = tube.get_upload_files()
                 prompt = await tf.insert_files(*files, input=input)
                 
@@ -414,7 +424,7 @@ class MainApp(App[str]):
                 )
 
     async def on_voice_submitted(self, message) -> None:
-        tab = self.query_one("#chat_tabs").active_tab
+        tab = self.main_screen.query_one("#chat_tabs").active_tab
         if not tab:
             Thread(target = self.no_context_manager.chat, args = (message.content,)).start()
             return
@@ -431,54 +441,54 @@ class MainApp(App[str]):
     
     def on_my_scroll_support_mixin_my_scroll_changed(self, message) -> None:
         if message.id == "chat_region":
-            height = self.query_one("#chat_region_scroll_bar").content_size.height
+            height = self.main_screen.query_one("#chat_region_scroll_bar").content_size.height
             content = self.scroll_bar_content(message.my_scroll, height)
-            self.query_one("#chat_region_scroll_bar").update(content)
+            self.main_screen.query_one("#chat_region_scroll_bar").update(content)
 
     async def on_slider_slider_changed(self, event) -> None:
         if event.slide_switch.id == "control_switch":
-            self.query_one("#control_panel").current = event.slider.pointer
+            self.main_screen.query_one("#control_panel").current = event.slider.pointer
             if event.slider.pointer == "info_display":
                 self.chat_parameters_display()
         elif event.slide_switch.id == "middle_switch":
-            self.query_one("#no_text_region_content_switcher").current = event.slider.pointer
+            self.main_screen.query_one("#no_text_region_content_switcher").current = event.slider.pointer
             # scroll the assistant tube to end
             await asyncio.sleep(0.2) # wait the assistant tube to mount to get the correct width
             if event.slider.pointer == "assistant_tube":
-                assistant_tube = self.query_one("#assistant_tube")
+                assistant_tube = self.main_screen.query_one("#assistant_tube")
                 assistant_tube.refresh_content_wrap_request_execute()
                 assistant_tube.scroll_to_end(refresh=True)
             elif event.slider.pointer == "plugins_region":
                 if self.openai.conversation_active > 0:
                     self.plugin_refresh()
             elif event.slider.pointer == "directory_tree":
-                self.query_one("#directory_tree").reload()
+                self.main_screen.query_one("#directory_tree").reload()
             elif event.slider.pointer == "conversation_tree":
-                self.query_one("#conversation_tree").conversation_refresh()
+                self.main_screen.query_one("#conversation_tree").conversation_refresh()
     
     async def on_switch_changed(self, event) -> None:
         if event.switch.id == "voice_switch":
             if event.value:
                 voice = Voice(self, dot_env_path=self.config["dot_env_path"], max_record_time=60)
-                self.query_one("#voice_input").mount(voice)
-                self.query_one("#input_switcher").current = "voice_input"
-                self.query_one("#speak_switch").value = True
+                self.main_screen.query_one("#voice_input").mount(voice)
+                self.main_screen.query_one("#input_switcher").current = "voice_input"
+                self.main_screen.query_one("#speak_switch").value = True
                 await asyncio.sleep(0.5)
-                self.query_one("Voice").focus()
+                self.main_screen.query_one("Voice").focus()
             else:
-                self.query_one("#input_switcher").current = "message_region"
-                voice = self.query_one("Voice")
+                self.main_screen.query_one("#input_switcher").current = "message_region"
+                voice = self.main_screen.query_one("Voice")
                 if voice:
                     voice.remove()
-                self.query_one("#speak_switch").value = False
-                self.query_one("#message_region").focus()
+                self.main_screen.query_one("#speak_switch").value = False
+                self.main_screen.query_one("#message_region").focus()
         elif event.switch.id == "speak_switch":
             if event.value is True:
                 self.voice_service.connect()
             else:
                 self.voice_service.cancel_speak()
         elif event.switch.id == "file_wrap_display":
-            tab_id = self.query_one("#chat_tabs").active
+            tab_id = self.main_screen.query_one("#chat_tabs").active
             if not tab_id:
                 return
             id = int(tab_id[3:])
@@ -500,7 +510,7 @@ class MainApp(App[str]):
         if tab_mode == "lxt":
             # lxt: Group talk.
             # Update commander_status_display
-            commander_status_display = self.query_one("#commander_status_display")
+            commander_status_display = self.main_screen.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
                 commander_status_display.update(Text('\u2725', tc("green") or "green"))
             else:
@@ -510,7 +520,7 @@ class MainApp(App[str]):
             group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
             roles_list = list(group_talk_manager.roles.values())
             if not roles_list:
-                self.query_one("#chat_region").clear()
+                self.main_screen.query_one("#chat_region").clear()
                 return
             first_role = roles_list[0]
             
@@ -526,8 +536,8 @@ class MainApp(App[str]):
             self.chat_display.tab_not_switching.set()
             tokens_window = self.get_tokens_window(first_role.context.parameters.get("model"))
             self.dash_board.group_talk_dash_board_display(tokens_window, conversation_id=id)
-            self.query_one("#status_region").update(self.status_region_default)
-            self.query_one("#message_region").focus()
+            self.main_screen.query_one("#status_region").update(self.status_region_default)
+            self.main_screen.query_one("#message_region").focus()
             self.register_plugins_to_manager()
             self.register_default_plugins_to_manager()
             self.plugin_refresh()
@@ -535,7 +545,7 @@ class MainApp(App[str]):
         elif tab_mode == "lqt":
             # lqt: Normal chat.
             # Update commander_status_display
-            commander_status_display = self.query_one("#commander_status_display")
+            commander_status_display = self.main_screen.query_one("#commander_status_display")
             if self.notification.commander_status.get(id, False):
                 commander_status_display.update(Text("\u260d", tc("red") or "red"))
             else:
@@ -548,8 +558,8 @@ class MainApp(App[str]):
             self.chat_display.tab_not_switching.set()
             tokens_window = self.get_tokens_window(openai_context.parameters.get("model"))
             self.dash_board.dash_board_display(tokens_window, conversation_id=id)
-            self.query_one("#status_region").update(self.status_region_default)
-            self.query_one("#message_region").focus()
+            self.main_screen.query_one("#status_region").update(self.status_region_default)
+            self.main_screen.query_one("#message_region").focus()
             self.register_plugins_to_manager()
             self.register_default_plugins_to_manager()
             self.plugin_refresh()
@@ -558,20 +568,20 @@ class MainApp(App[str]):
             # ncc: No chat context
             self.no_context_manager.no_context_chat_active = id
             self.context_to_chat_window(self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active])
-            dashboard = self.query_one("#dash_board")
+            dashboard = self.main_screen.query_one("#dash_board")
             height = dashboard.content_size.height
             dashboard.update(Text(" X \n" * height, tc("red") or "red"))
-            self.query_one("#status_region").update(Text("Disposable chat now.", tc("yellow") or "yellow"))
-            self.query_one("#message_region").focus()
+            self.main_screen.query_one("#status_region").update(Text("Disposable chat now.", tc("yellow") or "yellow"))
+            self.main_screen.query_one("#message_region").focus()
         # Refresh the tabs number.
-        tab_num = self.query_one("#chat_tabs").tab_count
+        tab_num = self.main_screen.query_one("#chat_tabs").tab_count
         if tab_num > 9:
             tab_num = u'\u21DE'
-        self.query_one("#tabs_num_display").update(Text(str(tab_num), tc("yellow") or "yellow"))
+        self.main_screen.query_one("#tabs_num_display").update(Text(str(tab_num), tc("yellow") or "yellow"))
 
     async def on_tabs_cleared(self, event: Tabs.Cleared) -> None:
         self.openai.conversation_active = 0
-        chat_region = self.query_one("#chat_region")
+        chat_region = self.main_screen.query_one("#chat_region")
         chat_region_width = chat_region.content_size.width
         chat_region_height = chat_region.content_size.height
         chat_region.clear()
@@ -632,9 +642,9 @@ class MainApp(App[str]):
     async def on_common_message(self, message) -> None:
         if message.message_name == "write_file":
             document = message.message_content
-            file_tube = self.query_one("#file_tube")
+            file_tube = self.main_screen.query_one("#file_tube")
             file_tube.add_document_to_down_tube(document=document)
-            self.query_one("#middle_switch").change_to_pointer("file_tube")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("file_tube")
         if message.message_name == "vector_memory_write":
             message_content = message.message_content
             self.qdrant_queue.put({"action": "write_reference", "content": message_content})
@@ -642,13 +652,13 @@ class MainApp(App[str]):
             message_content = message.message_content
             tab_id = message_content["tab_id"]
             tab_name = message_content["tab_name"]
-            chat_tabs = self.query_one("#chat_tabs")
+            chat_tabs = self.main_screen.query_one("#chat_tabs")
             chat_tabs.add_tab(Tab(tab_name, id=tab_id))
 
     def action_set_chat_parameters(self, parameters: dict) -> None:
         # valid check
         if not isinstance(parameters, dict):
-            self.query_one("#status_region").update(Text("'parameters' have to be a dict.", tc("red") or "red"))
+            self.main_screen.query_one("#status_region").update(Text("'parameters' have to be a dict.", tc("red") or "red"))
             return
 
         self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].parameters.update(parameters)
@@ -658,10 +668,10 @@ class MainApp(App[str]):
     def action_set_max_sending_tokens_ratio(self, ratio: float) -> None:
         # valid check
         if not isinstance(ratio, float):
-            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be a flat number."), tc("red") or "red")
+            self.main_screen.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be a flat number."), tc("red") or "red")
             return
         if not 0.0 < ratio < 1.0:
-            self.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be in range from 0.0 to 1.0."), tc("red") or "red")
+            self.main_screen.query_one("#status_region").update(Text("'max_sending_tokens_ratio' have to be in range from 0.0 to 1.0."), tc("red") or "red")
             return
         
         self.openai.conversation_dict[self.openai.conversation_active]["max_sending_tokens_ratio"] = ratio
@@ -678,12 +688,12 @@ class MainApp(App[str]):
         self.decorate_display.action_copy_code(index)
     
     def action_assistant_tube_clear(self):
-        assistant_tube=self.query_one("#assistant_tube")
+        assistant_tube=self.main_screen.query_one("#assistant_tube")
         assistant_tube.clear()
 
     # Shortcut keys ###############################################################################################
     async def action_exit_main_app(self):
-        app_state = {"conversations_recover": self.query_one("#conversations_recover").value}
+        app_state = {"conversations_recover": self.main_screen.query_one("#conversations_recover").value}
         try:
             with open(os.path.join(self.workpath, "_last_app_state.json"), "w") as write_file:
                 write_file.write(json.dumps(app_state, ensure_ascii = False, sort_keys = True, indent = 4, separators = (',',':')))
@@ -692,7 +702,7 @@ class MainApp(App[str]):
             gptui_logger.error(f"Write app last state failed. Error: {e}")
         else:
             state_write_status = True
-        switch = self.query_one("#conversations_recover")
+        switch = self.main_screen.query_one("#conversations_recover")
         if switch.value:
             try:
                 conversation_dict = copy.deepcopy(self.openai.conversation_dict)
@@ -713,7 +723,7 @@ class MainApp(App[str]):
                     write_file.write(json.dumps(content, ensure_ascii = False, sort_keys = True, indent = 4, separators = (',',':')))
 
                 # cache vector memory
-                self.query_one("#status_region").update("Caching conversation vectors ...")
+                self.main_screen.query_one("#status_region").update("Caching conversation vectors ...")
                 await asyncio.sleep(0.1)
                 collections = self.openai.conversation_dict.keys()
                 cache_event = threading.Event()
@@ -729,7 +739,7 @@ class MainApp(App[str]):
                     )
                     cache_event.wait()
                     cache_event.clear()
-                self.query_one("#status_region").update(Text("Conversation vectors cached.", tc("green") or "green"))
+                self.main_screen.query_one("#status_region").update(Text("Conversation vectors cached.", tc("green") or "green"))
                 await asyncio.sleep(0.1)
             
             except Exception as e:
@@ -761,7 +771,7 @@ class MainApp(App[str]):
         self.openai.conversation_active = conversation_id
         tab_id = "lqt" + str(conversation_id)
         tab_name = self.openai.conversation_dict[self.openai.conversation_active]["tab_name"]
-        chat_tabs = self.query_one("#chat_tabs")
+        chat_tabs = self.main_screen.query_one("#chat_tabs")
         chat_tabs.add_tab(Tab(tab_name, id=tab_id))
         await asyncio.sleep(0.2)
         chat_tabs.active = tab_id
@@ -799,7 +809,7 @@ class MainApp(App[str]):
         )
 
     async def action_delete_conversation(self):
-        if self.query_one("#chat_tabs").tab_count == 0:
+        if self.main_screen.query_one("#chat_tabs").tab_count == 0:
             return
         self.run_worker(self.delete_conversation_check())
 
@@ -807,19 +817,19 @@ class MainApp(App[str]):
         no_context_chat_id = self.no_context_manager.open_no_context_chat()
         self.no_context_manager.no_context_chat_active = no_context_chat_id
         tab_id = "ncc" + str(no_context_chat_id)
-        self.query_one("#chat_tabs").add_tab(Tab("NoCo", id=tab_id))
+        self.main_screen.query_one("#chat_tabs").add_tab(Tab("NoCo", id=tab_id))
         await asyncio.sleep(0.2)
-        self.query_one("#chat_tabs").active = tab_id
+        self.main_screen.query_one("#chat_tabs").active = tab_id
         self.context_to_chat_window([])
 
     async def action_read_conversation(self):
-        conversation_file_now = self.query_one("#conversation_tree").file_path_now
+        conversation_file_now = self.main_screen.query_one("#conversation_tree").file_path_now
         if conversation_file_now:
             status, info = self.openai.read_conversation(str(conversation_file_now))
             if status is False:
                 if isinstance(info, int):
                     # The conversation already exits, switch to that conversation
-                    self.query_one("#chat_tabs").active = "lqt" + str(info)
+                    self.main_screen.query_one("#chat_tabs").active = "lqt" + str(info)
                     return
                 else:
                     return
@@ -827,15 +837,15 @@ class MainApp(App[str]):
             tab_name = self.openai.conversation_dict[self.openai.conversation_active]["tab_name"]
             tab_id = str(self.openai.conversation_active)
             tab_id = "lqt" + tab_id
-            self.query_one("#chat_tabs").add_tab(Tab(tab_name, id=tab_id))
+            self.main_screen.query_one("#chat_tabs").add_tab(Tab(tab_name, id=tab_id))
             await asyncio.sleep(0.2)
-            self.query_one("#chat_tabs").active = tab_id
+            self.main_screen.query_one("#chat_tabs").active = tab_id
         else:
-            self.query_one("#status_region").update(Text("No conversation selected.", tc("yellow") or "yellow"))
+            self.main_screen.query_one("#status_region").update(Text("No conversation selected.", tc("yellow") or "yellow"))
 
     async def action_delete_conversation_file(self):
-        conversation_tree = self.query_one("#conversation_tree")
-        if self.query_one("#middle_switch").index != 0:
+        conversation_tree = self.main_screen.query_one("#conversation_tree")
+        if self.main_screen.query_one("#middle_switch").index != 0:
             ani_id = uuid.uuid4()
             self.post_message(
                 AnimationRequest(
@@ -913,13 +923,13 @@ class MainApp(App[str]):
         )
 
     def action_change_to_assistant_tube(self):
-        self.query_one("#middle_switch").change_to_pointer("assistant_tube")
+        self.main_screen.query_one("#middle_switch").change_to_pointer("assistant_tube")
     
     def action_change_to_file_tube(self):
-        self.query_one("#middle_switch").change_to_pointer("file_tube")
+        self.main_screen.query_one("#middle_switch").change_to_pointer("file_tube")
 
     def action_change_to_plugins_region(self):
-        self.query_one("#middle_switch").change_to_pointer("plugins_region")
+        self.main_screen.query_one("#middle_switch").change_to_pointer("plugins_region")
     
     def action_hot_key(self):
         hot_key_display = textwrap.dedent(
@@ -950,41 +960,41 @@ class MainApp(App[str]):
         elif key == "o":
             await self.action_new_disposable_chat()
         elif key == "c":
-            self.query_one("#middle_switch").change_to_pointer("conversation_tree")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("conversation_tree")
         elif key == "d":
-            self.query_one("#middle_switch").change_to_pointer("directory_tree")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("directory_tree")
         elif key == "a":
-            self.query_one("#middle_switch").change_to_pointer("assistant_tube")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("assistant_tube")
         elif key == "t":
-            self.query_one("#middle_switch").change_to_pointer("file_tube")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("file_tube")
         elif key == "p":
-            self.query_one("#middle_switch").change_to_pointer("plugins_region")
+            self.main_screen.query_one("#middle_switch").change_to_pointer("plugins_region")
         elif key == "i":
-            self.query_one("#control_switch").change_to_pointer("info_display")
+            self.main_screen.query_one("#control_switch").change_to_pointer("info_display")
         elif key == "s":
-            self.query_one("#control_switch").change_to_pointer("command_input")
-            self.query_one("#command_input").focus()
+            self.main_screen.query_one("#control_switch").change_to_pointer("command_input")
+            self.main_screen.query_one("#command_input").focus()
         elif key == "9":
-            self.query_one("#chat_tabs").action_previous_tab()
+            self.main_screen.query_one("#chat_tabs").action_previous_tab()
         elif key == "0":
-            self.query_one("#chat_tabs").action_next_tab()
+            self.main_screen.query_one("#chat_tabs").action_next_tab()
         elif key == "f":
-            self.query_one("#middle_switch").change_to_pointer("conversation_tree")
-            self.query_one("#conversation_tree").focus()
+            self.main_screen.query_one("#middle_switch").change_to_pointer("conversation_tree")
+            self.main_screen.query_one("#conversation_tree").focus()
         elif key == "h":
-            self.query_one("#help").press()
+            self.main_screen.query_one("#help").press()
         elif key == "z":
-            self.query_one("#file_wrap_display").toggle()
+            self.main_screen.query_one("#file_wrap_display").toggle()
         elif key == "k":
-            self.query_one("#speak_switch").toggle()
+            self.main_screen.query_one("#speak_switch").toggle()
         elif key == "v":
-            self.query_one("#voice_switch").toggle()
+            self.main_screen.query_one("#voice_switch").toggle()
         elif key == "m":
-            self.query_one("#message_region").focus()
+            self.main_screen.query_one("#message_region").focus()
         elif key == "b":
-            self.query_one("#ai_care_switch").toggle()
+            self.main_screen.query_one("#ai_care_switch").toggle()
         elif key == "u":
-            self.query_one("#fold_no_text_region").press()
+            self.main_screen.query_one("#fold_no_text_region").press()
 
     ###############################################################################################################
 
@@ -1005,12 +1015,12 @@ class MainApp(App[str]):
         for key, value in context_parameters.items():
             display += f"{key}: {value}\n"
         display += f"max_sending_tokens_ratio: {self.openai.conversation_dict[self.openai.conversation_active]['max_sending_tokens_ratio']}"
-        self.query_one("#info_display").update(display)
+        self.main_screen.query_one("#info_display").update(display)
     
     def tab_rename(self, tab: Tab, name: Text | str) -> None:
         tab.label = Text.from_markup(name) if isinstance(name, str) else name
         tab.update(name)
-        underline = self.query_one("#chat_tabs").query_one(Underline)
+        underline = self.main_screen.query_one("#chat_tabs").query_one(Underline)
         tab_name_length = Text(tab.label_text).cell_len
         underline.highlight_end = underline.highlight_start + tab_name_length
 
@@ -1061,11 +1071,11 @@ class MainApp(App[str]):
     def conversation_tab_rename(self, context: OpenaiContext):
         conversation_id = context.id
         tab_id = "lqt" + str(conversation_id)
-        tab = self.query_one(f"#chat_tabs #{tab_id}")
+        tab = self.main_screen.query_one(f"#chat_tabs #{tab_id}")
         tokens_num = context.tokens_num
         assert tokens_num is not None
         if (tab.label_text == "None" or tab.label_text == "New") and tokens_num >= 200:
-            self.query_one("#status_region").update("Conversation renaming...")
+            self.main_screen.query_one("#status_region").update("Conversation renaming...")
             try:
                 rename_function = self.manager.services.sk_kernel.skills.get_function("conversation_service", "conversation_title")
                 conversation = context.chat_context
@@ -1073,7 +1083,7 @@ class MainApp(App[str]):
                 name = str(rename_function(conversation_str))
                 name = name.replace("\n", "") # '\n' may cause tab name display error, because tab have only one line.
             except Exception as e:
-                self.query_one("#status_region").update(
+                self.main_screen.query_one("#status_region").update(
                     Text(
                         "Rename error: " + type(e).__name__,
                         tc("yellow") or "yellow"
@@ -1083,7 +1093,7 @@ class MainApp(App[str]):
             else:
                 self.openai.conversation_dict[conversation_id]["tab_name"] = name
                 self.tab_rename(tab, name)
-                self.query_one("#status_region").update(self.status_region_default)
+                self.main_screen.query_one("#status_region").update(self.status_region_default)
     
     def scroll_bar_content(self, scroll, height):
         y_start = math.floor(scroll.y_start * height)
@@ -1100,14 +1110,14 @@ class MainApp(App[str]):
     # context to chat window
     ############################################################################## context to chat window
     def context_to_chat_window(self, context: list[dict], change_line: bool = True) -> None:
-        self.query_one("#chat_region").clear()
+        self.main_screen.query_one("#chat_region").clear()
         self.decorate_display.clear_code_block() # clear code_block DecorateDisplay
         for piece in context:
             piece_content = {"role": piece["role"], "name": piece.get("name", None), "content": piece["content"]}
             self.context_piece_to_chat_window(piece=piece_content, change_line=change_line, decorator_switch=True)
 
     def context_piece_to_chat_window(self, piece: dict, change_line: bool = False, decorator_switch: bool = False) -> None:
-        chat_region = self.query_one("#chat_region")
+        chat_region = self.main_screen.query_one("#chat_region")
         piece = self.filter(piece)
         if piece:
             if decorator_switch:
@@ -1124,7 +1134,7 @@ class MainApp(App[str]):
     
     # display assistant's talk in assistant_tube 
     def context_piece_to_assistant_tube(self, piece: dict) -> None:
-        display = self.query_one("#assistant_tube")
+        display = self.main_screen.query_one("#assistant_tube")
         if piece["content"].endswith('\n'):
             end = '\n'
         else:
@@ -1150,7 +1160,7 @@ class MainApp(App[str]):
         else:
             chat_content = None
         if chat_content is not None:
-            if self.query_one("#no_text_region_content_switcher").current == "assistant_tube":
+            if self.main_screen.query_one("#no_text_region_content_switcher").current == "assistant_tube":
                 display.write(chat_content)
             else:
                 display.write_content_without_display(chat_content)
@@ -1184,11 +1194,11 @@ class MainApp(App[str]):
         role = piece["role"]
         name = piece.get("name", None)
 
-        displayer = self.query_one("#chat_region")
+        displayer = self.main_screen.query_one("#chat_region")
         width = displayer.content_size.width
         if emoji:
             content = Emoji.replace(content)
-        wrap_file = self.query_one("#file_wrap_display").value
+        wrap_file = self.main_screen.query_one("#file_wrap_display").value
         out = self.decorate_display.pre_wrap_and_highlight(
             inp_string=content,
             stream=stream,
@@ -1252,7 +1262,7 @@ class MainApp(App[str]):
             return model_info.get("tokens_window") or 0
     
     async def delete_conversation_check(self) -> None:
-        tabs = self.query_one("#chat_tabs")
+        tabs = self.main_screen.query_one("#chat_tabs")
         old_tab_id = tabs.active_tab.id
         if int(old_tab_id[3:]) < 0:
             tabs.remove_tab(old_tab_id)
@@ -1286,7 +1296,7 @@ class MainApp(App[str]):
     
     async def message_region_border_reset(self) -> None:
         """Refresh the border display of the message_region"""
-        message_region = self.query_one("#message_region")
+        message_region = self.main_screen.query_one("#message_region")
         message_region_width = message_region.content_size.width
         message_region.border_title = u'\u2500' * message_region_width
         message_region.border_subtitle = u'\u2500' * message_region_width
@@ -1298,7 +1308,7 @@ class MainApp(App[str]):
         if conversation_active == 0:
             return
         conversation_dict = self.openai.conversation_dict
-        chat_tabs = self.query_one("#chat_tabs")
+        chat_tabs = self.main_screen.query_one("#chat_tabs")
         for key, value in conversation_dict.items():
             tab_id = "lqt" + str(key)
             tab_name = value["tab_name"]
@@ -1319,9 +1329,9 @@ class MainApp(App[str]):
 
     def plugin_refresh(self):
         semantic_plugins_list, native_plugins_list = self.manager.scan_plugins(self.config["PLUGIN_PATH"])
-        plugin_display_up = self.query_one("#user_plugins_up")
+        plugin_display_up = self.main_screen.query_one("#user_plugins_up")
         plugin_display_up.clear()
-        plugin_display_down = self.query_one("#user_plugins_down")
+        plugin_display_down = self.main_screen.query_one("#user_plugins_down")
         plugin_display_down.clear()
         plugins_actived = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].plugins
         for plugin in native_plugins_list:
@@ -1380,13 +1390,13 @@ class MainApp(App[str]):
 
     def service_init(self) -> None:
         self.animation_manager = AnimationManager(
-            displayer={"default":self.query_one("#status_region")},
+            displayer={"default":self.main_screen.query_one("#status_region")},
             ani_end_display=self.status_region_default,
         )
         self.decorate_display = DecorateDisplay(self)
         self.drivers = DriverManager(self)
         self.chat_display = ChatResponse(self)
-        self.voice_service = VoiceService(self, self.query_one("#speak_switch").value)
+        self.voice_service = VoiceService(self, self.main_screen.query_one("#speak_switch").value)
         self.notification = Notification(self)
         self.chat_context = ChatContextControl(self)
         self.assistant_tube = AssistantTube(self)
@@ -1395,7 +1405,7 @@ class MainApp(App[str]):
         self.horse = Horse()
 
     async def app_init(self):
-        app_start = self.query_one("AppStart")
+        app_start = self.main_screen.query_one("AppStart")
         app_start_log = app_start.get_rich_log()
         app_start_func = self.app_init_process(app_start_log)
         app_start.set_init_func(app_start_func)
@@ -1413,6 +1423,15 @@ class MainApp(App[str]):
         await asyncio.sleep(0.01)
         try:
             import tiktoken
+            enc = tiktoken.get_encoding("cl100k_base")
+            assert enc.decode(enc.encode("hello world")) == "hello world"
+        except AssertionError:
+            await self.start_failed_exit(
+                init_log,
+                f"An error occurred while downloading resources for tiktoken."
+                "Please ensure that the network connection to OpenAI is stable."
+                "If this problem persists, please reinstall tiktoken."
+            )
         except Exception as e:
             init_log.write(Text(f"An error occurred during the import of tiktoken. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during the import of tiktoken. Error: {e}")
@@ -1442,7 +1461,7 @@ class MainApp(App[str]):
                 manager=self.manager,
                 openai_chat=OpenaiChat(self.manager),
                 workpath=self.config["conversation_path"],
-                conversations_recover=self.query_one("#conversations_recover").value,
+                conversations_recover=self.main_screen.query_one("#conversations_recover").value,
             )
         except Exception as e:
             init_log.write(Text(f"An error occurred during setting up the OpenAI service. Error: {e}", tc("red") or "red"))
@@ -1576,14 +1595,14 @@ class MainApp(App[str]):
                         await self.qdrant_vector.collection_cache(collection_name=collection_name)
                     except ValueError as e:
                         gptui_logger.warning(f"Error occurred when cache vector collection. Have no collection named {collection_name}. Error: {e}")
-                        self.query_one("#status_region").update(
+                        self.main_screen.query_one("#status_region").update(
                             Text(
                                 f"Have no collection named {collection_name}. Error: {e}",
                                 tc("yellow") or "yellow"
                             )
                         )
                     else:
-                        self.query_one("#status_region").update(
+                        self.main_screen.query_one("#status_region").update(
                             Text(
                                 "Conversation vectors cached successfully.",
                                 tc("green") or "green"
@@ -1600,14 +1619,14 @@ class MainApp(App[str]):
                         await self.qdrant_vector.collection_save(collection_name=collection_name)
                     except ValueError as e:
                         gptui_logger.warning(f"Error occurred when save vector collection. Have no collection named {collection_name}. Error: {e}")
-                        self.query_one("#status_region").update(
+                        self.main_screen.query_one("#status_region").update(
                             Text(
                                 f"Have no collection named {collection_name}. Error: {e}",
                                 tc("yellow") or "yellow"
                             )
                         )
                     else:
-                        self.query_one("#status_region").update(
+                        self.main_screen.query_one("#status_region").update(
                             Text(
                                 "Conversation vectors saved successfully.",
                                 tc("green") or "green"
@@ -1663,7 +1682,7 @@ class MainApp(App[str]):
         if ThemeColor._theme == "monochrome":
             ThemeColor.set_theme(self.color_theme)
             try:
-                stop_button = self.query_one("Voice #stop")
+                stop_button = self.main_screen.query_one("Voice #stop")
             except:
                 pass
             else:
@@ -1672,18 +1691,18 @@ class MainApp(App[str]):
             self.color_theme = ThemeColor._theme
             ThemeColor.set_theme("monochrome")
             try:
-                stop_button = self.query_one("Voice #stop")
+                stop_button = self.main_screen.query_one("Voice #stop")
             except:
                 pass
             else:
                 stop_button.variant = "success"
-        chat_tabs = self.query_one("#chat_tabs")
+        chat_tabs = self.main_screen.query_one("#chat_tabs")
         active_tab = chat_tabs.active_tab
         if active_tab is not None:
             self.on_tabs_tab_activated(Tabs.TabActivated(chat_tabs, active_tab))
-        for slider_switch in self.query("SlideSwitch"):
+        for slider_switch in self.main_screen.query("SlideSwitch"):
             slider_switch.set_sliders(slider_switch.index)
-        self.query_one("#file_tube").refresh_display()
+        self.main_screen.query_one("#file_tube").refresh_display()
 
 
 def change_role_view(context: list[dict], from_view: str, to_view: str = "admin") -> list[dict]:
@@ -1750,7 +1769,7 @@ class NoContextChat:
                 )
         except Exception as e:
             app.post_message(AnimationRequest(ani_id=ani_id, action="end"))
-            self.app.query_one("#status_region").update(Text(f"An error occurred during communication with OpenAI. Error: {e}"))
+            self.app.main_screen.query_one("#status_region").update(Text(f"An error occurred during communication with OpenAI. Error: {e}"))
             return
         if app.stream_openai:
             i = 0
@@ -1763,10 +1782,10 @@ class NoContextChat:
                 if chunk.choices[0].finish_reason == "stop":
                     break
                 elif chunk.choices[0].finish_reason == "length":
-                    app.query_one("#status_region").update(Text("Response exceeds tokens limit", tc("red") or "red"))
+                    app.main_screen.query_one("#status_region").update(Text("Response exceeds tokens limit", tc("red") or "red"))
                     break
                 elif chunk.choices[0].finish_reason == "content_filter":
-                    app.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
+                    app.main_screen.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
                     continue
                 chunk_message = chunk['choices'][0]['delta']['content']
                 collected_messages += chunk_message
@@ -1784,7 +1803,7 @@ class NoContextChat:
     
     def chat_stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
         "handle the stream display problems in chat_stream function"
-        chat_region = self.app.query_one("#chat_region")
+        chat_region = self.app.main_screen.query_one("#chat_region")
         char = message["message"]
         if message['status'] == "content":
             length = len(self.decorate_chat_stream_content_lines)
@@ -1799,5 +1818,5 @@ class NoContextChat:
             self.decorate_chat_stream_content_lines = Lines()
 
     def voice_speak(self, speak_text: str):
-        if self.app.query_one("#speak_switch").value:
+        if self.app.main_screen.query_one("#speak_switch").value:
             subprocess.Popen(['termux-tts-speak', speak_text])
