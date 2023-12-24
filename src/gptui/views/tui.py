@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import copy
 import hashlib
@@ -23,6 +24,7 @@ from textual.app import App, ComposeResult
 from textual.actions import ActionError
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, Container
+from textual.screen import Screen
 from textual.widgets import (
     Static,
     Label,
@@ -97,6 +99,100 @@ def preprocess_config_path(config: dict) -> dict:
     return config
 
 
+class MainScreen(Screen):
+    def __init__(self, main_app: MainApp, *args, **kwargs) -> None:
+        self.main_app = main_app
+        super().__init__(*args, **kwargs)
+
+    def compose(self) -> ComposeResult:
+        yield AppStart(self.main_app, classes="top_layer")
+        with Horizontal():
+            with Vertical(id = "text_region"):
+                with Horizontal(id = "tabs_region"):
+                    with Vertical(classes="dot_display"):
+                        yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
+                        yield Label(Text("1", tc("yellow") or "yellow"), id="tabs_num_display")
+                    yield Tabs(id="chat_tabs")
+                    with Vertical(classes="dot_display"):
+                        yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
+                        yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
+                
+                with Horizontal(id="chat_window"):
+                    yield MyChatWindow(id="chat_region")
+                    yield Static(id="chat_region_scroll_bar")
+                
+                yield MyFillIn(char=chr(0x2500), id="line_between_chat_status")
+                
+                yield Static(self.main_app.status_region_default, id="status_region")
+                
+                with ContentSwitcher(id="input_switcher"):
+                    yield MyMultiInput(placeholder="message region", id="message_region")
+                    yield Container(id="voice_input")
+            
+            with Vertical(id="middle_bar"):
+                with Container(id="tool_bar"):
+                    yield Button("+", classes="arrow_button", id="add_conversation")
+                    yield Button(">", classes="arrow_button", id="save_conversation")
+                    yield Button("<", classes="arrow_button", id="read_conversation")
+                    yield Button("-", classes="arrow_button", id="delete_conversation")
+                    yield Button("x", classes="arrow_button", id="delete_conversation_file")
+                    yield Button("n", classes="arrow_button", id="no_context")
+                    yield Button(u"\u21A5", classes="arrow_button", id="import_file_to_tube")
+                
+                with Container(id="middle_switch_container"):
+                    yield SlideSwitch([(Text("C"), "conversation_tree"),
+                                       (Text("D"), "directory_tree"),
+                                       (Text("A"), "assistant_tube"),
+                                       (Text("T"), "file_tube"),
+                                       (Text("P"), "plugins_region")], direction="up", id="middle_switch")
+                
+                yield Button("\u21a3", classes="arrow_button", id="fold_no_text_region")
+
+                yield Button("[underline]?[/]", classes="arrow_button", id="help")
+                
+                yield Static(id="dash_board")
+            
+            with Vertical(id="no_text_region"):
+                with ContentSwitcher(id="no_text_region_content_switcher"):
+                    yield ConversationTree(self.main_app.config["conversation_path"], "Conversations:", id="conversation_tree")
+                    yield MyDirectoryTree(self.main_app.config["directory_tree_path"], self.main_app.config["directory_tree_path"], id="directory_tree")
+                    yield MyChatWindow(id="assistant_tube")
+                    yield Tube(app=self.main_app, id="file_tube")
+                    with Vertical(id="plugins_region"):
+                        with Horizontal():
+                            yield Label("Plugins: ", id="plugin_label")
+                            yield NoPaddingButton("|Refresh|", id="plugin_refresh")
+                        user_plugins_up = GridContent(name="UserPluginsUp", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_up") 
+                        user_plugins_down = GridContent(name="UserPluginsDown", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_down")
+                        yield MultiGridContent(grid_list=[user_plugins_up, user_plugins_down], id="plugins_control")
+                
+                with Horizontal(id="control_region"):
+                    yield SlideSwitch(
+                        [
+                            (Text("I"), "info_display"),
+                            (Text("S"), "command_input"),
+                        ], id="control_switch", direction="down")
+                    with ContentSwitcher(id="control_panel"):
+                        yield Label("Chat Parameters", id="info_display")
+                        yield MyMultiInput(placeholder="Input command:", id="command_input")
+                
+                with Horizontal(id="direct_control"):
+                    with Horizontal(id="direct_control_switch"):
+                        yield Static(" R", classes="switch_label")
+                        tui_config = self.main_app.config["tui_config"]
+                        assert isinstance(tui_config, dict)
+                        yield Switch(value=tui_config["conversations_recover"], id="conversations_recover", classes="min_switch")
+                        yield Static(" V", classes="switch_label")
+                        yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
+                        yield Static(" S", classes="switch_label")
+                        yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
+                        yield Static(" C", classes="switch_label")
+                        yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
+                        yield Static(" F", classes="switch_label")
+                        yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
+                    yield NoPaddingButton("|Exit|", id="exit")
+
+
 class MainApp(App[str]):
 
     CSS_PATH = "layout.tcss"
@@ -159,96 +255,10 @@ class MainApp(App[str]):
         self.qdrant_thread.start()
         self.app_exited = False # It will be used when exiting from app_init
         self.color_theme: str = "default"
-
-    def compose(self) -> ComposeResult:
-        yield AppStart(self, classes="top_layer")
-        with Horizontal():
-            with Vertical(id = "text_region"):
-                with Horizontal(id = "tabs_region"):
-                    with Vertical(classes="dot_display"):
-                        yield NoPaddingButton("\ueab5", classes="tab_arrow", id="tab_left")
-                        yield Label(Text("1", tc("yellow") or "yellow"), id="tabs_num_display")
-                    yield Tabs(id="chat_tabs")
-                    with Vertical(classes="dot_display"):
-                        yield NoPaddingButton("\ueab6", classes="tab_arrow", id="tab_right")
-                        yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
-                
-                with Horizontal(id="chat_window"):
-                    yield MyChatWindow(id="chat_region")
-                    yield Static(id="chat_region_scroll_bar")
-                
-                yield MyFillIn(char=chr(0x2500), id="line_between_chat_status")
-                
-                yield Static(self.status_region_default, id="status_region")
-                
-                with ContentSwitcher(id="input_switcher"):
-                    yield MyMultiInput(placeholder="message region", id="message_region")
-                    yield Container(id="voice_input")
-            
-            with Vertical(id="middle_bar"):
-                with Container(id="tool_bar"):
-                    yield Button("+", classes="arrow_button", id="add_conversation")
-                    yield Button(">", classes="arrow_button", id="save_conversation")
-                    yield Button("<", classes="arrow_button", id="read_conversation")
-                    yield Button("-", classes="arrow_button", id="delete_conversation")
-                    yield Button("x", classes="arrow_button", id="delete_conversation_file")
-                    yield Button("n", classes="arrow_button", id="no_context")
-                    yield Button(u"\u21A5", classes="arrow_button", id="import_file_to_tube")
-                
-                with Container(id="middle_switch_container"):
-                    yield SlideSwitch([(Text("C"), "conversation_tree"),
-                                       (Text("D"), "directory_tree"),
-                                       (Text("A"), "assistant_tube"),
-                                       (Text("T"), "file_tube"),
-                                       (Text("P"), "plugins_region")], direction="up", id="middle_switch")
-                
-                yield Button("\u21a3", classes="arrow_button", id="fold_no_text_region")
-
-                yield Button("[underline]?[/]", classes="arrow_button", id="help")
-                
-                yield Static(id="dash_board")
-            
-            with Vertical(id="no_text_region"):
-                with ContentSwitcher(id="no_text_region_content_switcher"):
-                    yield ConversationTree(self.config["conversation_path"], "Conversations:", id="conversation_tree")
-                    yield MyDirectoryTree(self.config["directory_tree_path"], self.config["directory_tree_path"], id="directory_tree")
-                    yield MyChatWindow(id="assistant_tube")
-                    yield Tube(app=self, id="file_tube")
-                    with Vertical(id="plugins_region"):
-                        with Horizontal():
-                            yield Label("Plugins: ", id="plugin_label")
-                            yield NoPaddingButton("|Refresh|", id="plugin_refresh")
-                        user_plugins_up = GridContent(name="UserPluginsUp", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_up") 
-                        user_plugins_down = GridContent(name="UserPluginsDown", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_down")
-                        yield MultiGridContent(grid_list=[user_plugins_up, user_plugins_down], id="plugins_control")
-                
-                with Horizontal(id="control_region"):
-                    yield SlideSwitch(
-                        [
-                            (Text("I"), "info_display"),
-                            (Text("S"), "command_input"),
-                        ], id="control_switch", direction="down")
-                    with ContentSwitcher(id="control_panel"):
-                        yield Label("Chat Parameters", id="info_display")
-                        yield MyMultiInput(placeholder="Input command:", id="command_input")
-                
-                with Horizontal(id="direct_control"):
-                    with Horizontal(id="direct_control_switch"):
-                        yield Static(" R", classes="switch_label")
-                        tui_config = self.config["tui_config"]
-                        assert isinstance(tui_config, dict)
-                        yield Switch(value=tui_config["conversations_recover"], id="conversations_recover", classes="min_switch")
-                        yield Static(" V", classes="switch_label")
-                        yield Switch(value=tui_config["voice_switch"], id="voice_switch", classes="min_switch")
-                        yield Static(" S", classes="switch_label")
-                        yield Switch(value=tui_config["speak_switch"], id="speak_switch", classes="min_switch")
-                        yield Static(" C", classes="switch_label")
-                        yield Switch(value=tui_config["ai_care_switch"], id="ai_care_switch", classes="min_switch")
-                        yield Static(" F", classes="switch_label")
-                        yield Switch(value=tui_config["file_wrap_display"], id="file_wrap_display", classes="min_switch")
-                    yield NoPaddingButton("|Exit|", id="exit")
+        self.main_screen = MainScreen(self)
     
-    def on_mount(self):
+    async def on_mount(self):
+        await self.push_screen(self.main_screen)
         self.query_one("#no_text_region_content_switcher").current = "conversation_tree"
         self.query_one("#control_panel").current = "info_display"
         self.query_one("#input_switcher").current = "message_region"
