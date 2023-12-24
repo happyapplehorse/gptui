@@ -172,7 +172,7 @@ class OpenaiChatManage:
         
         if do_insert:
             app = self.app
-            app.query_one("#status_region").update(Text("Bead inserted.","green"))
+            app.main_screen.query_one("#status_region").update(Text("Bead inserted.","green"))
             #refresh dashboard
             model = conversation["openai_context"].parameters["model"]
             app.dash_board.dash_board_display(tokens_num_window=app.get_tokens_window(model))
@@ -290,17 +290,17 @@ class OpenaiChatManage:
             try:
                 write_file.write(json.dumps({conversation_id: conversation}, ensure_ascii = False, sort_keys = True, indent = 4, separators = (',',':')))
             except Exception as e:
-                self.app.query_one("#status_region").update(Text(f"Save conversation failed: {e}", "red"))
+                self.app.main_screen.query_one("#status_region").update(Text(f"Save conversation failed: {e}", "red"))
                 gptui_logger.error(f"Write conversation failed. Error: {e}")
                 return e
-        self.app.query_one("#status_region").update(Text(f"Save conversation context successfully.", "green"))
-        self.app.query_one("#conversation_tree").conversation_refresh()
+        self.app.main_screen.query_one("#status_region").update(Text(f"Save conversation context successfully.", "green"))
+        self.app.main_screen.query_one("#conversation_tree").conversation_refresh()
         return True
     
     def read_conversation(self, file_path: str) -> tuple[bool, Exception | int | str]:
         "load conversation from file"
         if not file_path.endswith('.json'):
-            self.app.query_one("#status_region").update(Text("Conversation file is not supported.",'yellow'))
+            self.app.main_screen.query_one("#status_region").update(Text("Conversation file is not supported.",'yellow'))
             gptui_logger.error("Conversation file is not supported.")
             return False, ValueError("Conversation file is not supported")
         with open(file_path, "r") as read_file:
@@ -314,22 +314,22 @@ class OpenaiChatManage:
                 conversation = conversation_info[conversation_id]
             except FileNotFoundError as e:
                 gptui_logger.error("File not found")
-                self.app.query_one("#status_region").update(Text("File not found",'yellow'))
+                self.app.main_screen.query_one("#status_region").update(Text("File not found",'yellow'))
                 return False, e
             except IsADirectoryError as e:
                 gptui_logger.error("Specified path is a directory, not a file")
-                self.app.query_one("#status_region").update(Text("Specified path is a directory, not a file",'yellow'))
+                self.app.main_screen.query_one("#status_region").update(Text("Specified path is a directory, not a file",'yellow'))
                 return False, e
             except UnicodeDecodeError as e:
                 gptui_logger.error("File is not encoded properly")
-                self.app.query_one("#status_region").update(Text("File is not encoded properly",'yellow'))
+                self.app.main_screen.query_one("#status_region").update(Text("File is not encoded properly",'yellow'))
                 return False, e
             except IOError as e:
-                self.app.query_one("#status_region").update(Text(f"An I/O error occurred: {e}",'yellow'))
+                self.app.main_screen.query_one("#status_region").update(Text(f"An I/O error occurred: {e}",'yellow'))
                 gptui_logger.error(f"An I/O error occurred: {e}")
                 return False, e
             except Exception as e:
-                self.app.query_one("#status_region").update(Text('Read conversation failed','red'))
+                self.app.main_screen.query_one("#status_region").update(Text('Read conversation failed','red'))
                 gptui_logger.error("Read conversation failed. An unexpected error occurred: {e}")
                 return False, e
             else:

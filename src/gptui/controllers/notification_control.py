@@ -22,7 +22,7 @@ gptui_logger = logging.getLogger("gptui_logger")
 class Notification:
     def __init__(self, app: MainApp):
         self.app = app
-        self.displayer = app.query_one("#status_region")
+        self.displayer = app.main_screen.query_one("#status_region")
         notification_signal.connect(self.notification_display)
         self.commander_status = {}
 
@@ -52,15 +52,15 @@ class Notification:
                 context = info_content["context"]
                 self.app.post_message(AnimationRequest(ani_id=context.id, action="end"))
             elif description == "commander exit":
-                commander_status_display = self.app.query_one("#commander_status_display")
+                commander_status_display = self.app.main_screen.query_one("#commander_status_display")
                 commander_status_display.update(Text("\u260a", tc("cyan") or "cyan"))
             elif description == "job status changed":
                 await self._handle_job_status_changed(info_content=info_content)
             elif description == "grouptalkmanager status changed":
-                tab_id = int(self.app.query_one("#chat_tabs").active[3:])
+                tab_id = int(self.app.main_screen.query_one("#chat_tabs").active[3:])
                 status = info_content["status"]
                 group_talk_manager_id = info_content["group_talk_manager"].group_talk_manager_id
-                commander_status_display = self.app.query_one("#commander_status_display")
+                commander_status_display = self.app.main_screen.query_one("#commander_status_display")
                 self.commander_status[group_talk_manager_id] = status
                 if tab_id == group_talk_manager_id:
                     if status is True:
@@ -102,10 +102,10 @@ class Notification:
             self.openai_error_display(error=error, context=context)
 
     async def _handle_job_status_changed(self, info_content: dict):
-        tab_id = int(self.app.query_one("#chat_tabs").active[3:])
+        tab_id = int(self.app.main_screen.query_one("#chat_tabs").active[3:])
         status = info_content["status"]
         context_id = info_content["context"].id
-        commander_status_display = self.app.query_one("#commander_status_display")
+        commander_status_display = self.app.main_screen.query_one("#commander_status_display")
         self.commander_status[context_id] = status
         
         if tab_id != context_id:
@@ -125,7 +125,7 @@ class Notification:
             return
         
         # AICare
-        if self.app.query_one("#ai_care_switch").value is True:
+        if self.app.main_screen.query_one("#ai_care_switch").value is True:
             self.app.openai.accept_ai_care = True
             self.app.openai.ai_care.chat_update(conversation["openai_context"])
         
