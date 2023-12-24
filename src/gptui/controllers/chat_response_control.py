@@ -12,8 +12,8 @@ gptui_logger = logging.getLogger("gptui_logger")
 class ChatResponse:
     def __init__(self, app):
         self.app = app
-        self.chat_region = app.query_one("#chat_region")
-        self.app_chat_tabs = app.query_one("#chat_tabs")
+        self.chat_region = app.main_screen.query_one("#chat_region")
+        self.app_chat_tabs = app.main_screen.query_one("#chat_tabs")
         self.buffer = {}
         self.tab_not_switching = threading.Event()
         self.tab_not_switching.set()

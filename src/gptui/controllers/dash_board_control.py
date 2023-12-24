@@ -38,7 +38,7 @@ class DashBoard:
             # Check if coord is within the found segment
             return start_positions[index] <= position <= end_positions[index]
         
-        display = self.app.query_one("#dash_board")
+        display = self.app.main_screen.query_one("#dash_board")
         height = display.content_size.height
         
         if tokens_num_window == 0:
