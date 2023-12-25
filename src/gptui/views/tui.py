@@ -1340,7 +1340,7 @@ class MainApp(App[str]):
                     MyCheckBox(
                         status=(plugin.plugin_info in plugins_actived),
                         icon=Text("  \U000F0880 ", tc("blue") or "blue"),
-                        label=Text(plugin.name),
+                        label=plugin.name,
                         pointer=plugin,
                         domain=plugin_display_up
                     )
@@ -1350,7 +1350,7 @@ class MainApp(App[str]):
                     MyCheckBox(
                         status=(plugin.plugin_info in plugins_actived),
                         icon=Text("  \U000F0880 ", tc("blue") or "blue"),
-                        label=Text(plugin.name),
+                        label=plugin.name,
                         pointer=plugin,
                         domain=plugin_display_down
                     )
@@ -1361,7 +1361,7 @@ class MainApp(App[str]):
                     MyCheckBox(
                         status=(plugin.plugin_info in plugins_actived),
                         icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
-                        label=Text(plugin.name),
+                        label=plugin.name,
                         pointer=plugin,
                         domain=plugin_display_up
                     )
@@ -1371,7 +1371,7 @@ class MainApp(App[str]):
                     MyCheckBox(
                         status=(plugin.plugin_info in plugins_actived),
                         icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
-                        label=Text(plugin.name),
+                        label=plugin.name,
                         pointer=plugin,
                         domain=plugin_display_down
                     )

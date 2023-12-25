@@ -968,7 +968,7 @@ class GridContent(GridContentBase):
 
 
 class MyCheckBox(Widget, Generic[CheckBoxPointer]):
-    def __init__(self, status: bool, icon: Text, label: Text, pointer: CheckBoxPointer, domain=None, **kwargs):
+    def __init__(self, status: bool, icon: Text, label: str, pointer: CheckBoxPointer, domain=None, **kwargs):
         super().__init__(**kwargs)
         self.status = status
         self.icon = icon
@@ -1017,7 +1017,7 @@ class MyCheckBox(Widget, Generic[CheckBoxPointer]):
                 super().__init__()
 
     class LabelRegion(Static):
-        def __init__(self, label: Text, check_box_instance: MyCheckBox):
+        def __init__(self, label: str, check_box_instance: MyCheckBox):
             super().__init__()
             self.update(label)
             self.check_box = check_box_instance
