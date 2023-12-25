@@ -390,12 +390,14 @@ Voice #control_region {
   background: rgb(30,30,30);
 }
 
-.monochrome #plugins_control UserPluginsUp {
-  color: $monochrome_green;
-  background: $monochrome_green 2%;
+#plugins_control GridContent {
+  layout: grid;
+  grid-size: 4;
+  grid-rows: 3;
+  grid-gutter: 1;
 }
 
-.monochrome #plugins_control UserPluginsDown {
+.monochrome #plugins_control GridContent {
   color: $monochrome_green;
   background: $monochrome_green 2%;
 }

@@ -591,12 +591,12 @@ class Tube(Widget):
                 yield Button("|Import|", id="up_import")
                 yield Button("|Clear|", id="up_clear")
                 yield Switch(value=False, id="send_switch", classes="min_switch")
-            yield GridContent(name="GridContentUp", id="up_tube", column_num=4, grid_rows="5")
+            yield GridContentMake(name="GridContentUp", id="up_tube", column_num=4, grid_rows="5")
             with Horizontal():
                 yield Button("|Export|", id="down_export")
                 yield Button("|Delete|", id="down_delete")
                 yield Button("|Clear|", id ="down_clear")
-            yield GridContent(name="GridContentDown", id="down_tube", column_num=4, grid_rows="5")
+            yield GridContentMake(name="GridContentDown", id="down_tube", column_num=4, grid_rows="5")
 
     def on_mount(self):
         export_button = self.query_one("#down_export")
@@ -755,7 +755,7 @@ class MultiGridContent(Widget):
     
     @property
     def grid_content_list(self) -> list:
-        children = self.query("MultiGridContent > GridContent4")
+        children = self.query("MultiGridContent > GridContentBase")
         return list(children)
 
     @property
@@ -840,14 +840,14 @@ class GridContentMeta(_MessagePumpMeta):
         
         def remove_child_last(self) -> None:
             try:
-                children = self.query("GridContent2 > *")
+                children = self.query("GridContentBase > *")
                 children.last().remove()
             except NoMatches:
                 return
         
         def remove_child_first(self):
             try:
-                children = self.query("GridContent2 > *")
+                children = self.query("GridContentBase > *")
                 children.first().remove()
             except NoMatches:
                 return
@@ -881,7 +881,15 @@ class GridContentMeta(_MessagePumpMeta):
         return type.__new__(mcs, name, bases, attrs)
 
 
-class GridContent:
+class GridContentBase(Widget):
+    """Base class for GridContent and GridContentMake
+
+    Each GridContentMake must be assigned a unique class name upon instantiation;
+    therefore, the name of each GridContentMake is actually distinct and uncertain.
+    This base class can be used to determine if a class is a GridContentMake or GridContent.
+    """
+
+class GridContentMake:
     """
     A container that put its contents in a grid.
     """
@@ -894,11 +902,73 @@ class GridContent:
         grid_rows: str = "2", 
         **kwargs
     ):
-        return GridContentMeta(name, (Widget,), {})(column_num=column_num, row_num=row_num, grid_columns=grid_columns, grid_rows=grid_rows, **kwargs)
+        return GridContentMeta(name, (GridContentBase,), {})(column_num=column_num, row_num=row_num, grid_columns=grid_columns, grid_rows=grid_rows, **kwargs)
+
+
+class GridContent(GridContentBase):
+
+    DEFAULT_CSS = """
+    GridContent {
+        layout: grid;
+        grid-size: 4;
+        grid-columns: 1fr;
+        grid-rows: 2;
+        grid-gutter: 1;
+    }
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def add_children(
+        self,
+        *children,
+        before: int | str | Widget | None = None,
+        after: int | str | Widget | None = None
+    ) -> None:
+        self.mount(*children, before=before, after=after)
+
+    def update_children(self, *args, **kwargs) -> None:
+        self.clear()
+        self.add_children(*args, **kwargs)
+    
+    def remove_child(self, child: str | Widget) -> None:
+        if isinstance(child, str):
+            try:
+                self.query_one(child).remove()
+            except NoMatches as e:
+                gptui_logger.error(e)
+        else:
+            child.remove()
+    
+    def remove_child_last(self) -> None:
+        try:
+            children = self.query("GridContentBase > *")
+            children.last().remove()
+        except NoMatches:
+            return
+    
+    def remove_child_first(self):
+        try:
+            children = self.query("GridContentBase > *")
+            children.first().remove()
+        except NoMatches:
+            return
+    
+    def clear(self):
+        self.remove_children()
+
+    def change_child_order(
+        self,
+        child,
+        before: int | Widget | None = None,
+        after: int | Widget | None = None
+    ) -> None:
+        self.move_child(child, before=before, after=after)
 
 
 class MyCheckBox(Widget, Generic[CheckBoxPointer]):
-    def __init__(self, status: bool, icon: Text, label: Text, pointer: CheckBoxPointer, domain=None, **kwargs):
+    def __init__(self, status: bool, icon: Text, label: str, pointer: CheckBoxPointer, domain=None, **kwargs):
         super().__init__(**kwargs)
         self.status = status
         self.icon = icon
@@ -947,7 +1017,7 @@ class MyCheckBox(Widget, Generic[CheckBoxPointer]):
                 super().__init__()
 
     class LabelRegion(Static):
-        def __init__(self, label: Text, check_box_instance: MyCheckBox):
+        def __init__(self, label: str, check_box_instance: MyCheckBox):
             super().__init__()
             self.update(label)
             self.check_box = check_box_instance
