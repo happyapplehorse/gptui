@@ -162,8 +162,8 @@ class MainScreen(Screen):
                         with Horizontal():
                             yield Label("Plugins: ", id="plugin_label")
                             yield NoPaddingButton("|Refresh|", id="plugin_refresh")
-                        user_plugins_up = GridContent(name="UserPluginsUp", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_up") 
-                        user_plugins_down = GridContent(name="UserPluginsDown", column_num=4, grid_rows="3", classes="user_plugins", id="user_plugins_down")
+                        user_plugins_up = GridContent(classes="user_plugins", id="user_plugins_up") 
+                        user_plugins_down = GridContent(classes="user_plugins", id="user_plugins_down")
                         yield MultiGridContent(grid_list=[user_plugins_up, user_plugins_down], id="plugins_control")
                 
                 with Horizontal(id="control_region"):
