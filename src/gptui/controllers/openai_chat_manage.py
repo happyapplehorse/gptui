@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+import random
 import time
 from dataclasses import asdict
 from typing import Literal, Generator, Iterable
@@ -137,10 +138,13 @@ class OpenaiChatManage:
         self.ai_care_depth: int = self.ai_care_depth_default
 
     def reset_ai_care_depth(self):
-        self.ai_care_depth = self.ai_care_depth_default
+        if self.ai_care_depth_default <= 1:
+            self.ai_care_depth = self.ai_care_depth_default
+        else:
+            self.ai_care_depth = random.randint(1, self.ai_care_depth_default)
 
     def _set_ai_care(self, ai_care: AICare):
-        ai_care.set_config(key="delay", value=60)
+        ai_care.set_config(key="delay", value=self.app.config["tui_config"]["ai_care_delay"])
         ai_care.set_guide("You are a very considerate person who cares about others and is willing to inntiate conversations")
         ai_care.register_to_llm_method(self.ai_care_to_openai)
         ai_care.register_to_user_method(self.ai_care_to_user)

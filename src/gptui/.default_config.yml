@@ -29,6 +29,7 @@ tui_config:
   file_wrap_display: true
   ai_care_switch: true
   ai_care_depth: 2
+  ai_care_delay: 60
   status_region_default:
   waiting_receive_animation: "default"
 
