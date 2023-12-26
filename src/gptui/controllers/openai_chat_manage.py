@@ -133,6 +133,11 @@ class OpenaiChatManage:
         self.ai_care = AICare()
         self._set_ai_care(self.ai_care)
         self.accept_ai_care: bool = True
+        self.ai_care_depth_default = app.config["tui_config"]["ai_care_depth"]
+        self.ai_care_depth: int = self.ai_care_depth_default
+
+    def reset_ai_care_depth(self):
+        self.ai_care_depth = self.ai_care_depth_default
 
     def _set_ai_care(self, ai_care: AICare):
         ai_care.set_config(key="delay", value=60)
@@ -503,6 +508,7 @@ class OpenaiChatManage:
         if self.accept_ai_care is False:
             return
         context_id = self.conversation_active
+        openai_context = self.conversation_dict[self.conversation_active]["openai_context"]
         char_list = []
         voice_buffer = ""
         first_times = True
@@ -538,7 +544,7 @@ class OpenaiChatManage:
             message={
                 "content": {
                     "messages": [{"role": "assistant", "content": ''.join(char_list)}],
-                    "context": self.conversation_dict[self.conversation_active]["openai_context"]
+                    "context": openai_context,
                 },
                 "flag": "",
             }
@@ -559,6 +565,10 @@ class OpenaiChatManage:
                 _async_wrapper=async_wrapper_without_loop,
                 message={"content":"", "flag":"end"}
             )
+        
+        if self.ai_care_depth > 0:
+            self.ai_care.chat_update(openai_context)
+            self.ai_care_depth -= 1
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:

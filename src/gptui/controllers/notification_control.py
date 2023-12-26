@@ -127,7 +127,9 @@ class Notification:
         # AICare
         if self.app.main_screen.query_one("#ai_care_switch").value is True:
             self.app.openai.accept_ai_care = True
-            self.app.openai.ai_care.chat_update(conversation["openai_context"])
+            if self.app.openai.ai_care_depth > 0:
+                self.app.openai.ai_care.chat_update(conversation["openai_context"])
+                self.app.openai.ai_care_depth -= 1
         
         # Tab rename
         context = conversation["openai_context"]

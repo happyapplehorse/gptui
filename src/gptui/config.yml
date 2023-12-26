@@ -43,6 +43,7 @@ default_openai_parameters:
 #  speak_switch: false
 #  file_wrap_display: true
 #  ai_care_switch: true
+#  ai_care_depth: 2
 #  status_region_default:
 #  waiting_receive_animation: "default_3"
 
