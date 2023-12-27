@@ -1035,6 +1035,7 @@ class MainApp(App[str]):
             piece = {"role":"user", "content":self.input}
             self.app.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
             self.app.openai.accept_ai_care = False
+            self.app.openai.reset_ai_care_depth()
             self.app.openai.openai_chat.chat(message=piece, context=self.context)
             # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
             # moved into 'notification_control.py'.
@@ -1049,6 +1050,7 @@ class MainApp(App[str]):
         piece = {"role": "user", "content": input_text}
         self.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
         self.openai.accept_ai_care = False
+        self.openai.reset_ai_care_depth()
         self.openai.openai_chat.chat_stream(message=piece, context=context)
         # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
         # moved into 'notification_control.py'.

@@ -87,7 +87,12 @@ class GroupTalk:
             f"Please engage in the chat while adhering to these guidelines and staying in character as the '{role_name}'."
         )
         openai_context_parent = self.manager.client.openai.conversation_dict[self.manager.client.openai.conversation_active]["openai_context"]
-        role = Role(name=role_name, manager=self.manager, openai_context_parent=openai_context_parent)
+        role = Role(
+            name=role_name,
+            group_talk_manager=group_talk_manager,
+            manager=self.manager,
+            openai_context_parent=openai_context_parent,
+        )
         role.set_role_prompt(prompt)
         group_talk_manager.create_role(role=role, role_name=role_name)
 

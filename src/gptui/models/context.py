@@ -1,13 +1,16 @@
 from __future__ import annotations
 import copy
+import logging
 from dataclasses import dataclass, field
 from typing import Literal, TypeVar, Generic
 
 from openai.types.chat import ChatCompletionMessageParam
 
 from .utils.tokens_num import tokens_num_from_chat_context
-import logging
+
+
 gptui_logger = logging.getLogger("gptui_logger")
+
 
 T = TypeVar("T")
 

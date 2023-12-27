@@ -332,6 +332,8 @@ class GroupTalkHandler:
             if group_talk_manager.speaking is None:
                 messages = [{"role": "user", "name": group_talk_manager.user_name, "content": message} for message in group_talk_manager.user_talk_buffer]
                 if messages:
+                    with group_talk_manager._ai_care_rlock:
+                        group_talk_manager.ai_care_message_buffer = []
                     common_message_signal.send(
                         self,
                         _async_wrapper=async_wrapper_with_loop,
@@ -351,6 +353,13 @@ class GroupTalkHandler:
                     # there will be no inconsistency in the role's chat history.
                     self_handler.call_handler(GroupTalkHandler().handle_response(response_dict))
                     group_talk_manager.user_talk_buffer = []
+                    for role in group_talk_manager.roles.values():
+                        role.ai_care_update()
+                else:
+                    # The task might iteratively receive messages and incur certain delays, but that's okay; 
+                    # there is a character currently speaking, and it is permissible for the loop to be blocked at this time.
+                    with group_talk_manager._ai_care_rlock:
+                        await group_talk_manager.send_ai_care_message()
             if not group_talk_manager.running:
                 await group_talk_manager.close_task_node()
                 group_talk_manager.speaking = None
@@ -369,7 +378,9 @@ class GroupTalkHandler:
                 # No need to actually reply.
                 role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 role.context.chat_context_append({"role": "user", "name": "host", "content": f"SYS_INNER: Host says to you: No, {talk_manager.speaking} is speaking."})
+                gptui_logger.info(f"{role_name} want to speak, but {talk_manager.speaking} is speaking.")
             else:
+                gptui_logger.info(f"{role_name} speak.")
                 role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 talk_manager.speaking = role_name
                 try:
@@ -384,15 +395,17 @@ class GroupTalkHandler:
                     talk_content = await self.stream_response_display_and_result(role_name=role_name, async_stream_response=async_talk_stream_response, talk_manager=talk_manager)
                 except Exception as e:
                     # If receiving the message fails, set talk_manager.speaking to None to avoid blocking the group chat.
-                    talk_manager.speaking = None
-                    gptui_logger.info(f"Encountered an error when receiving the speech content of group chat member {role_name}, error: {e}")
+                    await talk_manager.set_speaking_to_none()
+                    gptui_logger.warning(f"Encountered an error when receiving the speech content of group chat member {role_name}, error: {e}")
                 else:
                     TalkToAll = talk_manager.manager.get_job("TalkToAll")
                     await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
         else:
             role.context.chat_context_append({"role": "assistant", "content": " "})
-            if not full_response_content.isspace():
-                gptui_logger.warning(f"The group talk member {role_name} speak without asking 'Can I speak?' first: {full_response_content}")
+            if full_response_content and not full_response_content.isspace():
+                gptui_logger.info(f"The group talk member {role_name} speak without asking 'Can I speak?' first, full_response_content: {full_response_content}")
+            else:
+                gptui_logger.info(f"{role_name} stay silent.")
 
     async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
         chunk_list = []

@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+import random
 import time
 from dataclasses import asdict
 from typing import Literal, Generator, Iterable
@@ -133,9 +134,17 @@ class OpenaiChatManage:
         self.ai_care = AICare()
         self._set_ai_care(self.ai_care)
         self.accept_ai_care: bool = True
+        self.ai_care_depth_default = app.config["tui_config"]["ai_care_depth"]
+        self.ai_care_depth: int = self.ai_care_depth_default
+
+    def reset_ai_care_depth(self):
+        if self.ai_care_depth_default <= 1:
+            self.ai_care_depth = self.ai_care_depth_default
+        else:
+            self.ai_care_depth = random.randint(1, self.ai_care_depth_default)
 
     def _set_ai_care(self, ai_care: AICare):
-        ai_care.set_config(key="delay", value=60)
+        ai_care.set_config(key="delay", value=self.app.config["tui_config"]["ai_care_delay"])
         ai_care.set_guide("You are a very considerate person who cares about others and is willing to inntiate conversations")
         ai_care.register_to_llm_method(self.ai_care_to_openai)
         ai_care.register_to_user_method(self.ai_care_to_user)
@@ -503,6 +512,7 @@ class OpenaiChatManage:
         if self.accept_ai_care is False:
             return
         context_id = self.conversation_active
+        openai_context = self.conversation_dict[self.conversation_active]["openai_context"]
         char_list = []
         voice_buffer = ""
         first_times = True
@@ -538,7 +548,7 @@ class OpenaiChatManage:
             message={
                 "content": {
                     "messages": [{"role": "assistant", "content": ''.join(char_list)}],
-                    "context": self.conversation_dict[self.conversation_active]["openai_context"]
+                    "context": openai_context,
                 },
                 "flag": "",
             }
@@ -559,6 +569,10 @@ class OpenaiChatManage:
                 _async_wrapper=async_wrapper_without_loop,
                 message={"content":"", "flag":"end"}
             )
+        
+        if self.ai_care_depth > 0:
+            self.ai_care.chat_update(openai_context)
+            self.ai_care_depth -= 1
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:
