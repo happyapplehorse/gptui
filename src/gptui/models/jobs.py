@@ -114,7 +114,7 @@ class GroupTalkManager(Job):
             role_name = message["name"]
             self.speaking = role_name
             try:
-                message_content = await self.ai_care_response(role_name=role_name, response=message)
+                message_content = await self.ai_care_response(role_name=role_name, response=message["content"])
             except Exception as e:
                 await self.set_speaking_to_none()
                 self.ai_care_message_buffer.extend(subsequent_messages)

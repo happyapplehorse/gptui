@@ -378,7 +378,9 @@ class GroupTalkHandler:
                 # No need to actually reply.
                 role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 role.context.chat_context_append({"role": "user", "name": "host", "content": f"SYS_INNER: Host says to you: No, {talk_manager.speaking} is speaking."})
+                gptui_logger.info(f"{role_name} want to speak, but {talk_manager.speaking} is speaking.")
             else:
+                gptui_logger.info(f"{role_name} speak.")
                 role.context.chat_context_append({"role": "assistant", "content": "Can I speak?"})
                 talk_manager.speaking = role_name
                 try:
@@ -394,14 +396,16 @@ class GroupTalkHandler:
                 except Exception as e:
                     # If receiving the message fails, set talk_manager.speaking to None to avoid blocking the group chat.
                     await talk_manager.set_speaking_to_none()
-                    gptui_logger.info(f"Encountered an error when receiving the speech content of group chat member {role_name}, error: {e}")
+                    gptui_logger.warning(f"Encountered an error when receiving the speech content of group chat member {role_name}, error: {e}")
                 else:
                     TalkToAll = talk_manager.manager.get_job("TalkToAll")
                     await self_handler.put_job(TalkToAll(message_content=talk_content, message_from=role_name))
         else:
             role.context.chat_context_append({"role": "assistant", "content": " "})
-            if not full_response_content.isspace():
-                gptui_logger.warning(f"The group talk member {role_name} speak without asking 'Can I speak?' first: {full_response_content}")
+            if full_response_content and not full_response_content.isspace():
+                gptui_logger.info(f"The group talk member {role_name} speak without asking 'Can I speak?' first, full_response_content: {full_response_content}")
+            else:
+                gptui_logger.info(f"{role_name} stay silent.")
 
     async def stream_response_result(self, async_stream_response: AsyncIterable) -> str:
         chunk_list = []

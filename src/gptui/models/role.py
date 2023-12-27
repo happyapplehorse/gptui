@@ -1,3 +1,5 @@
+from __future__ import annotations
+import copy
 import logging
 from typing import TYPE_CHECKING, Iterable, Generator, cast
 
@@ -76,7 +78,7 @@ class Role:
             else {"role": "assistant", "content": message["content"]}
             for message in to_llm_messages
         ]
-        context = self.context.chat_context_copy
+        context = copy.deepcopy(self.context)
         assert isinstance(context, BeadOpenaiContext)
         context.auto_insert_bead()
         for one_message in messages_list:
