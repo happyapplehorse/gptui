@@ -211,15 +211,25 @@ class OpenaiHandler:
         if not function_result_dict:
             return
         # send the function response to GPT
+        
         message = [
             # tools call info
             {
                 "role": "assistant",
                 "content": None,
                 "tool_calls": [
-                    {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
+                    {
+                        "id": one_function_call["tool_call_id"],
+                        "function": {
+                            "arguments": str(one_function_call["function_args"]),
+                            "name": one_function_call["function_name"]
+                        },
+                        "type": "function"
+                    } for one_function_call in function_result_dict.values()
                 ]
-            },
+            }
+        ] + \
+        [
             # tools call results
             {
                 "tool_call_id": function_result["tool_call_id"],
@@ -228,6 +238,7 @@ class OpenaiHandler:
                 "content": function_result["function_result"],
             } for function_result in function_result_dict.values()
         ]
+
         gptui_logger.info(f"Function response: {message}")
         functions = self.manager.available_functions_meta
         await notification_signal.send_async(
