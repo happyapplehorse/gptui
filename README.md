@@ -3,6 +3,7 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/gptui)
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/happyapplehorse/gptui/static.yml?label=docs)](https://happyapplehorse.github.io/gptui/)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/happyapplehorse/gptui/python-publish.yml?label=build)
+![Static Badge](https://img.shields.io/badge/bilibili-twototoo222-pink?link=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1AT4y1x7rX)
 
 [English readme](README.md) • [简体中文 readme](README.zh.md)
 

@@ -212,6 +212,15 @@ class OpenaiHandler:
             return
         # send the function response to GPT
         message = [
+            # tools call info
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
+                ]
+            },
+            # tools call results
             {
                 "tool_call_id": function_result["tool_call_id"],
                 "role": "tool",
@@ -236,42 +245,30 @@ class OpenaiHandler:
             paras = {"messages_list": message, "context": self.context, "openai_api_client": self.openai_api_client, "tools": functions, "tool_choice": "auto"}
         else:
             paras = {"messages_list": message, "context": self.context, "openai_api_client": self.openai_api_client}
-        try:
-            # add response to context
-            if self.chat_context_saver == "outer":
-                await chat_context_extend_signal.send_async(
-                    self,
-                    _sync_wrapper=sync_wrapper,
-                    message={
-                        "content":{
-                            "messages": [
-                                {
-                                    "role": "assistant",
-                                    "content": None,
-                                    "tool_calls": [
-                                        {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
-                                    ]
-                                },
-                            ],
-                            "context": self.context
-                        },
-                        "flag": "",
-                    }
-                )
-            else:
-                self.context.chat_context_append(
-                    {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [
-                            {"id": one_function_call["tool_call_id"], "function": {"arguments": str(one_function_call["function_args"]), "name": one_function_call["function_name"]}, "type": "function"} for one_function_call in function_result_dict.values()
-                        ]
-                    }
-                )
-            response = await asyncio.to_thread(chat_service_for_inner, **paras)
-        except Exception as e:
-            OpenaiErrorHandler().openai_error_handle(error=e, context=self.context)
-            raise e
+        
+        # retry twice
+        last_exception = None
+        for _ in range(2):
+            try:
+                response = await asyncio.to_thread(chat_service_for_inner, **paras)
+                break
+            except Exception as e:
+                last_exception = e
+                await asyncio.sleep(5)
+        else:
+            assert last_exception is not None
+            OpenaiErrorHandler().openai_error_handle(error=last_exception, context=self.context)
+            self.context.chat_context_append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"You attempted to call the following tools: {str([result['function_name'] for result in function_result_dict.values()])}, "
+                        "but encountered an exception. If necessary, you can retry or try again later."
+                    )
+                }
+            )
+            raise last_exception
+
         if self.chat_context_saver == "outer":
             await chat_context_extend_signal.send_async(
                 self,
@@ -284,7 +281,8 @@ class OpenaiHandler:
                     "flag":"function_response"}
             )
         else:
-            self.context.chat_context_append(message[0])
+            for one_message in message:
+                self.context.chat_context_append(one_message)
 
         ResponseJob = self.manager.get_job("ResponseJob")
         at_receiving_start = [
