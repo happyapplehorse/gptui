@@ -234,7 +234,10 @@ class Manager(ManagerInterface):
     def scan_plugins(self, path) -> tuple[list, list]:
         children = os.listdir(path)
         dirs = [d for d in children if os.path.isdir(os.path.join(path, d))]
-        files = [os.path.splitext(f)[0] for f in children if os.path.isfile(os.path.join(path, f))]
+        files = [
+            os.path.splitext(f)[0] for f in children
+            if os.path.isfile(os.path.join(path, f)) and f.endswith('.py')
+        ]
         
         def check_semantic_plugin(dir_path: str) -> bool:
             children = os.listdir(dir_path)
