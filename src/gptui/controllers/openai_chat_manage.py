@@ -220,7 +220,18 @@ class OpenaiChatManage:
         openai_context = BeadOpenaiContext(bead=[bead_init])
         openai_context.id = self.conversation_count
         openai_context.chat_context = []
-        openai_context.plugins = plugins_from_name(manager=self.manager, plugin_path=self.app.config["PLUGIN_PATH"], plugins_name_list=self.app.config["default_plugins_used"])
+        openai_context.plugins = plugins_from_name(
+            manager=self.manager,
+            plugin_path=self.app.config["PLUGIN_PATH"],
+            plugins_name_list=self.app.config["default_plugins_used"]
+        )
+        openai_context.plugins.extend(
+            plugins_from_name(
+                manager=self.manager,
+                plugin_path=self.app.config["custom_plugin_path"],
+                plugins_name_list=self.app.config["default_plugins_used"]
+            )
+        )
         
         if openai_params is not None:
             openai_context.parameters = openai_params.copy()
@@ -576,6 +587,8 @@ class OpenaiChatManage:
 
 
 def plugins_from_name(manager: ManagerInterface, plugin_path: str, plugins_name_list) -> list[tuple]:
+    if not os.path.isdir(plugin_path):
+        return []
     semantic_plugins_list, native_plugins_list = manager.scan_plugins(plugin_path)
     semantic_plugins_dict = {plugin.plugin_info[1]: plugin.plugin_info for plugin in semantic_plugins_list}
     native_plugins_dict = {plugin.plugin_info[2]: plugin.plugin_info for plugin in native_plugins_list}

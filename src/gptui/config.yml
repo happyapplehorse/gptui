@@ -21,6 +21,7 @@
 #GPTUI_BASIC_SERVICES_PATH:
 #PLUGIN_PATH:
 #DEFAULT_PLUGIN_PATH:
+#custom_plugin_path: ~/.gptui/plugins/
 
 #% API keys
 #dot_env_path:
@@ -46,7 +47,7 @@ default_openai_parameters:
 #  ai_care_depth: 2
 #  ai_care_delay: 60
 #  status_region_default:
-#  waiting_receive_animation: "default_3"
+#  waiting_receive_animation: "default"
 
 #log_path:
 #  ~/.gptui/logs.log
@@ -85,10 +86,6 @@ location_city:
 
 log_level:
   DEBUG
-
-user_plugins_up:
-  - WriteFile
-  - WebServe
 
 openai_model_info:
   gpt-4-1106-preview:

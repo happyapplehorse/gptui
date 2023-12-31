@@ -7,6 +7,7 @@
 GPTUI_BASIC_SERVICES_PATH:
 PLUGIN_PATH:
 DEFAULT_PLUGIN_PATH:
+custom_plugin_path: ~/.gptui/plugins/
 
 # API keys
 dot_env_path:
