@@ -1,10 +1,9 @@
 import textwrap
 
-from semantic_kernel.sk_pydantic import PydanticField
 from semantic_kernel.skill_definition import sk_function
 
 
-class CustomPluginGuide(PydanticField):
+class CustomPluginGuide:
 
     @sk_function(description="Tell the user how to define a custom plugin.")
     def custom_define_plugin(self) -> str:
