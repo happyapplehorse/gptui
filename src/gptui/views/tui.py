@@ -96,6 +96,7 @@ def preprocess_config_path(config: dict) -> dict:
     config["GPTUI_BASIC_SERVICES_PATH"] = os.path.expanduser(config["GPTUI_BASIC_SERVICES_PATH"] or gptui_path / "models" / "gptui_basic_services")
     config["PLUGIN_PATH"] = os.path.expanduser(config["PLUGIN_PATH"] or gptui_path / "plugins")
     config["DEFAULT_PLUGIN_PATH"] = os.path.expanduser(config["DEFAULT_PLUGIN_PATH"] or gptui_path / "plugins" / "DEFAULT_PLUGINS")
+    config["custom_plugin_path"] = os.path.expanduser(config["custom_plugin_path"])
     return config
 
 
@@ -1318,18 +1319,18 @@ class MainApp(App[str]):
         await asyncio.sleep(0.2)
         chat_tabs.active = "lqt" + str(conversation_active)
     
-    def register_plugins_to_manager(self):
+    def register_plugins_to_manager(self) -> None:
         plugins_list = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].plugins
         self.manager.overwrite_plugins(plugins_list)
         
-    def register_default_plugins_to_manager(self):
+    def register_default_plugins_to_manager(self) -> None:
         semantic_plugins_list, native_plugins_list = self.manager.scan_plugins(self.config["DEFAULT_PLUGIN_PATH"])
         for plugin in semantic_plugins_list:
             self.manager.add_plugins(plugin.plugin_info)
         for plugin in native_plugins_list:
             self.manager.add_plugins(plugin.plugin_info)
 
-    def plugin_refresh(self):
+    def plugin_refresh(self) -> None:
         semantic_plugins_list, native_plugins_list = self.manager.scan_plugins(self.config["PLUGIN_PATH"])
         plugin_display_up = self.main_screen.query_one("#user_plugins_up")
         plugin_display_up.clear()
@@ -1337,47 +1338,49 @@ class MainApp(App[str]):
         plugin_display_down.clear()
         plugins_actived = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].plugins
         for plugin in native_plugins_list:
-            if plugin.plugin_info[2] in self.config["user_plugins_up"]:
-                plugin_display_up.add_children(
-                    MyCheckBox(
-                        status=(plugin.plugin_info in plugins_actived),
-                        icon=Text("  \U000F0880 ", tc("blue") or "blue"),
-                        label=Text(plugin.name),
-                        pointer=plugin,
-                        domain=plugin_display_up
-                    )
+            plugin_display_up.add_children(
+                MyCheckBox(
+                    status=(plugin.plugin_info in plugins_actived),
+                    icon=Text("  \U000F0880 ", tc("blue") or "blue"),
+                    label=Text(plugin.name),
+                    pointer=plugin,
+                    domain=plugin_display_up,
                 )
-            else:
-                plugin_display_down.add_children(
-                    MyCheckBox(
-                        status=(plugin.plugin_info in plugins_actived),
-                        icon=Text("  \U000F0880 ", tc("blue") or "blue"),
-                        label=Text(plugin.name),
-                        pointer=plugin,
-                        domain=plugin_display_down
-                    )
-                )
+            )
         for plugin in semantic_plugins_list:
-            if plugin.plugin_info[1] in self.config["user_plugins_up"]:
-                plugin_display_up.add_children(
-                    MyCheckBox(
-                        status=(plugin.plugin_info in plugins_actived),
-                        icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
-                        label=Text(plugin.name),
-                        pointer=plugin,
-                        domain=plugin_display_up
-                    )
+            plugin_display_up.add_children(
+                MyCheckBox(
+                    status=(plugin.plugin_info in plugins_actived),
+                    icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
+                    label=Text(plugin.name),
+                    pointer=plugin,
+                    domain=plugin_display_up,
                 )
-            else:
-                plugin_display_down.add_children(
-                    MyCheckBox(
-                        status=(plugin.plugin_info in plugins_actived),
-                        icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
-                        label=Text(plugin.name),
-                        pointer=plugin,
-                        domain=plugin_display_down
-                    )
+            )
+        custom_plugin_path = self.config["custom_plugin_path"]
+        if not os.path.isdir(custom_plugin_path):
+            return
+        custom_semantic_plugins_list, custom_native_plugins_list = self.manager.scan_plugins(custom_plugin_path)
+        for plugin in custom_native_plugins_list:
+            plugin_display_down.add_children(
+                MyCheckBox(
+                    status=(plugin.plugin_info in plugins_actived),
+                    icon=Text("  \U000F0880 ", tc("blue") or "blue"),
+                    label=Text(plugin.name),
+                    pointer=plugin,
+                    domain=plugin_display_down,
                 )
+            )
+        for plugin in custom_semantic_plugins_list:
+            plugin_display_down.add_children(
+                MyCheckBox(
+                    status=(plugin.plugin_info in plugins_actived),
+                    icon=Text("  \U000F0C23 ", tc("purple") or "purple"),
+                    label=Text(plugin.name),
+                    pointer=plugin,
+                    domain=plugin_display_down,
+                )
+            )
     
     def manager_init(self, manager: Manager) -> None:
         commander_thread = threading.Thread(target=manager.gk_kernel.commander.run)

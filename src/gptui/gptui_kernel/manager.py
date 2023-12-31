@@ -231,10 +231,22 @@ class Manager(ManagerInterface):
             plugins_list = plugins
         self.gk_kernel.overwrite_plugins(plugins_list)
 
-    def scan_plugins(self, path) -> tuple[list, list]:
+    def scan_plugins(self, path: str) -> tuple[list, list]:
+        """Scan the given directory for plugins and retrieve the corresponding plugin information.
+        
+        Args:
+            path: The path to scan.
+
+        Returns:
+            Returns a tuple, where the first element is the semantic plugins list and the second
+            element is the native plugins list.
+        """
         children = os.listdir(path)
         dirs = [d for d in children if os.path.isdir(os.path.join(path, d))]
-        files = [os.path.splitext(f)[0] for f in children if os.path.isfile(os.path.join(path, f))]
+        files = [
+            os.path.splitext(f)[0] for f in children
+            if os.path.isfile(os.path.join(path, f)) and f.endswith('.py')
+        ]
         
         def check_semantic_plugin(dir_path: str) -> bool:
             children = os.listdir(dir_path)
@@ -279,7 +291,8 @@ class Manager(ManagerInterface):
         return params
 
 def auto_init_params(mode: str = "0"):
-    """
+    """Auto initialize parameters decorator.
+    
     Decorator:
         Mark the method for automatically obtaining initialization parameters,
         and set the mode of the callback parameter for this method.
