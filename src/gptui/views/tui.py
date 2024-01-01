@@ -75,7 +75,7 @@ from ..models.doc import Doc, document_loader
 from ..models.gptui_basic_services.plugins.conversation_service import ConversationService
 from ..models.jobs import GroupTalkManager
 from ..models.openai_chat import OpenaiChat
-from ..models.utils.openai_api import openai_api
+from ..models.utils.openai_api import openai_api_client
 from ..gptui_kernel.manager import Manager
 from ..utils.my_text import MyText as Text
 from ..utils.my_text import MyLines as Lines
@@ -1011,11 +1011,17 @@ class MainApp(App[str]):
         openai_context.parameters["max_tokens"] = tokens_window - openai_context.max_sending_tokens_num
 
     def chat_parameters_display(self) -> None:
-        context_parameters = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].parameters
+        conversation_id = self.openai.conversation_active
+        try:
+            conversation = self.openai.conversation_dict[conversation_id]
+        except KeyError:
+            self.main_screen.query_one("#info_display").update("")
+            return
+        context_parameters = conversation["openai_context"].parameters
         display = ""
         for key, value in context_parameters.items():
             display += f"{key}: {value}\n"
-        display += f"max_sending_tokens_ratio: {self.openai.conversation_dict[self.openai.conversation_active]['max_sending_tokens_ratio']}"
+        display += f"max_sending_tokens_ratio: {conversation['max_sending_tokens_ratio']}"
         self.main_screen.query_one("#info_display").update(display)
     
     def tab_rename(self, tab: Tab, name: Text | str) -> None:
@@ -1742,7 +1748,7 @@ class NoContextChat:
     """
     def __init__(self, app: MainApp) -> None:
         self.app = app
-        self.openai_api = openai_api(app.config["dot_env_path"])
+        self.openai_api_client = openai_api_client(app.config["dot_env_path"])
         self.count = 0
         self.no_context_chat_active = 0
         self.no_context_chat_dict = {}
@@ -1767,7 +1773,7 @@ class NoContextChat:
         ani_id = str(uuid.uuid4())
         app.post_message(AnimationRequest(ani_id=ani_id, action="start"))
         try:
-            response = self.openai_api.ChatCompletion.create(
+            response = self.openai_api_client.with_options(timeout=20.0).chat.completions.create(
                 model = app.config["default_openai_parameters"]["model"] or "gpt-4",
                 messages = [message],
                 stream = app.config["default_openai_parameters"]["stream"],
@@ -1792,7 +1798,7 @@ class NoContextChat:
                 elif chunk.choices[0].finish_reason == "content_filter":
                     app.main_screen.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
                     continue
-                chunk_message = chunk['choices'][0]['delta']['content']
+                chunk_message = chunk.choices[0].delta.content
                 collected_messages += chunk_message
                 self.chat_stream_display({"message":chunk_message, "status":"content"})
             self.chat_stream_display({"message":'', "status":"end"})
