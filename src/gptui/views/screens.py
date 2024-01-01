@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from webbrowser import open
 
 from textual import events, on
 from textual.app import ComposeResult
@@ -249,6 +250,7 @@ class LinkableMarkdownViewer(MarkdownViewer):
     def handle_link(self, event: Markdown.LinkClicked) -> None:
         if not Path(event.href).exists():
             event.prevent_default()
+            open(event.href)
 
 
 class HotKey(ModalScreen[str]):
