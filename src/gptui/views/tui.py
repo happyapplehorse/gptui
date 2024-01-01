@@ -1011,11 +1011,17 @@ class MainApp(App[str]):
         openai_context.parameters["max_tokens"] = tokens_window - openai_context.max_sending_tokens_num
 
     def chat_parameters_display(self) -> None:
-        context_parameters = self.openai.conversation_dict[self.openai.conversation_active]["openai_context"].parameters
+        conversation_id = self.openai.conversation_active
+        try:
+            conversation = self.openai.conversation_dict[conversation_id]
+        except KeyError:
+            self.main_screen.query_one("#info_display").update("")
+            return
+        context_parameters = conversation["openai_context"].parameters
         display = ""
         for key, value in context_parameters.items():
             display += f"{key}: {value}\n"
-        display += f"max_sending_tokens_ratio: {self.openai.conversation_dict[self.openai.conversation_active]['max_sending_tokens_ratio']}"
+        display += f"max_sending_tokens_ratio: {conversation['max_sending_tokens_ratio']}"
         self.main_screen.query_one("#info_display").update(display)
     
     def tab_rename(self, tab: Tab, name: Text | str) -> None:
