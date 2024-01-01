@@ -3,10 +3,10 @@ import textwrap
 from semantic_kernel.skill_definition import sk_function
 
 
-class CustomPluginGuide:
+class PluginGuide:
 
     @sk_function(description="Tell the user how to define a custom plugin.")
-    def custom_define_plugin(self) -> str:
+    def custom_plugin_guide(self) -> str:
         guide = textwrap.dedent("""
         The following are instructions on how to customize plugins; please return the following content directly and unchanged to the user.
         
@@ -23,7 +23,7 @@ class CustomPluginGuide:
 
         To create a semantic plugin, place your plugin folder in the plugin directory (default is ~/.gptui/plugins). For guidance on writing plugins, see here: https://learn.microsoft.com/en-us/semantic-kernel/prompts/saving-prompts-as-files?tabs=python
 
-        You can see an example of this plugin in the ~/.gptui/plugins directory.
+        You can see an example of this plugin in your custom plugin directory (default is ~/.gptui/plugins).
         ==============Customize Plugins Instructions End==============
         """)
         return guide

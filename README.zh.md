@@ -26,11 +26,12 @@ GPTUI提供了一个轻量级的<a href=" ">Kernel</a >，用以驱动AI应用�
 - 语音功能。
 - 群聊功能[^recommend_better_model][^token_cost]。
 - AI-Care。你的AI可以主动关心你[^ai_care]。
-- 可自选的插件功能，包括（可自定义，持续增加与优化中，部分插件的prompt还不完善）：
+- 可选的插件功能，包括（持续增加与优化中）：
   - 搜索互联网[^google_key]。
   - open interpreter[^open_interpreter][^token_cost][^recommend_better_model]。（暂时被移除，等待它支持openai v1.x后再被添加回来。）
   - 提醒[^recommend_better_model]。
   - 从矢量化的对话历史记录中回想记忆。
+- 支持自定义插件。
 
 ![gptui_img](https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_img.jpg)
 
@@ -41,6 +42,9 @@ Open-interpreter具有执行代码的权限，在开启此功能前请确保你�
 [^token_cost]: 注意：该功能可能产生较多的tokens花费。
 [^ai_care]: 由[AI-Care](https://github.com/happyapplehorse/ai-care)提供该能力。
 [^google_key]: 需要提供`GOOGLE_KEY`和`GOOGLE_CX`。可以从[这里](https://developers.google.com/custom-search/v1/introduction)免费获取。
+
+## 🎬 演示视频
+- [AI-Care](https://www.youtube.com/watch?v=gPQ7XV-Q1r8)
 
 # 兼容性
 
