@@ -1,11 +1,12 @@
 import logging
 import os
+from pathlib import Path
 
-from textual import events
+from textual import events, on
 from textual.app import ComposeResult
 from textual.containers import Grid
 from textual.screen import ModalScreen
-from textual.widgets import Button, Label, Input, MarkdownViewer
+from textual.widgets import Button, Label, Input, MarkdownViewer, Markdown
 
 from .custom_tree import MyDirectoryTree
 from ..utils.my_text import MyText as Text
@@ -214,7 +215,7 @@ class MarkdownPreview(ModalScreen):
     MarkdownPreview {
         align: center middle;
     }
-    MarkdownPreview MarkdownViewer {
+    MarkdownPreview LinkableMarkdownViewer {
         width: 50%;
         height: 50%;
         border: ascii $accent;
@@ -231,16 +232,23 @@ class MarkdownPreview(ModalScreen):
         super().__init__(*args, **kwargs)
 
     def on_mount(self) -> None:
-        previewer = self.query_one(MarkdownViewer)
+        previewer = self.query_one(LinkableMarkdownViewer)
         if self.previewer_title is not None:
             previewer.border_title = self.previewer_title
         previewer.border_subtitle = "Press 'space' to close this previewer"
     
     def compose(self) -> ComposeResult:
-        yield MarkdownViewer(self.markdown, show_table_of_contents=False)
+        yield LinkableMarkdownViewer(self.markdown, show_table_of_contents=False)
 
     def action_quit(self) -> None:
         self.app.pop_screen()
+
+
+class LinkableMarkdownViewer(MarkdownViewer):
+    @on(Markdown.LinkClicked)
+    def handle_link(self, event: Markdown.LinkClicked) -> None:
+        if not Path(event.href).exists():
+            event.prevent_default()
 
 
 class HotKey(ModalScreen[str]):
