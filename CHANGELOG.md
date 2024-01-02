@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2023-01-02
+
+### Fixed
+
+- Fixed the bug that prevents the second conversation from being renamed
+
 ## [0.5.1] - 2023-01-02
 
 ### Fixed
