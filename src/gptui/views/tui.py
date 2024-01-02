@@ -1515,6 +1515,21 @@ class MainApp(App[str]):
                         }
                     )
                     collections.remove(collection)
+        except AttributeError as e:
+            init_log.write(
+                Text(
+                    f"An error occurred during cleaning collections. Error: {e}.\n"
+                    "Warning: Rebulding of the vector database may be required\n"
+                    "You can remove '~/.gptui/user/vector_memory_database/' to rebuild it if you are using default config.\n",
+                    tc("red") or "red"
+                )
+            )
+            gptui_logger.error(
+                f"An error occurred during cleaning collections. Error: {e}."
+                "Warning: Rebulding of the vector database may be required"
+                "You can remove '~/.gptui/user/vector_memory_database/' to rebuild it if you are using default config."
+            )
+            await asyncio.sleep(1)
         except Exception as e:
             init_log.write(Text(f"An error occurred during cleaning collections. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during cleaning collections. Error: {e}")

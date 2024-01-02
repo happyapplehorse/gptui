@@ -98,6 +98,7 @@ class AnimationManager:
             self.animation_manager = animation_manager
             self.message = message
             animation_manager.priority_dict[message.displayer][self] = message.priority
+            self.daemon = True
 
         def run(self) -> None:
             animation = self.animation_manager.ani_links.get(self.message.ani_type)
