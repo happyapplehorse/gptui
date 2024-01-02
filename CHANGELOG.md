@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Fixed the bug that prevents the second conversation from being renamed
 - Stop the waiting animation for a conversation when it is deleted
+- Fixed the bug where deleting a conversation shows its replies in another window
 
 ## [0.5.1] - 2023-01-02
 

@@ -33,7 +33,12 @@ class ChatResponse:
         # before displaying the newly generating chat content.    
         self.tab_not_switching.wait(2)
         context_id = message["content"]["context_id"]
-        tab_id = int(self.app_chat_tabs.active[3:])
+        if (active_tab := self.app_chat_tabs.active_tab) is not None:
+            tab_id = int(active_tab.id[3:])
+        else:
+            tab_id = 0
+            #self.buffer = {}
+            #return
         if context_id not in self.buffer:
             self.buffer[context_id] = {
                 "chat_stream_content": {"role": "assistant", "content": ""},
