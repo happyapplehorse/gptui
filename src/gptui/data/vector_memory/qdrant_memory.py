@@ -35,6 +35,7 @@ class QdrantVector(QdrantMemoryStore):
                     gptui_logger.error(
                         f"An error occurred while initializing the local vector database. Database path: {url}. Error: {repr(e)} "
                         "Warning: Rebuilding of the vector database may be required."
+                        "You can remove '~/.gptui/user/vector_memory_database/' to rebuild it if you are using default config."
                     )
             else:
                 self._qdrantclient = QdrantClient(location=":memory:")

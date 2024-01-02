@@ -12,7 +12,7 @@ gptui_logger = logging.getLogger("gptui_logger")
 
 class ConversationService:
     def __init__(self, manager):
-        self.gk_kernel = Kernel(manager.dot_env_config_path)
+        self.manager = manager
 
     @auto_init_params("0")
     @classmethod
@@ -43,7 +43,9 @@ class ConversationService:
         )
         
         chat_context = chat_context_to_string(chat_context_json_str)
-        make_title_function = self.gk_kernel.sk_kernel.create_semantic_function(sk_prompt, max_tokens=50)
+        # A new kernel must be created here, otherwise, there will be context confilicts.
+        gk_kernel = Kernel(self.manager.dot_env_config_path)
+        make_title_function = gk_kernel.sk_kernel.create_semantic_function(sk_prompt, max_tokens=50)
         name = await make_title_function.invoke_async(chat_context)
         name = str(name)
         if name.startswith('"'):

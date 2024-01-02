@@ -1278,6 +1278,7 @@ class MainApp(App[str]):
             self.no_context_manager.no_context_chat_delete(int(old_tab_id[3:]))
             return
 
+        conversation_id = int(old_tab_id[3:])
         def check_dialog_handle(confirm: bool) -> None:
             if confirm:
                 tab_mode = old_tab_id[:3]
@@ -1287,6 +1288,7 @@ class MainApp(App[str]):
                 elif tab_mode == "lxt":
                     self.openai.delete_group_talk_conversation(group_talk_conversation_id=int(old_tab_id[3:]))
                 self.chat_display.delete_buffer_id(id=int(old_tab_id[3:]))
+                self.post_message(AnimationRequest(ani_id=conversation_id, action="end"))
             else:
                 return
 
@@ -1515,6 +1517,21 @@ class MainApp(App[str]):
                         }
                     )
                     collections.remove(collection)
+        except AttributeError as e:
+            init_log.write(
+                Text(
+                    f"An error occurred during cleaning collections. Error: {e}.\n"
+                    "Warning: Rebulding of the vector database may be required\n"
+                    "You can remove '~/.gptui/user/vector_memory_database/' to rebuild it if you are using default config.\n",
+                    tc("red") or "red"
+                )
+            )
+            gptui_logger.error(
+                f"An error occurred during cleaning collections. Error: {e}."
+                "Warning: Rebulding of the vector database may be required"
+                "You can remove '~/.gptui/user/vector_memory_database/' to rebuild it if you are using default config."
+            )
+            await asyncio.sleep(1)
         except Exception as e:
             init_log.write(Text(f"An error occurred during cleaning collections. Error: {e}", tc("red") or "red"))
             gptui_logger.error(f"An error occurred during cleaning collections. Error: {e}")
