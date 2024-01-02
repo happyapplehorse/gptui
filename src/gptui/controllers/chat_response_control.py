@@ -77,7 +77,10 @@ class ChatResponse:
         """Display the group talk response in TUI"""
         message_dict = message["content"]
         group_talk_manager_id = message_dict["group_talk_manager_id"]
-        tab_id = int(self.app_chat_tabs.active[3:])
+        if (active_tab := self.app_chat_tabs.active_tab) is not None:
+            tab_id = int(active_tab.id[3:])
+        else:
+            tab_id = 0
         if group_talk_manager_id not in self.buffer:
             self.buffer[group_talk_manager_id] = {
                 "group_talk_chat_stream_content": {"role": "assistant", "name": "", "content": ""},
