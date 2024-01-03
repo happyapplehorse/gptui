@@ -9,6 +9,7 @@ from typing import cast
 import openai
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Button, ProgressBar, Static
@@ -162,13 +163,22 @@ class Voice(Static, can_focus=True):
                             response_format="text",
                         )
                 except FileNotFoundError:
-                    self.query_one("#voice_status_region").update(Text("Have no voice file", tc("red") or "red"))
+                    try:
+                        self.query_one("#voice_status_region").update(Text("Have no voice file", tc("red") or "red"))
+                    except NoMatches:
+                        return
                     return
                 except openai.APIConnectionError as e:
-                    self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", tc("red") or "red"))
+                    try:
+                        self.query_one("#voice_status_region").update(Text(f"APIConnectionError: {e}", tc("red") or "red"))
+                    except NoMatches:
+                        return
                     return
                 except Exception as e:
-                    self.query_one("#voice_status_region").update(Text(f"Unknown error: {e}", tc("red") or "red"))
+                    try:
+                        self.query_one("#voice_status_region").update(Text(f"Unknown error: {e}", tc("red") or "red"))
+                    except NoMatches:
+                        return
                     return
                 return transcript
             transcript = await asyncio.to_thread(blocking_transcribe)
