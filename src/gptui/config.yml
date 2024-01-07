@@ -1,20 +1,20 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 #%        Note: A list is configured as a whole.                                                %#
-#%        For instance, to modify 'status_region_default' to 'Configuration Example',           %#
+#%        For instance, to modify 'status_region_default' to 'GPTUI Welcome!',                  %#
 #%        one should written it as:                                                             %#
 #%          tui_config:                                                                         %#
 #%            conversations_recover: true                                                       %#
 #%            voice_switch: false                                                               %#
 #%            speak_switch: false                                                               %#
 #%            file_wrap_display: true                                                           %#
-#%            status_region_default: Configuration Example                                      %#
+#%            status_region_default: GPTUI Welcome                                              %#
 #%        not:                                                                                  %#
 #%          tui_config:                                                                         %#
 #%          #  conversations_recover: true                                                      %#
 #%          #  voice_switch: false                                                              %#
 #%          #  speak_switch: false                                                              %#
 #%          #  file_wrap_display: true                                                          %#
-#%            status_region_default: Configuration Example                                      %#
+#%            status_region_default: GPTUI Welcome                                              %#
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 
 
@@ -69,23 +69,24 @@ default_openai_parameters:
 
 terminal:
   #% Tested terminals: {termux, wezterm}
-  termux
+  # termux
+  wezterm
 
 os:
-  termux
-  # linux
+  # termux
+  linux
   # macos
   # windows
 
-default_plugins_used:
+default_plugins_used: []
   #% List of plugin's name of default used
-  - WebServe
+  #- WebServe
 
 #% Set your geographic location. When LLM needs to know yoour position, it will return this location. It's optional to set.
 location_city:
 
 log_level:
-  DEBUG
+  WARNING
 
 openai_model_info:
   gpt-4-1106-preview:

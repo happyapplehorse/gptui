@@ -5,7 +5,7 @@ from typing import Iterable, AsyncIterable
 
 from agere.commander import PASS_WORD, Job, Callback, tasker
 
-from .blinker_wrapper import sync_wrapper
+from .blinker_wrapper import sync_wrapper, async_wrapper_with_loop
 from .context import Context
 from .role import Role
 from .signals import (
