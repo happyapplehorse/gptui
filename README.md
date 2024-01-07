@@ -149,7 +149,7 @@ Depending on the platform you are using, it is best to configure the following o
 Otherwise, some features may not work properly, such as code copy and voice related functions.
 
 ## Configuration Guide
-For detailed configuration instructions, please refer to [here](./docs/guide/configuration.md).
+For detailed configuration instructions, please refer to [here](./docs/configuration.md).
 
 # Quick Start
 

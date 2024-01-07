@@ -45,7 +45,7 @@ tui_config:
 ```
 
 ## 恢复默认配置
-你可以直接删除配置文件，例如`rm ~/.gptui/.config.yml`，程序将在下次启动时自动重新下载默认的配置文件。配置文件查找策略请参考[这里](../../README.zh.md#使用pip安装)。
+你可以直接删除配置文件，例如`rm ~/.gptui/.config.yml`，程序将在下次启动时自动重新下载默认的配置文件。配置文件查找策略请参考[这里](https://github.com/happyapplehorse/gptui/blob/main/README.zh.md#使用pip安装)。
 
 ## 配置选项
 目前，你可以进行以下配置：

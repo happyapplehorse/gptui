@@ -44,7 +44,8 @@ Open-interpreter具有执行代码的权限，在开启此功能前请确保你�
 [^google_key]: 需要提供`GOOGLE_KEY`和`GOOGLE_CX`。可以从[这里](https://developers.google.com/custom-search/v1/introduction)免费获取。
 
 ## 🎬 演示视频
-- [AI-Care](https://www.youtube.com/watch?v=gPQ7XV-Q1r8)
+- [AI-Care](https://www.bilibili.com/video/BV1ka4y1B7tQ)
+- [界面和功能介绍](https://www.bilibili.com/video/BV18T4y1W7eg)
 
 # 兼容性
 
@@ -135,7 +136,7 @@ python main.py
 
 ## 配置指南
 
-详细的配置说明请查看[这里](./docs/guide/configuration.zh.md)。
+详细的配置说明请查看[这里](./docs/configuration.zh.md)。
 
 # 快速开始
 

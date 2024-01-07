@@ -78,7 +78,7 @@ os:
   # macos
   # windows
 
-default_plugins_used:
+default_plugins_used: []
   #% List of plugin's name of default used
   #- WebServe
 

@@ -63,10 +63,10 @@ nav:
     - Getting started: getting_started.md
     - Troubleshooting: troubleshooting.md
     - Features: features.md
+    - Configuration: configuration.md
+    - 配置指南: configuration.zh.md
   - Guide:
     - guide/index.md
-    - Configuration: guide/configuration.md
-    - 配置指南: guide/configuration.md
   - API:
     - api/index.md
   - Blog:

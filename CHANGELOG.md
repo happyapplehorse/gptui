@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.3] - 2024-01-07
+
 ### Fixed
 
 - Fixed the error of using the unimported async_wrapper_with_loop in GroupTalkManager.speaking
 
-## [0.5.2] - 2023-01-02
+## [0.5.2] - 2024-01-02
 
 ### Fixed
 
@@ -19,7 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Stop the waiting animation for a conversation when it is deleted
 - Fixed the bug where deleting a conversation shows its replies in another window
 
-## [0.5.1] - 2023-01-02
+## [0.5.1] - 2024-01-02
 
 ### Fixed
 

@@ -53,7 +53,7 @@ tui_config:
 
 You can simply delete the configuration file, for instance `rm ~/.gptui/.config.yml`, and the program will automatically
 re-download the default configuration file upon the next launch.
-For the configuration file search strategy, refer to [here](../../README.md#installation).
+For the configuration file search strategy, refer to [here](https://github.com/happyapplehorse/gptui/blob/main/README.md#installation).
 
 ## Configuration Options
 
