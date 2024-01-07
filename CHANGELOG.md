@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the error of using the unimported async_wrapper_with_loop in GroupTalkManager.speaking
+
 ## [0.5.2] - 2023-01-02
 
 ### Fixed
