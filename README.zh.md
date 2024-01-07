@@ -65,6 +65,8 @@ GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展G
 GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
 详请参考[开发文档](#文档)
 
+如果需要用到gptui的部分组件或功能，你可以把gptui当作一个库来导入并使用。
+
 # 安装
 
 正常使用需要确保网络畅通，可以连接OpenAI。
@@ -86,7 +88,7 @@ gptui --config <your_config_file_path>
 ```
 本程序通过以下步骤加载文件：
 1. 从`--config`中读取配置文件，如果没有指定，则进行下一步。
-2. 从用户目录寻找`~/.gitui/.config.yml`，如果没有，则进行下一步。
+2. 从用户目录寻找`~/.gptui/.config.yml`，如果没有，则进行下一步。
 3. 拷贝默认的配置文件`gptui/config.yml`到`~/.gitui/.config.yml`并使用。
 
 ## 从源码安装
@@ -116,9 +118,9 @@ python main.py
 当使用`python main.py`或`python -m gptui`来运行本程序时，使用`gptui/config.yml`作为配置文件。
 在Linux或macOS系统下，如果要使用语音功能，还需要额外安装pyaudio。
 
-## 配置
+# 配置
 
-### API keys的配置
+## API keys的配置
 
 在`~/.gptui/.env_gptui`中配置相应的API Keys。参考[.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example)文件。当使用“WebServe”插件时，需提供`GOOGLE_KEY`和`GOOGLE_CX`，它们可免费地从谷歌[获取](https://developers.google.com/custom-search/v1/introduction)。
 
@@ -130,6 +132,10 @@ python main.py
 - os: 系统平台
 
 否则，部分功能可能不能正常使用，比如复制代码与语音相关功能。
+
+## 配置指南
+
+详细的配置说明请查看[这里](./docs/guide/configuration.zh.md)。
 
 # 快速开始
 

@@ -73,6 +73,8 @@ To alter or expand UI functionalities, typically, only modifications to the cont
 
 See Development Documentation for details. [Documentation](#documentation).
 
+If you need to use certain functions or components of gptui, you can import and use gptui as a library.
+
 # Installation
 
 Normal use requires ensuring stable network connection to OpenAI.
@@ -96,7 +98,7 @@ gptui --config <your_config_file_path>
 ```
 This program loads files through the following steps:
 1. Read the configuration file from --config. If not specified, proceed to the next step.
-2. Search for ~/.gitui/.config.yml in the user directory. If not found, move to the next step.
+2. Search for ~/.gptui/.config.yml in the user directory. If not found, move to the next step.
 3. Copy the default configuration file gptui/config.yml to ~/.gitui/.config.yml and use it.
 
 ## Install from source
@@ -131,9 +133,9 @@ When running the program with `python main.py` or `python -m gptui`, use `gptui/
 
 On Linux or macOS systems, if you want to use voice functionalities, you'll need to install pyaudio separately.
 
-## Configuration
+# Configuration
 
-### Config API keys
+## Config API keys
 Configure the corresponding API Keys in `~/.gptui/.env_gptui`.
 Refer to the [.env_gptui.example](https://github.com/happyapplehorse/gptui/blob/main/.env_gptui.example) file.
 When using the "WebServe" plugin, `GOOGLE_KEY` and `GOOGLE_CX` need to be provided, which can be [obtained](https://developers.google.com/custom-search/v1/introduction) free of charge from Google.
@@ -146,6 +148,8 @@ Depending on the platform you are using, it is best to configure the following o
 
 Otherwise, some features may not work properly, such as code copy and voice related functions.
 
+## Configuration Guide
+For detailed configuration instructions, please refer to [here](./docs/guide/configuration.md).
 
 # Quick Start
 

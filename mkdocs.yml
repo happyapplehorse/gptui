@@ -65,6 +65,8 @@ nav:
     - Features: features.md
   - Guide:
     - guide/index.md
+    - Configuration: guide/configuration.md
+    - 配置指南: guide/configuration.md
   - API:
     - api/index.md
   - Blog:
