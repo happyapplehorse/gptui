@@ -183,7 +183,7 @@ class SelectPathDialog(ModalScreen[tuple[bool, str]]):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
-        self.input = Input(placeholder=self.placeholder, id="input")
+        self.input = Input(placeholder=self.placeholder, value=str(self.root_directory_path), id="input")
         yield Grid(
             Label(self.prompt, id="prompt"),
             self.input,
