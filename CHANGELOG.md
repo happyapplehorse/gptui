@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the issue of bebing unable to rename conversation on Windows
+- Switch from text-davinci-003 and text-embedding-ada-002 to using gpt-3.5-turbo-instruct
+
 ## [0.5.3] - 2024-01-07
 
 ### Fixed

@@ -1077,7 +1077,7 @@ class MainApp(App[str]):
         )
         self.openai.openai_group_talk.talk_stream(group_talk_manager=group_talk_manager, message_content=input_text)
 
-    def conversation_tab_rename(self, context: OpenaiContext):
+    async def conversation_tab_rename(self, context: OpenaiContext):
         conversation_id = context.id
         tab_id = "lqt" + str(conversation_id)
         tab = self.main_screen.query_one(f"#chat_tabs #{tab_id}")
@@ -1089,8 +1089,18 @@ class MainApp(App[str]):
                 rename_function = self.manager.services.sk_kernel.skills.get_function("conversation_service", "conversation_title")
                 conversation = context.chat_context
                 conversation_str = json.dumps(conversation, ensure_ascii = False, sort_keys = True, indent = 4, separators = (',',':'))
-                name = str(rename_function(conversation_str))
+                name = str(await rename_function.invoke_async(conversation_str))
                 name = name.replace("\n", "") # '\n' may cause tab name display error, because tab have only one line.
+                
+                def strip_quotes(s: str) -> str:
+                    s = s.strip()
+                    if s.startswith('"') and s.endswith('"'):
+                        return s[1:-1]
+                    elif s.startswith("'") and s.endswith("'"):
+                        return s[1:-1]
+                    return s
+
+                name = strip_quotes(name)
             except Exception as e:
                 self.main_screen.query_one("#status_region").update(
                     Text(
@@ -1098,7 +1108,7 @@ class MainApp(App[str]):
                         tc("yellow") or "yellow"
                     )
                 )
-                gptui_logger.info("Rename failed.")
+                gptui_logger.info(f"Rename failed. Error: {e}")
             else:
                 self.openai.conversation_dict[conversation_id]["tab_name"] = name
                 self.tab_rename(tab, name)

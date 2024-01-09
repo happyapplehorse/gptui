@@ -159,7 +159,7 @@ class OpenaiChatManage:
 
     def init_volatile_memory(self):
         kernel = self.manager.services.sk_kernel
-        kernel.add_text_embedding_generation_service("ada", OpenAITextEmbedding("text-embedding-ada-002", self.openai_api_key, self.openai_org_id or ""))
+        kernel.add_text_embedding_generation_service("gpt-3.5-turbo-instruct", OpenAITextEmbedding("gpt-3.5-turbo-instruct", self.openai_api_key, self.openai_org_id or ""))
         kernel.register_memory_store(memory_store=self.app.qdrant_vector)
 
     def bead_insert(self, conversation_id: int | None = None) -> BeadOpenaiContext:
