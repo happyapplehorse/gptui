@@ -133,7 +133,7 @@ class Notification:
         
         # Tab rename
         context = conversation["openai_context"]
-        self.app.conversation_tab_rename(context)
+        await self.app.conversation_tab_rename(context)
 
     def openai_error_display(self, error: Exception, context: OpenaiContext) -> None:
         app = self.app

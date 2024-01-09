@@ -48,8 +48,4 @@ class ConversationService:
         make_title_function = gk_kernel.sk_kernel.create_semantic_function(sk_prompt, max_tokens=50)
         name = await make_title_function.invoke_async(chat_context)
         name = str(name)
-        if name.startswith('"'):
-            name = name[1:]
-            if name.endswith('"'):
-                name = name[:-1]
         return name

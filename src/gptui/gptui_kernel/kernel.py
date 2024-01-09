@@ -166,7 +166,7 @@ class Kernel(KernelInterface):
         kernel.add_text_completion_service(               # We are adding a text service
             "OpenAI_davinci",                         # The alias we can use in prompt templates' config.json
             OpenAITextCompletion(
-                "text-davinci-003",                   # OpenAI Model Name
+                "gpt-3.5-turbo-instruct",                   # OpenAI Model Name
                 openai_key,
                 org_id,
             )

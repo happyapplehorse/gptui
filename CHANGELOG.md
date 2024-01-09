@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.4] - 2024-01-09
+
+### Fixed
+
+- Fixed the issue of bebing unable to rename conversation on Windows
+- Switch from text-davinci-003 to using gpt-3.5-turbo-instruct
+- When choosing a file path, the default is the root directory
+
 ## [0.5.3] - 2024-01-07
 
 ### Fixed
