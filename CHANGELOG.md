@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.4] - 2024-01-09
+
 ### Fixed
 
 - Fixed the issue of bebing unable to rename conversation on Windows

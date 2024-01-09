@@ -1,12 +1,12 @@
-agere>=0.1.1,<1
-ai-care>=0.1.2,<1
+agere>=0.1.3,<1
+ai-care>=0.1.3,<1
 aiofiles>=23.1.0,<24
 beautifulsoup4>=4.12.2,<5
 blinker>=1.6.2,<2
 chardet>=5.1.0,<6
 geocoder>=1.38.1,<2
 httpx>=0.24.1,<1
-lxml>=4.9.3,<5
+lxml>=4.9.3,<6
 # open-interpreter==0.1.4
 openai>=1.2.3,<2
 playsound>=1.3.0,<2
