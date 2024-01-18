@@ -4,10 +4,13 @@ import inspect
 import logging
 import os
 import textwrap
+from math import ceil
 from typing import NamedTuple, Callable, Awaitable, Coroutine, TypeVar, Generic, Literal
 
 from markdown_it import MarkdownIt
 from rich.console import RenderResult, Console
+from rich.color import Color
+from rich.segment import Segment, Segments
 from rich.style import Style
 from rich.text import TextType
 from textual.await_complete import AwaitComplete
@@ -1457,7 +1460,6 @@ class NoPaddingButton(Button):
 
 class MyScrollBarRender(ScrollBarRender):
     """Implement my srcoll bar style."""
-    """
     @classmethod
     def render_bar(
         cls,
@@ -1470,15 +1472,84 @@ class MyScrollBarRender(ScrollBarRender):
         back_color: Color = Color.parse("#555555"),
         bar_color: Color = Color.parse("bright_magenta"),
     ) -> Segments:
-        pass
-    """
+        if vertical:
+            bars = ["-"]
+        else:
+            bars = ["|"]
+
+        back = back_color
+        bar = bar_color
+        back_custom = tc("yellow") or "yellow"
+        bar_custom = tc("blue") or "blue"
+
+        len_bars = len(bars)
+
+        width_thickness = thickness if vertical else 1
+
+        _Segment = Segment
+        _Style = Style
+        blank = "\u00b7" * width_thickness
+
+        foreground_meta = {"@mouse.down": "grab"}
+        if window_size and size and virtual_size and size != virtual_size:
+            bar_ratio = virtual_size / size
+            thumb_size = max(1, window_size / bar_ratio)
+
+            position_ratio = position / (virtual_size - window_size)
+            position = (size - thumb_size) * position_ratio
+
+            start = int(position * len_bars)
+            end = start + ceil(thumb_size * len_bars)
+
+            start_index, start_bar = divmod(max(0, start), len_bars)
+            end_index, end_bar = divmod(max(0, end), len_bars)
+
+            upper = {"@mouse.up": "scroll_up"}
+            lower = {"@mouse.up": "scroll_down"}
+
+            upper_back_segment = Segment(blank, _Style(color=back_custom, meta=upper))
+            lower_back_segment = Segment(blank, _Style(color=back_custom, meta=lower))
+
+            segments = [upper_back_segment] * int(size)
+            segments[end_index:] = [lower_back_segment] * (size - end_index)
+
+            segments[start_index:end_index] = [
+                _Segment(bars[0], _Style(color=bar_custom, meta=foreground_meta))
+            ] * (end_index - start_index)
+
+            # Apply the smaller bar characters to head and tail of scrollbar for more "granularity"
+            if start_index < len(segments):
+                bar_character = bars[len_bars - 1 - start_bar]
+                if bar_character != " ":
+                    segments[start_index] = _Segment(
+                        bar_character * width_thickness,
+                        _Style(color=bar_custom, meta=foreground_meta)
+                        if vertical
+                        else _Style(color=bar_custom, meta=foreground_meta),
+                    )
+            if end_index < len(segments):
+                bar_character = bars[len_bars - 1 - end_bar]
+                if bar_character != " ":
+                    segments[end_index] = _Segment(
+                        bar_character * width_thickness,
+                        _Style(color=bar_custom, meta=foreground_meta)
+                        if vertical
+                        else _Style(color=bar_custom, meta=foreground_meta),
+                    )
+        else:
+            style = _Style(bgcolor=back)
+            segments = [_Segment(blank, style=style)] * int(size)
+        if vertical:
+            return Segments(segments, new_lines=True)
+        else:
+            return Segments((segments + [_Segment.line()]) * thickness, new_lines=False)
 
 
 class ChatWindow(VerticalScroll):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.last_box: ChatBox | None = None
-        self.renderer = MyScrollBarRender
+        self.vertical_scrollbar.renderer = MyScrollBarRender
 
     async def add_box(self, chat_box: ChatBox) -> None:
         self.last_box = chat_box
@@ -1672,9 +1743,10 @@ class MyMarkdown(Markdown):
                  else len(md_block._text))
                 for md_block in output
             ]
-            max_header_width = max(header_width)
+            max_header_width = max(header_width, default=0)  # output may be empty
+            set_header_width = min(max_header_width, max_width)
             for md_block in output:
-                md_block.styles.width = min(max_header_width, max_width)
+                md_block.styles.width = set_header_width
         else:
             for md_block in output:
                 if isinstance(md_block, MarkdownHeader):
