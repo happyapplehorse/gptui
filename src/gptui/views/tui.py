@@ -42,6 +42,8 @@ from .common_message import CommonMessage
 from .custom_tree import ConversationTree, MyDirectoryTree
 from .fun_zone import FunZone, JustBeing, BombBoom, RotatingCube
 from .mywidgets import (
+    ChatWindow,
+    ChatBoxMessage,
     GridContent,
     MyFillIn,
     MyMultiInput,
@@ -119,7 +121,7 @@ class MainScreen(Screen):
                         yield Label(Text(u'\u260a', 'cyan'), id="commander_status_display")
                 
                 with Horizontal(id="chat_window"):
-                    yield MyChatWindow(id="chat_region")
+                    yield ChatWindow(id="chat_region")
                     yield Static(id="chat_region_scroll_bar")
                 
                 yield MyFillIn(char=chr(0x2500), id="line_between_chat_status")
@@ -1055,6 +1057,17 @@ class MainApp(App[str]):
     @work(exclusive=True, thread=True)
     def chat_stream(self, input_text: str, context: OpenaiContext) -> None:
         piece = {"role": "user", "content": input_text}
+        self.context_piece_to_chat_window(piece)
+        self.openai.accept_ai_care = False
+        self.openai.reset_ai_care_depth()
+        self.openai.openai_chat.chat_stream(message=piece, context=context)
+        # Since chat is a non-blocking operation now, the conversation tab rename operation here has been
+        # moved into 'notification_control.py'.
+        # The rename operation is executed after determining the completion of the chat job.
+
+    @work(exclusive=True, thread=True)
+    def _drop_chat_stream(self, input_text: str, context: OpenaiContext) -> None:
+        piece = {"role": "user", "content": input_text}
         self.context_piece_to_chat_window(piece, change_line=True, decorator_switch=True)
         self.openai.accept_ai_care = False
         self.openai.reset_ai_care_depth()
@@ -1128,14 +1141,27 @@ class MainApp(App[str]):
 
     # context to chat window
     ############################################################################## context to chat window
-    def context_to_chat_window(self, context: list[dict], change_line: bool = True) -> None:
+    def context_to_chat_window(self, context: list[dict]) -> None:
+        self.main_screen.query_one("#chat_region").clear_window()
+        for piece in context:
+            piece_content = {"role": piece["role"], "name": piece.get("name", None), "content": piece["content"]}
+            self.context_piece_to_chat_window(piece=piece_content)
+    
+    def context_piece_to_chat_window(self, piece: dict) -> None:
+        chat_region = self.main_screen.query_one("#chat_region")
+        piece = self.filter(piece)
+        if piece:
+            chat_box = ChatBoxMessage.make_message_box(message=piece["content"], role=piece["role"])
+            self.call_from_thread(chat_region.add_box, chat_box)
+
+    def _drop_context_to_chat_window(self, context: list[dict], change_line: bool = True) -> None:
         self.main_screen.query_one("#chat_region").clear()
         self.decorate_display.clear_code_block() # clear code_block DecorateDisplay
         for piece in context:
             piece_content = {"role": piece["role"], "name": piece.get("name", None), "content": piece["content"]}
             self.context_piece_to_chat_window(piece=piece_content, change_line=change_line, decorator_switch=True)
 
-    def context_piece_to_chat_window(self, piece: dict, change_line: bool = False, decorator_switch: bool = False) -> None:
+    def _drop_context_piece_to_chat_window(self, piece: dict, change_line: bool = False, decorator_switch: bool = False) -> None:
         chat_region = self.main_screen.query_one("#chat_region")
         piece = self.filter(piece)
         if piece:

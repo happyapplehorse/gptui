@@ -196,7 +196,8 @@ class OpenaiChatManage:
             "role": "system",
             "content": (
                 "Memo:\nYour memory is limited. When encountering important information, you should use memo to record it.\n"
-                f"CONVERSATION ID: {bead_id}"
+                f"CONVERSATION ID: {bead_id}\n"
+                "Please write text content in Markdown format."
             )
         }
         return bead

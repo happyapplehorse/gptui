@@ -4,19 +4,22 @@ import inspect
 import logging
 import os
 import textwrap
-from typing import NamedTuple, Callable, Awaitable, Coroutine, TypeVar, Generic
+from typing import NamedTuple, Callable, Awaitable, Coroutine, TypeVar, Generic, Literal
 
+from markdown_it import MarkdownIt
 from rich.console import RenderResult, Console
 from rich.style import Style
 from rich.text import TextType
+from textual.await_complete import AwaitComplete
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, Grid
+from textual.containers import Horizontal, Vertical, Grid, VerticalScroll
 from textual.css.query import NoMatches
 from textual.geometry import Size, Offset
 from textual.message import Message
 from textual.message_pump import _MessagePumpMeta
 from textual.reactive import reactive
+from textual.scrollbar import ScrollBarRender
 from textual.widget import Widget
 from textual.widgets import (
     Button,
@@ -27,6 +30,29 @@ from textual.widgets import (
     RichLog,
     Switch,
     Static,
+)
+from textual.widgets._markdown import (
+    MarkdownBlock,
+    MarkdownFence,
+    MarkdownTHead,
+    MarkdownHorizontalRule,
+    MarkdownParagraph,
+    MarkdownBlockQuote,
+    MarkdownBulletList,
+    MarkdownOrderedList,
+    MarkdownOrderedListItem,
+    MarkdownUnorderedListItem,
+    MarkdownTable,
+    MarkdownTBody,
+    MarkdownTH,
+    MarkdownTD,
+    MarkdownTR,
+    MarkdownList,
+    MarkdownListItem,
+    MarkdownHeader,
+    MarkdownH1,
+    MarkdownH2,
+    HEADINGS,
 )
 
 from .screens import SelectPathDialog, MarkdownPreview
@@ -1427,3 +1453,331 @@ class NoPaddingButton(Button):
         label = Text.assemble(self.label)
         label.stylize(self.text_style)
         return label
+
+
+class MyScrollBarRender(ScrollBarRender):
+    """Implement my srcoll bar style."""
+    """
+    @classmethod
+    def render_bar(
+        cls,
+        size: int = 25,
+        virtual_size: float = 50,
+        window_size: float = 20,
+        position: float = 0,
+        thickness: int = 1,
+        vertical: bool = True,
+        back_color: Color = Color.parse("#555555"),
+        bar_color: Color = Color.parse("bright_magenta"),
+    ) -> Segments:
+        pass
+    """
+
+
+class ChatWindow(VerticalScroll):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.last_box: ChatBox | None = None
+        self.renderer = MyScrollBarRender
+
+    async def add_box(self, chat_box: ChatBox) -> None:
+        self.last_box = chat_box
+        chat_box.chat_window = self
+        await self.mount(chat_box)
+        await chat_box.box_refresh()
+
+    async def clear_window(self) -> None:
+        """Remove the internal thread representing the chat, and update the DOM."""
+        await self.remove_children()
+        self.last_box = None
+
+
+class ChatBox(Widget):
+    """Base class for ChatBox."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.chat_window: ChatWindow | None = None
+
+    async def box_refresh(self):
+        raise NotImplemented()
+
+
+class MyMarkdown(Markdown):
+    def update(self, markdown: str, max_width: int) -> AwaitComplete:
+        """Update the document with new Markdown.
+
+        Args:
+            markdown: A string containing Markdown.
+            max_width: Set the max_width of child elements. The width of all child elements are set to "auto".
+
+        Returns:
+            An optionally awaitable object. Await this to ensure that all children have been mounted.
+        """
+        output: list[MarkdownBlock] = []
+        stack: list[MarkdownBlock] = []
+        parser = (
+            MarkdownIt("gfm-like")
+            if self._parser_factory is None
+            else self._parser_factory()
+        )
+
+        block_id: int = 0
+        self._table_of_contents = []
+
+        for token in parser.parse(markdown):
+            if token.type == "heading_open":
+                block_id += 1
+                stack.append(HEADINGS[token.tag](self, id=f"block{block_id}"))
+            elif token.type == "hr":
+                output.append(MarkdownHorizontalRule(self))
+            elif token.type == "paragraph_open":
+                stack.append(MarkdownParagraph(self))
+            elif token.type == "blockquote_open":
+                stack.append(MarkdownBlockQuote(self))
+            elif token.type == "bullet_list_open":
+                stack.append(MarkdownBulletList(self))
+            elif token.type == "ordered_list_open":
+                stack.append(MarkdownOrderedList(self))
+            elif token.type == "list_item_open":
+                if token.info:
+                    stack.append(MarkdownOrderedListItem(self, token.info))
+                else:
+                    item_count = sum(
+                        1
+                        for block in stack
+                        if isinstance(block, MarkdownUnorderedListItem)
+                    )
+                    stack.append(
+                        MarkdownUnorderedListItem(
+                            self,
+                            self.BULLETS[item_count % len(self.BULLETS)],
+                        )
+                    )
+
+            elif token.type == "table_open":
+                stack.append(MarkdownTable(self))
+            elif token.type == "tbody_open":
+                stack.append(MarkdownTBody(self))
+            elif token.type == "thead_open":
+                stack.append(MarkdownTHead(self))
+            elif token.type == "tr_open":
+                stack.append(MarkdownTR(self))
+            elif token.type == "th_open":
+                stack.append(MarkdownTH(self))
+            elif token.type == "td_open":
+                stack.append(MarkdownTD(self))
+            elif token.type.endswith("_close"):
+                block = stack.pop()
+                if token.type == "heading_close":
+                    heading = block._text.plain
+                    level = int(token.tag[1:])
+                    self._table_of_contents.append((level, heading, block.id))
+                if stack:
+                    stack[-1]._blocks.append(block)
+                else:
+                    output.append(block)
+            elif token.type == "inline":
+                style_stack: list[Style] = [Style()]
+                content = Text()
+                if token.children:
+                    for child in token.children:
+                        if child.type == "text":
+                            content.append(child.content, style_stack[-1])
+                        if child.type == "hardbreak":
+                            content.append("\n")
+                        if child.type == "softbreak":
+                            content.append(" ", style_stack[-1])
+                        elif child.type == "code_inline":
+                            content.append(
+                                child.content,
+                                style_stack[-1]
+                                + self.get_component_rich_style(
+                                    "code_inline", partial=True
+                                ),
+                            )
+                        elif child.type == "em_open":
+                            style_stack.append(
+                                style_stack[-1]
+                                + self.get_component_rich_style("em", partial=True)
+                            )
+                        elif child.type == "strong_open":
+                            style_stack.append(
+                                style_stack[-1]
+                                + self.get_component_rich_style("strong", partial=True)
+                            )
+                        elif child.type == "s_open":
+                            style_stack.append(
+                                style_stack[-1]
+                                + self.get_component_rich_style("s", partial=True)
+                            )
+                        elif child.type == "link_open":
+                            href = child.attrs.get("href", "")
+                            action = f"link({href!r})"
+                            style_stack.append(
+                                style_stack[-1] + Style.from_meta({"@click": action})
+                            )
+                        elif child.type == "image":
+                            href = child.attrs.get("src", "")
+                            alt = child.attrs.get("alt", "")
+
+                            action = f"link({href!r})"
+                            style_stack.append(
+                                style_stack[-1] + Style.from_meta({"@click": action})
+                            )
+
+                            content.append("🖼  ", style_stack[-1])
+                            if alt:
+                                content.append(f"({alt})", style_stack[-1])
+                            if child.children is not None:
+                                for grandchild in child.children:
+                                    content.append(grandchild.content, style_stack[-1])
+
+                            style_stack.pop()
+
+                        elif child.type.endswith("_close"):
+                            style_stack.pop()
+
+                stack[-1].set_content(content)
+            elif token.type in ("fence", "code_block"):
+                (stack[-1]._blocks if stack else output).append(
+                    MarkdownFence(
+                        self,
+                        token.content.rstrip(),
+                        token.info,
+                    )
+                )
+            else:
+                external = self.unhandled_token(token)
+                if external is not None:
+                    (stack[-1]._blocks if stack else output).append(external)
+
+        self.post_message(
+            Markdown.TableOfContentsUpdated(self, self._table_of_contents)
+        )
+        markdown_block = self.query("MarkdownBlock")
+
+        ################## MyMarkdown ###################
+        def set_paragraph_styles(mdb, p_max_width):
+            for item in mdb._blocks:
+                if not isinstance(item, MarkdownListItem):
+                    continue
+                for paragraph in item._blocks:
+                    if isinstance(paragraph, MarkdownParagraph):
+                        paragraph.styles.width = "auto"
+                        paragraph.styles.max_width = p_max_width
+
+        if all(isinstance(md_block, MarkdownHeader) for md_block in output):
+            header_width = [
+                (len(md_block._text) + 4 if isinstance(md_block, (MarkdownH1, MarkdownH2))
+                 else len(md_block._text))
+                for md_block in output
+            ]
+            max_header_width = max(header_width)
+            for md_block in output:
+                md_block.styles.width = min(max_header_width, max_width)
+        else:
+            for md_block in output:
+                if isinstance(md_block, MarkdownHeader):
+                    continue
+                md_block.styles.width = "auto"
+                md_block.styles.max_width = max_width
+                if isinstance(md_block, MarkdownOrderedList):
+                    set_paragraph_styles(md_block, max_width-4)
+                elif isinstance(md_block, MarkdownBulletList):
+                    set_paragraph_styles(md_block, max_width-2)
+
+        if output:
+            if isinstance(output[-1], (MarkdownParagraph, MarkdownList)):
+                output[-1].styles.margin = 0
+        ###############################################
+
+        async def await_update() -> None:
+            """Update in a single batch."""
+
+            with self.app.batch_update():
+                await markdown_block.remove()
+                await self.mount_all(output)
+
+        return AwaitComplete(await_update())
+
+
+class ChatBoxMessage(ChatBox):
+    DEFAULT_CSS = """
+    ChatBoxMessage {
+        height: auto;
+    }
+    Horizontal {
+        height: auto;
+        width: 1fr;
+    }
+    #content_display {
+        width: auto;
+        margin: 0;
+        border-title-color: auto;
+        border-title-background: white 50%;
+        border-title-style: bold;
+    }
+    ChatBoxMessage.user_message #content_display {
+        border: round cyan 40%;
+    }
+    ChatBoxMessage.assistant_message #content_display {
+        border: round purple 80%;
+    }
+    #indicator {
+        width: 3;
+    }
+    ChatBoxMessage.user_message #indicator {
+        color: cyan 40%;
+    }
+    ChatBoxMessage.assistant_message #indicator {
+        color: purple 80%;
+    }
+    #content_display > MarkdownList * {
+        width: auto;
+    }
+    #content_display > MarkdownOrderedList MarkdownBullet{
+        width: 4;
+    }
+    #content_display > MarkdownBulletList MarkdownBullet{
+        width: 2;
+    }
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.content: str = ""
+        self.indicator = Static(id="indicator")
+        self.content_display = MyMarkdown(id="content_display")
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            yield self.indicator
+            yield self.content_display
+
+    @classmethod
+    def make_message_box(cls, message: str, role: Literal["user", "assistant"]) -> ChatBoxMessage:
+        if role == "user":
+            chat_box = ChatBoxMessage(classes="user_message")
+            chat_box.content_display.border_title = "You"
+            chat_box.indicator.update("\n:man:-")
+        elif role == "assistant":
+            chat_box = ChatBoxMessage(classes="assistant_message")
+            chat_box.content_display.border_title = "GPT"
+            chat_box.indicator.update("\n:robot:-")
+        else:
+            assert False
+        chat_box.content = message
+        return chat_box
+
+    async def content_append(self, content: str) -> None:
+        self.content += content
+        await self.box_refresh()
+
+    async def content_update(self, content: str) -> None:
+        self.content = content
+        await self.box_refresh()
+   
+    async def box_refresh(self) -> None:
+        assert self.chat_window is not None
+        self.content_display.styles.max_width = self.chat_window.content_size.width - 4
+        await self.content_display.update(self.content, max_width=self.chat_window.content_size.width-6)

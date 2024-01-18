@@ -4,6 +4,7 @@ import threading
 from ..utils.my_text import MyText as Text
 from ..utils.my_text import MyLines as Lines
 from ..models.signals import response_to_user_message_stream_signal, response_auxiliary_message_signal
+from ..views.mywidgets import ChatBoxMessage
 
 
 gptui_logger = logging.getLogger("gptui_logger")
@@ -19,6 +20,7 @@ class ChatResponse:
         self.tab_not_switching.set()
         response_to_user_message_stream_signal.connect(self.handle_response)
         response_auxiliary_message_signal.connect(self.handle_group_talk_response)
+        self.chat_box_message: ChatBoxMessage | None = None
     
     def delete_buffer_id(self, id: int) -> None:
         self.buffer.pop(id, None)
@@ -28,6 +30,20 @@ class ChatResponse:
         self.stream_display(message)
 
     def stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
+        if message["flag"] == "content":
+            char = message["content"]["content"]
+            if self.chat_box_message is None:
+                chat_box = ChatBoxMessage.make_message_box(message=char, role="assistant")
+                self.app.call_from_thread(self.chat_region.add_box, chat_box)
+                self.chat_box_message = chat_box
+            else:
+                self.app.call_from_thread(self.chat_box_message.content_append, char)
+        elif message["flag"] == "end":
+            self.chat_box_message = None
+        else:
+            assert False
+
+    def _drop_stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
         """Display the chat response in TUI"""
         # If the tab is in the process of switching, wait for the chat history to finish loadind
         # before displaying the newly generating chat content.    
