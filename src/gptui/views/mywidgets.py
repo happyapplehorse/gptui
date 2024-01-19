@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import logging
@@ -13,6 +14,7 @@ from rich.color import Color
 from rich.segment import Segment, Segments
 from rich.style import Style
 from rich.text import TextType
+from textual import work
 from textual.await_complete import AwaitComplete
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -1799,6 +1801,7 @@ class ChatBoxMessage(ChatBox):
     }
     #indicator {
         width: 3;
+        height: 3;
     }
     ChatBoxMessage.user_message #indicator {
         color: cyan 40%;
@@ -1820,8 +1823,24 @@ class ChatBoxMessage(ChatBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.content: str = ""
-        self.indicator = Static(id="indicator")
+        self.indicator = self.Indicator(self, id="indicator")
         self.content_display = MyMarkdown(id="content_display")
+
+    class Indicator(Static):
+        def __init__(self, chat_box: ChatBox, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.chat_box = chat_box
+
+        async def on_click(self) -> None:
+            self.copy_content()
+
+        @work(exclusive=True)
+        async def copy_content(self) -> None:
+            old_indicator = self.renderable
+            self.update("\n ✔")
+            self.app.drivers.copy_code(self.chat_box.content)
+            await asyncio.sleep(1)
+            self.update(old_indicator)
 
     def compose(self) -> ComposeResult:
         with Horizontal():
