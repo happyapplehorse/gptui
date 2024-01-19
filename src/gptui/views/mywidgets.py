@@ -1556,6 +1556,8 @@ class ChatWindow(VerticalScroll):
         chat_box.chat_window = self
         await self.mount(chat_box)
         await chat_box.box_refresh()
+        self.refresh()
+        self.scroll_end(animate=False)
 
     async def clear_window(self) -> None:
         """Remove the internal thread representing the chat, and update the DOM."""
@@ -1841,13 +1843,17 @@ class ChatBoxMessage(ChatBox):
         chat_box.content = message
         return chat_box
 
-    async def content_append(self, content: str) -> None:
+    async def content_append(self, content: str, scroll_end: bool = True) -> None:
         self.content += content
         await self.box_refresh()
+        if scroll_end and self.chat_window:
+            self.chat_window.scroll_end(animate=False)
 
-    async def content_update(self, content: str) -> None:
+    async def content_update(self, content: str, scroll_end: bool = True) -> None:
         self.content = content
         await self.box_refresh()
+        if scroll_end and self.chat_window:
+            self.chat_window.scroll_end(animate=False)
    
     async def box_refresh(self) -> None:
         assert self.chat_window is not None
