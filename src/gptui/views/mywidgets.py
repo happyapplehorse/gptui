@@ -1578,6 +1578,9 @@ class ChatWindow(VerticalScroll):
             for child in self.children:
                 await child.box_refresh()
 
+    async def on_resize(self, event):
+        await self.on_show()
+
 
 class ChatBox(Widget):
     """Base class for ChatBox."""

@@ -76,7 +76,7 @@ class GroupTalkManager(Job):
                         self,
                         _async_wrapper=async_wrapper_with_loop,
                         message={
-                            "content": messages,
+                            "content": {"messages": messages, "group_talk_manager": self},
                             "flag": "group_talk_user_message_send",
                         },
                     )

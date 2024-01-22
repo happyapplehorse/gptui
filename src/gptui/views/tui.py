@@ -508,20 +508,14 @@ class MainApp(App[str]):
             self.openai.group_talk_conversation_active = id
             group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
             roles_list = list(group_talk_manager.roles.values())
+            chat_region = self.main_screen.query_one("#chat_region")
+            chat_window = chat_region.get_child_by_id(tab_id)
             if not roles_list:
-                self.main_screen.query_one("#chat_region").clear()
+                await chat_window.clear_window()
                 return
             first_role = roles_list[0]
-            
-            # Change role view
-            first_view_context = change_role_view(
-                context=first_role.context.chat_context,
-                from_view=first_role.name,
-                to_view=group_talk_manager.user_name,
-            )
-
             self.chat_display.tab_not_switching.clear()
-            await self.context_to_chat_window(first_view_context, tab_id)
+            chat_region.current = tab_id
             self.chat_display.tab_not_switching.set()
             tokens_window = self.get_tokens_window(first_role.context.parameters.get("model"))
             self.dash_board.group_talk_dash_board_display(tokens_window, conversation_id=id)
@@ -627,20 +621,6 @@ class MainApp(App[str]):
         """app resized"""
         self.run_worker(self.message_region_border_reset())
 
-    async def on_my_chat_window_resize(self, event) -> None:
-        """MyChatWindow resized"""
-        # If this check isn't made here, encountering an error in app_init and exiting might lead to other error messages. These additional errors occur because app_init terminates the program but doesn't immediately stop it. During this peroid, other methods might run without app_init having finished correctly, leading to errors. These additional errors shouldn't be logged upon program exit.
-        if self.app_exited is True:
-            return
-        id = self.openai.conversation_active
-        if id == 0:
-            return
-        openai_context = self.openai.conversation_dict[id]["openai_context"]
-        chat_window = self.main_screen.query_one("#chat_region").visible_content
-        if chat_window is not None:
-            await self.context_to_chat_window(openai_context.chat_context, chat_window)
-        self.run_worker(self.message_region_border_reset())
-
     async def on_common_message(self, message) -> None:
         if message.message_name == "write_file":
             document = message.message_content
@@ -654,6 +634,7 @@ class MainApp(App[str]):
             message_content = message.message_content
             tab_id = message_content["tab_id"]
             tab_name = message_content["tab_name"]
+            await self.add_chat_window(tab_id)
             chat_tabs = self.main_screen.query_one("#chat_tabs")
             chat_tabs.add_tab(Tab(tab_name, id=tab_id))
 

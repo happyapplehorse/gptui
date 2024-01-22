@@ -347,7 +347,7 @@ class GroupTalkHandler:
                         self,
                         _async_wrapper=async_wrapper_with_loop,
                         message={
-                            "content": messages,
+                            "content": {"messages": messages, "group_talk_manager": group_talk_manager},
                             "flag": "group_talk_user_message_send",
                         },
                     )
