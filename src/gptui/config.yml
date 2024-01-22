@@ -86,7 +86,7 @@ default_plugins_used: []
 location_city:
 
 log_level:
-  WARNING
+  DEBUG
 
 openai_model_info:
   gpt-4-1106-preview:

@@ -1,6 +1,8 @@
 import logging
 import threading
 
+from textual.css.query import NoMatches
+
 from ..utils.my_text import MyText as Text
 from ..utils.my_text import MyLines as Lines
 from ..models.signals import response_to_user_message_stream_signal, response_auxiliary_message_signal
@@ -15,72 +17,34 @@ class ChatResponse:
         self.app = app
         self.chat_region = app.main_screen.query_one("#chat_region")
         self.app_chat_tabs = app.main_screen.query_one("#chat_tabs")
-        self.buffer = {}
         self.tab_not_switching = threading.Event()
         self.tab_not_switching.set()
         response_to_user_message_stream_signal.connect(self.handle_response)
         response_auxiliary_message_signal.connect(self.handle_group_talk_response)
-        self.chat_box_message: ChatBoxMessage | None = None
     
-    def delete_buffer_id(self, id: int) -> None:
-        self.buffer.pop(id, None)
-
     def handle_response(self, sender, **kwargs):
         message = kwargs["message"]
         self.stream_display(message)
 
-    def stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
+    def stream_display(self, message: dict) -> None:
+        """Display the chat response in TUI"""
+        context_id = message["content"]["context_id"]
+        try:
+            chat_window = self.chat_region.get_child_by_id('lqt' + str(context_id))
+        except NoMatches:
+            return
         if message["flag"] == "content":
             char = message["content"]["content"]
-            if self.chat_box_message is None:
+            if chat_window.current_box is None:
                 chat_box = ChatBoxMessage.make_message_box(message=char, role="assistant")
-                self.app.call_from_thread(self.chat_region.add_box, chat_box)
-                self.chat_box_message = chat_box
+                self.app.call_from_thread(chat_window.add_box, chat_box)
+                chat_window.current_box = chat_box
             else:
-                self.app.call_from_thread(self.chat_box_message.content_append, char)
+                self.app.call_from_thread(chat_window.current_box.content_append, char)
         elif message["flag"] == "end":
-            self.chat_box_message = None
+            chat_window.current_box = None
         else:
             assert False
-
-    def _drop_stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
-        """Display the chat response in TUI"""
-        # If the tab is in the process of switching, wait for the chat history to finish loadind
-        # before displaying the newly generating chat content.    
-        self.tab_not_switching.wait(2)
-        context_id = message["content"]["context_id"]
-        if (active_tab := self.app_chat_tabs.active_tab) is not None:
-            tab_id = int(active_tab.id[3:])
-        else:
-            tab_id = 0
-            #self.buffer = {}
-            #return
-        if context_id not in self.buffer:
-            self.buffer[context_id] = {
-                "chat_stream_content": {"role": "assistant", "content": ""},
-                "decorate_chat_stream_content_lines": Lines(),
-                "last_tab_id": tab_id,
-            }
-        buffer_context = self.buffer[context_id]
-        chat_stream_content = buffer_context["chat_stream_content"]
-        char = message["content"]["content"]
-        if message["flag"] == "content":
-            # This condition being met indicates that the currently generated content corresponds with the active tab window,
-            # and it is not the first time being displayed.
-            if context_id == tab_id == buffer_context["last_tab_id"]:
-                length = len(buffer_context["decorate_chat_stream_content_lines"])
-                self.chat_region.right_pop_lines(length, refresh=False)
-            chat_stream_content["content"] += char
-            if context_id == tab_id:
-                buffer_context["decorate_chat_stream_content_lines"] = self.app.decorator(chat_stream_content, stream, copy_code)
-                self.chat_region.write_lines(buffer_context["decorate_chat_stream_content_lines"])
-        elif message["flag"] == "end":
-            if context_id == tab_id:
-                self.stream_display(message={"content": {"content": "", "context_id": context_id}, "flag": "content"}, stream=False, copy_code=True)
-                self.chat_region.write_lines([Text()])
-            chat_stream_content["content"] = ""
-            buffer_context["decorate_chat_stream_content_lines"] = Lines()
-        buffer_context["last_tab_id"] = tab_id
 
     def handle_group_talk_response(self, sender, **kwargs):
         message = kwargs["message"]

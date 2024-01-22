@@ -1548,10 +1548,17 @@ class MyScrollBarRender(ScrollBarRender):
 
 
 class ChatWindow(VerticalScroll):
+    DEFAULT_CSS = """
+    ChatWindow {
+        scrollbar-size-vertical: 1;
+    }
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.last_box: ChatBox | None = None
         self.vertical_scrollbar.renderer = MyScrollBarRender
+        self.current_box: ChatBox | None = None
 
     async def add_box(self, chat_box: ChatBox) -> None:
         self.last_box = chat_box
@@ -1565,6 +1572,11 @@ class ChatWindow(VerticalScroll):
         """Remove the internal thread representing the chat, and update the DOM."""
         await self.remove_children()
         self.last_box = None
+    
+    async def on_show(self):
+        with self.app.batch_update():
+            for child in self.children:
+                await child.box_refresh()
 
 
 class ChatBox(Widget):
@@ -1793,15 +1805,15 @@ class ChatBoxMessage(ChatBox):
         border-title-background: white 50%;
         border-title-style: bold;
     }
+    #indicator {
+        width: 3;
+        height: 3;
+    }
     ChatBoxMessage.user_message #content_display {
         border: round cyan 40%;
     }
     ChatBoxMessage.assistant_message #content_display {
         border: round purple 80%;
-    }
-    #indicator {
-        width: 3;
-        height: 3;
     }
     ChatBoxMessage.user_message #indicator {
         color: cyan 40%;
@@ -1848,15 +1860,19 @@ class ChatBoxMessage(ChatBox):
             yield self.content_display
 
     @classmethod
-    def make_message_box(cls, message: str, role: Literal["user", "assistant"]) -> ChatBoxMessage:
+    def make_message_box(cls, message: str, role: Literal["user", "assistant"], name: str | None = None) -> ChatBoxMessage:
         if role == "user":
+            name = name or "You"
             chat_box = ChatBoxMessage(classes="user_message")
-            chat_box.content_display.border_title = "You"
+            chat_box.content_display.border_title = name
             chat_box.indicator.update("\n:man:-")
+            chat_box.content_display.styles.min_width = len(name) + 6
         elif role == "assistant":
+            name = name or "GPT"
             chat_box = ChatBoxMessage(classes="assistant_message")
-            chat_box.content_display.border_title = "GPT"
+            chat_box.content_display.border_title = name
             chat_box.indicator.update("\n:robot:-")
+            chat_box.content_display.styles.min_width = len(name) + 6
         else:
             assert False
         chat_box.content = message
@@ -1864,15 +1880,17 @@ class ChatBoxMessage(ChatBox):
 
     async def content_append(self, content: str, scroll_end: bool = True) -> None:
         self.content += content
-        await self.box_refresh()
-        if scroll_end and self.chat_window:
-            self.chat_window.scroll_end(animate=False)
+        if self.chat_window and self.chat_window.display:
+            await self.box_refresh()
+            if scroll_end and self.chat_window:
+                self.chat_window.scroll_end(animate=False)
 
     async def content_update(self, content: str, scroll_end: bool = True) -> None:
         self.content = content
-        await self.box_refresh()
-        if scroll_end and self.chat_window:
-            self.chat_window.scroll_end(animate=False)
+        if self.chat_window and self.chat_window.display:
+            await self.box_refresh()
+            if scroll_end and self.chat_window:
+                self.chat_window.scroll_end(animate=False)
    
     async def box_refresh(self) -> None:
         assert self.chat_window is not None

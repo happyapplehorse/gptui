@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Remove non-stream chat mode
+
 ## [0.5.4] - 2024-01-09
 
 ### Fixed

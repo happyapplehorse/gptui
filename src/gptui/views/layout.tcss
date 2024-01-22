@@ -84,14 +84,7 @@ Widget {
   color: $monochrome_green;
 }
 
-#chat_region_scroll_bar {
-  width: 1;
-  height: 1fr;
-  content-align: left top;
-  border: none;
-}
-
-#chat_window {
+#chat_region {
   height: 3fr;
 }
 
