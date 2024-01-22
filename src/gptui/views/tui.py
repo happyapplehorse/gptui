@@ -215,7 +215,6 @@ class MainApp(App[str]):
     def __init__(self, config_path: str, app_version: str):
         super().__init__()
         self.app_version = app_version
-        self.stream_openai = True
         self.common_resources = {}
         self.unique_id = itertools.count(1)                 # start from 1 to avoid possible 0 = False trouble
         # Import config
@@ -494,6 +493,7 @@ class MainApp(App[str]):
         assert tab_id is not None
         id = int(tab_id[3:])
         tab_mode = tab_id[:3]
+        chat_region = self.main_screen.query_one("#chat_region")
         if tab_mode != "ncc":
             self.openai.ai_care.reset()
         if tab_mode == "lxt":
@@ -508,7 +508,6 @@ class MainApp(App[str]):
             self.openai.group_talk_conversation_active = id
             group_talk_manager = self.openai.group_talk_conversation_dict[id]["group_talk_manager"]
             roles_list = list(group_talk_manager.roles.values())
-            chat_region = self.main_screen.query_one("#chat_region")
             chat_window = chat_region.get_child_by_id(tab_id)
             if not roles_list:
                 await chat_window.clear_window()
@@ -537,7 +536,6 @@ class MainApp(App[str]):
             self.openai.conversation_active = id
             openai_context = self.openai.conversation_dict[id]["openai_context"]
             self.chat_display.tab_not_switching.clear()
-            chat_region = self.main_screen.query_one("#chat_region")
             try:
                 chat_window = chat_region.get_child_by_id(tab_id)
             except NoMatches:
@@ -558,10 +556,7 @@ class MainApp(App[str]):
         elif tab_mode == "ncc":
             # ncc: No chat context
             self.no_context_manager.no_context_chat_active = id
-            await self.context_to_chat_window(
-                self.no_context_manager.no_context_chat_dict[self.no_context_manager.no_context_chat_active],
-                chat_window=tab_id,
-            )
+            chat_region.current = tab_id
             dashboard = self.main_screen.query_one("#dash_board")
             height = dashboard.content_size.height
             dashboard.update(Text(" X \n" * height, tc("red") or "red"))
@@ -807,8 +802,7 @@ class MainApp(App[str]):
         self.main_screen.query_one("#chat_tabs").add_tab(Tab("NoCo", id=tab_id))
         await asyncio.sleep(0.2)
         self.main_screen.query_one("#chat_tabs").active = tab_id
-        chat_window = await self.add_chat_window(tab_id)
-        await self.context_to_chat_window([], chat_window)
+        await self.add_chat_window(tab_id)
 
     async def action_read_conversation(self):
         conversation_file_now = self.main_screen.query_one("#conversation_tree").file_path_now
@@ -1777,8 +1771,7 @@ class NoContextChat:
         self.count = 0
         self.no_context_chat_active = 0
         self.no_context_chat_dict = {}
-        self.chat_stream_content = {"role":"assistant", "content":''}
-        self.decorate_chat_stream_content_lines = Lines()
+        self.chat_region = app.query_one("#chat_region")
 
     def open_no_context_chat(self) -> int:
         self.count -= 1
@@ -1791,8 +1784,11 @@ class NoContextChat:
     def chat(self, prompt: str) -> None:
         "chat function with openai"
         app = self.app
-        message = {"role":"user","content":prompt}
-        app.context_piece_to_chat_window(message, change_line=True, decorator_switch=True)
+        message = {"role": "user", "content": prompt}
+        chat_window = self.chat_region.visible_content
+        if chat_window.id[:3] != "ncc":
+            return
+        app.call_from_thread(app.context_piece_to_chat_window, message, chat_window)
         # manage context just for displaying when refresh
         self.no_context_chat_dict[self.no_context_chat_active].append(message)
         ani_id = str(uuid.uuid4())
@@ -1807,52 +1803,38 @@ class NoContextChat:
             app.post_message(AnimationRequest(ani_id=ani_id, action="end"))
             self.app.main_screen.query_one("#status_region").update(Text(f"An error occurred during communication with OpenAI. Error: {e}"))
             return
-        if app.stream_openai:
-            i = 0
-            collected_messages = ''
-            for chunk in response:
-                i += 1
-                if i == 1:
-                    app.post_message(AnimationRequest(ani_id = ani_id, action = "end"))
-                    continue
-                if chunk.choices[0].finish_reason == "stop":
-                    break
-                elif chunk.choices[0].finish_reason == "length":
-                    app.main_screen.query_one("#status_region").update(Text("Response exceeds tokens limit", tc("red") or "red"))
-                    break
-                elif chunk.choices[0].finish_reason == "content_filter":
-                    app.main_screen.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
-                    continue
-                chunk_message = chunk.choices[0].delta.content
-                collected_messages += chunk_message
-                self.chat_stream_display({"message":chunk_message, "status":"content"})
-            self.chat_stream_display({"message":'', "status":"end"})
-            self.voice_speak(collected_messages)
-            self.no_context_chat_dict[self.no_context_chat_active].append({"role":"assistant", "content":collected_messages})
-        else:
-            app.post_message(AnimationRequest(ani_id = ani_id, action = "end"))
-            reply_content = response.choices[0].message.content
-            self.voice_speak(reply_content)
-            piece = {"role":"assistant", "content":reply_content}
-            app.context_piece_to_chat_window(piece=piece, change_line=True, decorator_switch=True)
-            self.no_context_chat_dict[self.no_context_chat_active].append({"role":"assistant", "content":reply_content})
-    
-    def chat_stream_display(self, message: dict, stream: bool = True, copy_code: bool = False) -> None:
-        "handle the stream display problems in chat_stream function"
-        chat_region = self.app.main_screen.query_one("#chat_region")
-        char = message["message"]
-        if message['status'] == "content":
-            length = len(self.decorate_chat_stream_content_lines)
-            chat_region.right_pop_lines(length, refresh=False)
-            self.chat_stream_content["content"] += char
-            self.decorate_chat_stream_content_lines = self.app.decorator(self.chat_stream_content, stream, copy_code)
-            chat_region.write_lines(self.decorate_chat_stream_content_lines)
-        elif message['status'] == "end":
-            self.chat_stream_display({"message":'', "status":"content"}, stream=False, copy_code=True)
-            chat_region.write_lines([Text()])
-            self.chat_stream_content = {"role":"assistant", "content":''}
-            self.decorate_chat_stream_content_lines = Lines()
+        first_chunk = True
+        collected_messages = ''
+        for chunk in response:
+            if first_chunk is True:
+                app.post_message(AnimationRequest(ani_id = ani_id, action = "end"))
+                first_chunk = False
+                continue
+            if chunk.choices[0].finish_reason == "stop":
+                break
+            elif chunk.choices[0].finish_reason == "length":
+                app.main_screen.query_one("#status_region").update(Text("Response exceeds tokens limit", tc("red") or "red"))
+                break
+            elif chunk.choices[0].finish_reason == "content_filter":
+                app.main_screen.query_one("#status_region").update(Text("Omitted content due to a flag from our content filters", tc("red") or "red"))
+                continue
+            chunk_message = chunk.choices[0].delta.content
+            collected_messages += chunk_message
+            self.chat_stream_display({"content":chunk_message, "flag":"content"}, chat_window)
+        self.chat_stream_display({"content":'', "flag":"end"}, chat_window)
+        self.no_context_chat_dict[self.no_context_chat_active].append({"role":"assistant", "content":collected_messages})
 
-    def voice_speak(self, speak_text: str):
-        if self.app.main_screen.query_one("#speak_switch").value:
-            subprocess.Popen(['termux-tts-speak', speak_text])
+    def chat_stream_display(self, message: dict, chat_window: ChatWindow) -> None:
+        """Handle the stream display problems in chat_stream function"""
+        if message["flag"] == "content":
+            char = message["content"]
+            if chat_window.current_box is None:
+                chat_box = ChatBoxMessage.make_message_box(message=char, role="assistant")
+                self.app.call_from_thread(chat_window.add_box, chat_box)
+                chat_window.current_box = chat_box
+            else:
+                self.app.call_from_thread(chat_window.current_box.content_append, char)
+        elif message["flag"] == "end":
+            chat_window.current_box = None
+        else:
+            assert False

@@ -26,5 +26,4 @@ class GroupTalkControl:
                     self.app.call_from_thread(chat_window.add_box, chat_box)
             else:
                 chat_box = ChatBoxMessage.make_message_box(message=message["content"], role="user", name=message["name"])
-                self.app.context_piece_to_chat_window(messages, change_line=True, decorator_switch=True)
                 self.app.call_from_thread(chat_window.add_box, chat_box)
