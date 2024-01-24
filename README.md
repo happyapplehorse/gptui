@@ -57,24 +57,6 @@ When running on Android, please use the [Termux](https://github.com/termux/termu
 For additional features like code copying and voice functionalities,
 you need to install [Termux-API](https://github.com/termux/termux-api) and grant the necessary permissions.
 
-<a name="gptui_kernel"> </a>
-## ⚙️ GPTUI Kernel
-
-GPTUI offers a lightweight Kernel for building AI applications, allowing you to easily expand GPTUI's capabilities or construct your own AI application.
-
-<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
-
-The **kernel** relies on **jobs** and **handlers** to perform specific functions.
-To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
-The **manager** and **kernel** of GPTUI are entirely independent of the **client** application, enabling you to effortlessly relocate the **manager** or **kernel** for use elsewhere.
-The application layer of GPTUI (**client**) employs the CVM architecture, where the model layer provides foundational, reusable modules for interaction with LLM, independent of specific views and controllers implementations.
-If you wish to build your own AI application, you can start here, fully utilizing the **kernel**, **manager**, and models.
-To alter or expand UI functionalities, typically, only modifications to the controllers and views are needed.
-
-See Development Documentation for details. [Documentation](#documentation).
-
-If you need to use certain functions or components of gptui, you can import and use gptui as a library.
-
 # Installation
 
 Normal use requires ensuring stable network connection to OpenAI.
@@ -214,16 +196,32 @@ Example: `set_max_sending_tokens_ratio(0.5)`
 GPTUI provides hotkeys for commonly used features, see [Help](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md).
 In addition, you can also press `ESC`, `ctrl+[`, or `ctrl+/` to bring up the hotkey menu (this mode offers more comprehensive hotkey functionalities, but they are not exactly the same as the direct hotkeys.).
 
-# Documentation
+# Development
+
+<a name="gptui_kernel"> </a>
+## ⚙️ GPTUI Kernel
+
+GPTUI offers a lightweight Kernel for building AI applications, allowing you to easily expand GPTUI's capabilities or construct your own AI application.
+
+<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+
+The **kernel** relies on **jobs** and **handlers** to perform specific functions.
+To achieve new functionalities, all you need to do is write or combine your own **jobs** and **handlers**.
+The **manager** and **kernel** of GPTUI are entirely independent of the **client** application, enabling you to effortlessly relocate the **manager** or **kernel** for use elsewhere.
+The application layer of GPTUI (**client**) employs the CVM architecture, where the model layer provides foundational, reusable modules for interaction with LLM, independent of specific views and controllers implementations.
+If you wish to build your own AI application, you can start here, fully utilizing the **kernel**, **manager**, and models.
+To alter or expand UI functionalities, typically, only modifications to the controllers and views are needed.
+
+See Development Documentation for details. [Documentation](#documentation).
+
+If you need to use certain functions or components of gptui, you can import and use gptui as a library.
+
+## GPTUI Layered Architecture
+![gptui_layered_architecture](https://raw.githubusercontent.com/happyapplehorse/happyapplehorse-assets/main/gptui/gptui_layered_architecture.png)
+
+## Documentation
 
 For detailed usage and development instructions, see [here](https://happyapplehorse.github.io/gptui/), for in-program help documentation see [here](src/gptui/help.md).
-
-# Contribution
-
-Some of GPTUI's plugin features rely on prompt, you can continue to help me improve these prompt.
-And I'd like to have appropriate animation cues during certain state changes.
-If you have any creative ideas, I'd appreciate your help in implementing them.
-P.S.: Each contributor can leave a quote in the program.
 
 # Note
 This project utilizes OpenAI's Text-to-Speech (TTS) services for generating voice outputs.

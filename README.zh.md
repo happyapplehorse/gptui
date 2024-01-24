@@ -46,6 +46,7 @@ Open-interpreter具有执行代码的权限，在开启此功能前请确保你�
 ## 🎬 演示视频
 - [AI-Care](https://www.bilibili.com/video/BV1ka4y1B7tQ)
 - [界面和功能介绍](https://www.bilibili.com/video/BV18T4y1W7eg)
+- [安装教程](https://www.bilibili.com/video/BV1te411H78z)
 
 # 兼容性
 
@@ -54,19 +55,6 @@ GPTUI在命令行环境下运行，支持Linux，macOS，Windows和Android平台
 
 [^compatibility]: Windows平台我还没有测试，部分功能的驱动还没有写，例如代码复制，语音功能等，后续会完善相关功能。
 在Android上运行时，请使用[Termux](https://github.com/termux/termux-app)终端工具，部分拓展功能例如代码复制和语音功能需要安装[Termux-API](https://github.com/termux/termux-api)并赋予权限。
-
-<a name="gptui_kernel"> </a >
-## ⚙️ GPTUI Kernel
-
-GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
-
-<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
-
-**kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
-GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
-详请参考[开发文档](#文档)
-
-如果需要用到gptui的部分组件或功能，你可以把gptui当作一个库来导入并使用。
 
 # 安装
 
@@ -200,15 +188,27 @@ python main.py
 GPTUI为常用功能提供了快捷键，参考[帮助](https://github.com/happyapplehorse/gptui/blob/main/docs/help.md)。
 另外，您还可以按`ESC`，`ctrl+[`或者`ctrl+/`来呼出快捷键菜单（此种方式的快捷键功能更全，但与直接的快捷键键位并不完全一致.）。
 
-# 文档
+# 继续开发
+
+<a name="gptui_kernel"> </a >
+## ⚙️ GPTUI Kernel
+
+GPTUI提供了轻量级的构建AI应用的Kernel，使您可以方便地拓展GPTUI的功能或构建自己的AI应用。
+
+<p align="center"><img src="https://github.com/happyapplehorse/happyapplehorse-assets/blob/main/imgs/gptui_framework.png" alt="gptui-framework" width="700"/></p >
+
+**kernel**依赖于**jobs**和**handlers**实现具体的功能。要实现新的功能，您只需编写或组合自己的**jobs**与**handlers**。
+GPTUI的**manger**和**kernel**完全不依赖于**client**应用，您可以轻松地将**manger**或**kernel**转移到别的地方使用。GPTUI的应用层（**client**）采用CVM架构，其中model层提供了基础的可重复使用的与LLM交互的功能模块，不依赖于views和controllers的具体实现，若要构件自己的AI应用，您可以从这里开始，完全复用**kernel**、**manger**以及models，若要更换或拓展UI功能，通常您只需要修改controllers以及views。
+详请参考[开发文档](#文档)
+
+如果需要用到gptui的部分组件或功能，你可以把gptui当作一个库来导入并使用。
+
+## GPTUI的分层结构
+![gptui_layered_architecture](https://raw.githubusercontent.com/happyapplehorse/happyapplehorse-assets/main/gptui/gptui_layered_architecture.png)
+
+## 文档
 
 详细使用和开发说明请看[这里](https://happyapplehorse.github.io/gptui/)，程序内的帮助文档看[这里](src/gptui/help.md)。
-
-# 贡献
-
-GPTUI的部分插件功能需要依靠提示词，您可以继续帮助我完善这些提示词。
-我希望在一些状态变化时，有合适的动画提示，如果您有好的创意，欢迎帮我实现它。
-每个贡献者可以在程序中留下一条语录。
 
 # 注意
 
